@@ -2,11 +2,11 @@ use crate::abstract_plants::*;
 use std::hash::Hash;
 use std::rc::Rc;
 
-fn breeding_program<A, B, K>(pop_0: Vec<A>, ideotype: A) -> Option<WGen<A, B>>
+fn breeding_program<A, B, K, Data>(pop_0: Vec<A>, ideotype: A, data: Data) -> Option<WGen<A, B>>
 where
     A: Genotype<B> + PartialEq + Clone,
     B: Gamete<A> + Hash + Eq + Clone,
-    K: Crosspoint<A, B>,
+    K: Crosspoint<A, B, Data>,
 {
     use std::collections::{HashMap, HashSet};
 
@@ -19,7 +19,7 @@ where
 
         // collect all possible wrapped gametes
         for x in &pop {
-            let s: HashSet<B> = K::crosspoints().map(|k| k.cross(&x.genotype)).collect();
+            let s: HashSet<B> = K::crosspoints(&data).map(|k| k.cross(&x.genotype)).collect();
             for g in &s {
                 h.entry(g.clone())
                     .and_modify(|v| (*v).push(x.clone()))

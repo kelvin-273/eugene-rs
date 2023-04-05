@@ -19,20 +19,29 @@ pub trait BioSize {
     }
 }
 
+pub trait IndexAllele<Idx> {
+    fn index(&self, idx: Idx) -> Allele;
+}
+
 pub trait Genotype<B: Gamete<Self>>: Sized + BioSize {
     fn lift_a(&self) -> WGen<Self, B>;
 
     fn from_gametes(gx: &B, gy: &B) -> Self;
+
+    #[cfg(not(debug_assertions))]
+    fn debug_fmt(self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+        unimplemented!();
+    }
 }
 
 pub trait Gamete<A: Genotype<Self>>: Sized + BioSize {
     fn lift_b(&self) -> WGam<A, Self>;
 }
 
-pub trait Crosspoint<A: Genotype<B>, B: Gamete<A>> {
+pub trait Crosspoint<A: Genotype<B>, B: Gamete<A>, Data> {
     fn cross(self, x: &A) -> B;
 
-    fn crosspoints() -> Box<dyn std::iter::Iterator<Item = Self>>;
+    fn crosspoints(data: &Data) -> Box<dyn std::iter::Iterator<Item = Self>>;
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -56,20 +65,63 @@ pub struct WGam<A, B> {
     pub history: Vec<Rc<WGen<A, B>>>,
 }
 
-pub struct WGenS<A, B> {
-    genotype: A,
-    history: Option<Rc<WGamS<A, B>>>
+impl<A, B> WGam<A, B> {
+    pub fn new(gamete: B) -> Self {
+        Self { gamete, history: vec![] }
+    }
+
+    pub fn extract_first(self: Rc<Self>) -> Rc<WGamS<A, B>> where
+        A: Clone,
+        B: Clone
+    {
+        Rc::new(WGamS {
+            gamete: self.gamete.clone(),
+            history: self.history.first().map(|x| x.clone().extract_first()).unwrap()
+        })
+    }
 }
 
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct WGenS<A, B> {
+    pub genotype: A,
+    pub history: Option<(Rc<WGamS<A, B>>, Rc<WGamS<A, B>>)>
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct WGamS<A, B> {
-    gamete: B,
-    history: Rc<WGenS<A, B>>
+    pub gamete: B,
+    pub history: Rc<WGenS<A, B>>
+}
+
+impl<A, B> WGen<A, B> {
+    pub fn new(genotype: A) -> Self {
+        Self { genotype, history: None }
+    }
+
+    pub fn extract_first(self: Rc<Self>) -> Rc<WGenS<A, B>> where
+        A: Clone,
+        B: Clone
+    {
+        Rc::new(WGenS {
+            genotype: self.genotype.clone(),
+            history: self.history.as_ref().map(|(lg, rg)| (lg.clone().extract_first(), rg.clone().extract_first()))
+        })
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Allele {
     Z,
     O,
+}
+
+impl From<bool> for Allele {
+    fn from(value: bool) -> Self {
+        match value {
+            true => Allele::O,
+            false => Allele::Z,
+        }
+    }
 }
 
 pub trait Segment<A: Genotype<B>, B: Gamete<A>> {}
@@ -90,7 +142,7 @@ pub trait HaploidSegment<A, B>: Segment<A, B> where
     fn join(&self, other: &Self) -> Self;
 }
 
-pub trait Haploid {
+pub trait Haploid: IndexAllele<usize> {
     fn alleles(&self) -> Vec<Allele>;
 }
 
@@ -106,7 +158,7 @@ pub trait Dominance<T> {
 
 pub trait Traverse<A, B, S> {
     fn f_gen(x: &Rc<WGen<A, B>>, state: &mut S);
-    
+
     fn f_gam(gx: &Rc<WGam<A, B>>, state: &mut S);
 
     fn traverse_gen_preorder(x: &Rc<WGen<A, B>>, state: &mut S) {

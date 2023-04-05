@@ -14,3 +14,4 @@ features = ["extension-module"]
 [dependencies]
 bitvec = "*"
 svg = "*"
+rand = "*"

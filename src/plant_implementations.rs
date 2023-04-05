@@ -1,98 +1,33 @@
-pub mod u64_and_u32 {
-    use crate::abstract_plants::*;
+pub mod u64_and_u32;
 
-    impl Genotype<u32> for u64 {
-        fn lift_a(&self) -> WGen<Self, u32> {
-            WGen {
-                genotype: *self,
-                history: None,
-            }
-        }
+pub mod vec_of_bools;
 
-        fn from_gametes(gx: &u32, gy: &u32) -> Self {
-            ((gx << 32) as u64) + (*gy as u64)
-        }
-    }
+pub mod bigint;
 
-    impl BioSize for u64 {
-        fn get_sizes(&self) -> Vec<(usize, usize)> {
-            vec![(2, 32)]
-        }
-    }
+pub mod bit_array;
 
-    impl BioSize for u32 {
-        fn get_sizes(&self) -> Vec<(usize, usize)> {
-            vec![(1, 32)]
-        }
-    }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rand::distributions::{Distribution, Uniform};
+    use rand::prelude::*;
 
-    impl Haploid for u32 {
-        fn alleles(&self) -> Vec<Allele> {
-            (0..32).rev().map(|i| match (self >> i) & 1 {
-                0 => Allele::Z,
-                1 => Allele::O,
-                _ => panic!("should be a single digit")
-            }).collect()
-        }
-    }
-
-    impl Diploid<u32> for u64 {
-        fn upper(&self) -> u32 {
-            (*self >> 32) as u32
-        }
-
-        fn lower(&self) -> u32 {
-            (*self & ((1 << 32) - 1)) as u32
-        }
-    }
-
-    impl Gamete<u64> for u32 {
-        fn lift_b(&self) -> WGam<u64, Self> {
-            WGam {
-                gamete: *self,
-                history: vec![],
-            }
-        }
-    }
-
-    impl Crosspoint<u64, u32> for u32 {
-        fn cross(self, x: &u64) -> u32 {
-            ((*x as u32) & self) | (((*x >> 32) as u32) & (!self))
-        }
-
-        fn crosspoints() -> Box<dyn Iterator<Item = u32> + 'static> {
-            Box::new(u32::MIN..u32::MAX)
-        }
-    }
-
-    struct CrosspointSingleU64U32 {
-        start: bool,
-        len_prefix: usize,
-    }
-
-    impl Crosspoint<u64, u32> for CrosspointSingleU64U32 {
-        fn cross(self, x: &u64) -> u32 {
-            if self.len_prefix > 31 {
-                panic!("consuming too many bits for n_loci = 32")
-            };
-            let mask_u32 = (1 << 32) - 1;
-            let mask_shift = 31 - self.len_prefix;
-            let mask_pref: u32 = ((mask_u32 >> (mask_shift)) << (mask_shift)) as u32;
-            let head: u32 = (x >> 32) as u32;
-            let tail: u32 = (x & mask_u32) as u32;
-            match self.start {
-                true =>  (head & mask_pref) | (tail & !mask_pref),
-                false => (head & !mask_pref) | (tail & mask_pref)
-            }
-        }
-
-        fn crosspoints() -> Box<dyn std::iter::Iterator<Item = Self>> {
-            Box::new((0..=1).flat_map(|start| {
-                (0..32).map(move |len_prefix| CrosspointSingleU64U32 {
-                    start: start != 0,
-                    len_prefix
-                })
-            }))
+    #[test]
+    fn vec_of_bools_random_plant_generates_gamete_with_alleles_from_self() {
+        use vec_of_bools::*;
+        use crate::abstract_plants::Crosspoint;
+        let mut rng = thread_rng();
+        let n_loci_distribution = Uniform::from(1..10);
+        for _ in (0..1000) {
+            //let n_loci = random.randrange(1, 10)
+            let n_loci = n_loci_distribution.sample(&mut rng);
+            let n_loci_2 = n_loci_distribution.sample(&mut rng);
+            //x = plant.generate_random_plant(n_loci)
+            let x: SingleChromGenotype;
+            //let g: SingleChromGamete = ;
+            //cs = format(x.create_gamete(), f"0{n_loci}b")
+            //for i in range(n_loci):
+                //assert cs[i] == su[i] or cs[i] == sl[i]
         }
     }
 }

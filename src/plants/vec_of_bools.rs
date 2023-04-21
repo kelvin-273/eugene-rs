@@ -243,6 +243,18 @@ impl Dominance<SingleChromGamete> for WeakDomSingle {
     }
 }
 
+impl Feasible<usize> for SingleChromGenotype {
+    fn is_feasible(n_loci: &usize, pop: &Vec<Self>) -> bool {
+        let mut total = vec![false; *n_loci];
+        for x in pop {
+            for (i, (a, b)) in x.array.iter().enumerate() {
+                total[i] |= a | b;
+            }
+        }
+        total.iter().all(|b| *b)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

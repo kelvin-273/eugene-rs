@@ -12,6 +12,7 @@ edition = "2021"
 features = ["extension-module"]
 
 [dependencies]
-bitvec = "*"
+bit-vec = "*"
 svg = "*"
 rand = "*"
+num = "*"

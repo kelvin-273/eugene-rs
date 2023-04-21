@@ -1,9 +1,9 @@
 use std::rc::Rc;
 
 pub trait BioSize {
-    /// Creates an array of sizes where:
-    /// (n_chrom_i, n_loci_i) = self.get_sizes()[i] is a tuple of the number of chromosomes in the
-    /// homologous group and the number of QTL on those chromosomes
+    /// Creates an array of sizes where each size is a tuple (n_chrom_i, n_loci_i) is a tuple of
+    /// the number of chromosomes in the homologous group and the number of QTL on those
+    /// chromosomes
     fn get_sizes(&self) -> Vec<(usize, usize)>;
 
     fn get_n_loci(&self, chromosome_i: usize) -> usize {
@@ -192,4 +192,8 @@ pub trait Traverse<A, B, S> {
         gx.history.iter().for_each(|x| Self::traverse_gen_postorder(x, state));
         Self::f_gam(gx, state);
     }
+}
+
+pub trait Feasible<Data>: Sized {
+    fn is_feasible(data: &Data, pop: &Vec<Self>) -> bool;
 }

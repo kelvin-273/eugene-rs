@@ -8,7 +8,7 @@ use std::rc::Rc;
 /// Returns the breeding_program rooted at the ideotype
 pub fn breeding_program<A, B, K, D, Data>(pop_0: Vec<A>, ideotype: A, data: Data) -> Option<WGen<A, B>>
 where
-    A: Genotype<B> + PartialEq + Clone,
+    A: Genotype<B> + PartialEq + Clone + Feasible<Data>,
     B: Gamete<A> + Hash + Eq + Clone,
     K: Crosspoint<A, B, Data>,
     D: Dominance<B>,
@@ -23,12 +23,12 @@ pub fn breeding_program_timeout_genotypes<A, B, K, D, Data>(
     data: Data
 ) -> Option<WGen<A, B>>
 where
-    A: Genotype<B> + PartialEq + Clone,
+    A: Genotype<B> + PartialEq + Clone + Feasible<Data>,
     B: Gamete<A> + Hash + Eq + Clone,
     K: Crosspoint<A, B, Data>,
     D: Dominance<A>,
 {
-    if !is_feasible(&pop_0) {
+    if !A::is_feasible(&data, &pop_0) {
         return None;
     }
 
@@ -81,12 +81,12 @@ pub fn breeding_program_timeout_gametes<A, B, K, D, Data>(
     data: Data,
 ) -> Option<WGen<A, B>>
 where
-    A: Genotype<B> + PartialEq + Clone,
+    A: Genotype<B> + PartialEq + Clone + Feasible<Data>,
     B: Gamete<A> + Hash + Eq + Clone,
     K: Crosspoint<A, B, Data>,
     D: Dominance<B>,
 {
-    if !is_feasible(&pop_0) {
+    if !A::is_feasible(&data, &pop_0) {
         return None;
     }
 
@@ -141,11 +141,6 @@ where
             genotype: x.genotype.clone(),
             history: x.history.to_owned(),
         })
-}
-
-fn is_feasible<T>(x: T) -> bool {
-    true
-    //unimplemented!()
 }
 
 fn filter_non_dominating<T, D>(s: impl IntoIterator<Item = T>) -> Vec<T>
@@ -208,7 +203,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::plant_implementations::vec_of_bools::*;
+    use crate::plants::bit_array::*;
     use rand::prelude::*;
 
     #[test]
@@ -278,8 +273,8 @@ mod tests {
             breeding_program_timeout_gametes::<
                 SingleChromGenotype,
                 SingleChromGamete,
-                CrosspointSingleVob,
-                WeakDomSingle,
+                CrosspointBitVec,
+                DomGamete,
                 usize,
             >(vec![x], SingleChromGenotype::ideotype(3), Some(10), 3),
             None
@@ -296,8 +291,8 @@ mod tests {
             breeding_program_timeout_gametes::<
                 SingleChromGenotype,
                 SingleChromGamete,
-                CrosspointSingleVob,
-                WeakDomSingle,
+                CrosspointBitVec,
+                DomGamete,
                 usize,
             >(vec![x], SingleChromGenotype::ideotype(8), Some(10), 8),
             None
@@ -316,8 +311,8 @@ mod tests {
             breeding_program_timeout_gametes::<
                 SingleChromGenotype,
                 SingleChromGamete,
-                CrosspointSingleVob,
-                WeakDomSingle,
+                CrosspointBitVec,
+                DomGamete,
                 usize,
             >(pop_0, SingleChromGenotype::ideotype(n_loci), Some(10), n_loci),
             None

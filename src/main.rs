@@ -1,4 +1,4 @@
-use eugene::solvers::enumerator_dominance;
+use eugene::solvers::*;
 use eugene::visualisation;
 use rand::prelude::*;
 use std::io;
@@ -7,7 +7,24 @@ use std::env;
 
 pub fn main() -> io::Result<()> {
     env::set_var("RUST_BACKTRACE", "1");
-    _main2()
+    _main3()
+}
+
+pub fn _main3() -> io::Result<()> {
+    use eugene::plants::bit_array::*;
+    let n_loci = 5;
+    let n_pop = 6;
+    let _res = enumerator::breeding_program::<
+        SingleChromGenotype,
+        SingleChromGamete,
+        CrosspointBitVec,
+        usize,
+        >(
+        SingleChromGenotype::init_pop_random(&mut thread_rng(), n_loci, n_pop),
+        SingleChromGenotype::ideotype(n_loci),
+        n_loci
+        );
+    Ok(())
 }
 
 pub fn _main2() -> io::Result<()> {

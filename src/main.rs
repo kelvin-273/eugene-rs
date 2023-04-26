@@ -12,7 +12,7 @@ pub fn main() -> io::Result<()> {
 
 pub fn _main2() -> io::Result<()> {
     use eugene::plants::bit_array::*;
-    let n_loci = 13;
+    let n_loci = 23;
     let n_pop = 6;
     let _res = enumerator_dominance::breeding_program_timeout_gametes::<
         SingleChromGenotype,

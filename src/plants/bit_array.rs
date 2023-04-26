@@ -165,7 +165,7 @@ impl Crosspoint<SingleChromGenotype, SingleChromGamete, usize> for CrosspointBit
         SingleChromGamete {
             n_loci: x.n_loci,
             gamete: {
-                let mut gx = BitVec::with_capacity(x.n_loci);
+                let mut gx = BitVec::from_elem(x.n_loci, false);
                 for (i, b) in (0..self.head).zip(c1.iter()) {
                     gx.set(i, b);
                 }

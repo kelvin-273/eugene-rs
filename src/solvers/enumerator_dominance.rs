@@ -132,7 +132,7 @@ where
                 })
                 .collect()
         };
-        println!("pop.len: {}", pop.len());
+        println!("gen_i: {},\tpop.len: {}", gen_i, pop.len());
         gen_i += 1;
     }
     pop.into_iter()

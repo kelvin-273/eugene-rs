@@ -17,10 +17,7 @@ impl IndexAllele<usize> for SingleChromGamete {
 
 impl Haploid for SingleChromGamete {
     fn alleles(&self) -> Vec<Allele> {
-        self.gamete
-            .iter()
-            .map(|x| Allele::from(x))
-            .collect()
+        self.gamete.iter().map(|x| Allele::from(x)).collect()
     }
 }
 
@@ -45,7 +42,7 @@ pub struct SingleChromGenotype {
 
 impl SingleChromGenotype {
     pub fn new(v: Vec<(bool, bool)>) -> Self {
-        Self { 
+        Self {
             n_loci: v.len(),
             chrom1: BitVec::from_fn(v.len(), |i| v[i].0),
             chrom2: BitVec::from_fn(v.len(), |i| v[i].1),
@@ -98,11 +95,11 @@ impl Feasible<usize> for SingleChromGenotype {
 impl SingleChromGenotype {
     pub fn from_str(s1: &str, s2: &str) -> Self {
         assert_eq!(s1.len(), s2.len());
-        let f = |c: char| { match c {
+        let f = |c: char| match c {
             '0' => false,
             '1' => true,
-            _ => panic!("invalid character")
-        } };
+            _ => panic!("invalid character"),
+        };
         Self {
             n_loci: s1.len(),
             chrom1: BitVec::from_iter(s1.chars().map(f)),
@@ -118,8 +115,9 @@ impl SingleChromGenotype {
         }
     }
 
-    fn random_genotype<R>(rng: &mut R, n_loci: usize) -> Self where
-        R: Rng + ?Sized
+    fn random_genotype<R>(rng: &mut R, n_loci: usize) -> Self
+    where
+        R: Rng + ?Sized,
     {
         Self {
             n_loci,
@@ -132,9 +130,15 @@ impl SingleChromGenotype {
     where
         R: rand::Rng + ?Sized,
     {
+        // TODO: This is naive, do masking instead <26-04-23> //
         let mut pop_0 = (0..n_pop)
             .map(|_| SingleChromGenotype::random_genotype::<R>(rng, n_loci))
             .collect();
+        while !SingleChromGenotype::is_feasible(&n_loci, &pop_0) {
+            pop_0 = (0..n_pop)
+                .map(|_| SingleChromGenotype::random_genotype::<R>(rng, n_loci))
+                .collect();
+        }
         pop_0
     }
 }
@@ -178,11 +182,57 @@ impl Crosspoint<SingleChromGenotype, SingleChromGamete, usize> for CrosspointBit
     }
 
     fn crosspoints(n_loci: &usize) -> Box<dyn std::iter::Iterator<Item = Self>> {
-        Box::new([false, true]
-            .iter()
-            .zip(0..*n_loci)
-            .map(|(&start, head)| CrosspointBitVec { start, head }))
+        Box::new(
+            [false, true]
+                .iter()
+                .zip(0..*n_loci)
+                .map(|(&start, head)| CrosspointBitVec { start, head }),
+        )
     }
 }
 
 fn test_bitvec() {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn feasibility_test() {
+        assert!(SingleChromGenotype::is_feasible(
+            &5, &vec![
+                SingleChromGenotype::from_str("01010", "10101")
+            ]
+        ));
+        assert!(SingleChromGenotype::is_feasible(
+            &5, &vec![
+                SingleChromGenotype::from_str("01010", "01010"),
+                SingleChromGenotype::from_str("10101", "10101")
+            ]
+        ));
+        assert!(SingleChromGenotype::is_feasible(
+            &5, &vec![
+                SingleChromGenotype::from_str("01010", "01010"),
+                SingleChromGenotype::from_str("10101", "00101")
+            ]
+        ));
+        assert!(!SingleChromGenotype::is_feasible(
+            &5, &vec![
+                SingleChromGenotype::from_str("01010", "01010"),
+                SingleChromGenotype::from_str("00101", "00101")
+            ]
+        ));
+    }
+
+    #[test]
+    fn feasibility_random_population_test() {
+        let n_loci = 13;
+        let mut rng = thread_rng();
+        for _ in (0..100) {
+            assert!(SingleChromGenotype::is_feasible(
+                &n_loci,
+                &SingleChromGenotype::init_pop_random(&mut rng, n_loci, 6)
+            ));
+        }
+    }
+}

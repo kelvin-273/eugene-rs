@@ -143,6 +143,27 @@ impl SingleChromGenotype {
     }
 }
 
+impl SingleChromGamete {
+    pub fn from_str(s1: &str) -> Self {
+        let f = |c: char| match c {
+            '0' => false,
+            '1' => true,
+            _ => panic!("invalid character"),
+        };
+        Self {
+            n_loci: s1.len(),
+            gamete: BitVec::from_iter(s1.chars().map(f)),
+        }
+    }
+
+    pub fn ideotype(n_loci: usize) -> Self {
+        Self {
+            n_loci,
+            gamete: BitVec::from_elem(n_loci, true),
+        }
+    }
+}
+
 pub struct DomGamete {}
 
 impl Dominance<SingleChromGamete> for DomGamete {
@@ -157,6 +178,12 @@ impl Dominance<SingleChromGamete> for DomGamete {
 pub struct CrosspointBitVec {
     start: bool,
     head: usize,
+}
+
+impl CrosspointBitVec {
+    pub fn new(start: bool, head: usize) -> Self {
+        Self { start, head }
+    }
 }
 
 impl Crosspoint<SingleChromGenotype, SingleChromGamete, usize> for CrosspointBitVec {
@@ -198,26 +225,53 @@ mod tests {
     use super::*;
 
     #[test]
+    fn cross_test() {
+        macro_rules! f {
+            ($start:expr, $head:expr, $s1:expr, $s2:expr, $s3:expr) => {
+                assert_eq!(
+                    CrosspointBitVec::new($start, $head)
+                        .cross(&SingleChromGenotype::from_str($s1, $s2)),
+                    SingleChromGamete::from_str($s3)
+                )
+            };
+        }
+        f!(false, 0, "010010", "101001", "101001");
+        f!(false, 1, "010010", "101001", "001001");
+        f!(false, 2, "010010", "101001", "011001");
+        f!(false, 3, "010010", "101001", "010001");
+        f!(false, 4, "010010", "101001", "010001");
+        f!(false, 5, "010010", "101001", "010011");
+        f!(true, 0, "010010", "101001", "010010");
+        f!(true, 1, "010010", "101001", "110010");
+        f!(true, 2, "010010", "101001", "100010");
+        f!(true, 3, "010010", "101001", "101010");
+        f!(true, 4, "010010", "101001", "101010");
+        f!(true, 5, "010010", "101001", "101000");
+    }
+
+    #[test]
     fn feasibility_test() {
         assert!(SingleChromGenotype::is_feasible(
-            &5, &vec![
-                SingleChromGenotype::from_str("01010", "10101")
-            ]
+            &5,
+            &vec![SingleChromGenotype::from_str("01010", "10101")]
         ));
         assert!(SingleChromGenotype::is_feasible(
-            &5, &vec![
+            &5,
+            &vec![
                 SingleChromGenotype::from_str("01010", "01010"),
                 SingleChromGenotype::from_str("10101", "10101")
             ]
         ));
         assert!(SingleChromGenotype::is_feasible(
-            &5, &vec![
+            &5,
+            &vec![
                 SingleChromGenotype::from_str("01010", "01010"),
                 SingleChromGenotype::from_str("10101", "00101")
             ]
         ));
         assert!(!SingleChromGenotype::is_feasible(
-            &5, &vec![
+            &5,
+            &vec![
                 SingleChromGenotype::from_str("01010", "01010"),
                 SingleChromGenotype::from_str("00101", "00101")
             ]

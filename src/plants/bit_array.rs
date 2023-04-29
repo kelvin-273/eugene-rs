@@ -48,51 +48,7 @@ impl SingleChromGenotype {
             chrom2: BitVec::from_fn(v.len(), |i| v[i].1),
         }
     }
-}
 
-impl BioSize for SingleChromGenotype {
-    fn get_sizes(&self) -> Vec<(usize, usize)> {
-        vec![(2, self.n_loci)]
-    }
-}
-
-impl Diploid<SingleChromGamete> for SingleChromGenotype {
-    fn upper(&self) -> SingleChromGamete {
-        unimplemented!();
-    }
-
-    fn lower(&self) -> SingleChromGamete {
-        unimplemented!();
-    }
-}
-
-impl Genotype<SingleChromGamete> for SingleChromGenotype {
-    fn lift_a(&self) -> WGen<Self, SingleChromGamete> {
-        WGen::new(self.clone())
-    }
-
-    fn from_gametes(gx: &SingleChromGamete, gy: &SingleChromGamete) -> Self {
-        assert_eq!(gx.n_loci, gy.n_loci);
-        Self {
-            n_loci: gx.n_loci,
-            chrom1: gx.gamete.clone().into(),
-            chrom2: gy.gamete.clone().into(),
-        }
-    }
-}
-
-impl Feasible<usize> for SingleChromGenotype {
-    fn is_feasible(n_loci: &usize, pop: &Vec<Self>) -> bool {
-        let mut total = BitVec::from_elem(*n_loci, false);
-        for x in pop {
-            total.or(&x.chrom1);
-            total.or(&x.chrom2);
-        }
-        total == BitVec::from_elem(*n_loci, true)
-    }
-}
-
-impl SingleChromGenotype {
     pub fn from_str(s1: &str, s2: &str) -> Self {
         assert_eq!(s1.len(), s2.len());
         let f = |c: char| match c {
@@ -140,6 +96,48 @@ impl SingleChromGenotype {
                 .collect();
         }
         pop_0
+    }
+}
+
+impl BioSize for SingleChromGenotype {
+    fn get_sizes(&self) -> Vec<(usize, usize)> {
+        vec![(2, self.n_loci)]
+    }
+}
+
+impl Diploid<SingleChromGamete> for SingleChromGenotype {
+    fn upper(&self) -> SingleChromGamete {
+        unimplemented!();
+    }
+
+    fn lower(&self) -> SingleChromGamete {
+        unimplemented!();
+    }
+}
+
+impl Genotype<SingleChromGamete> for SingleChromGenotype {
+    fn lift_a(&self) -> WGen<Self, SingleChromGamete> {
+        WGen::new(self.clone())
+    }
+
+    fn from_gametes(gx: &SingleChromGamete, gy: &SingleChromGamete) -> Self {
+        assert_eq!(gx.n_loci, gy.n_loci);
+        Self {
+            n_loci: gx.n_loci,
+            chrom1: gx.gamete.clone().into(),
+            chrom2: gy.gamete.clone().into(),
+        }
+    }
+}
+
+impl Feasible<usize> for SingleChromGenotype {
+    fn is_feasible(n_loci: &usize, pop: &Vec<Self>) -> bool {
+        let mut total = BitVec::from_elem(*n_loci, false);
+        for x in pop {
+            total.or(&x.chrom1);
+            total.or(&x.chrom2);
+        }
+        total == BitVec::from_elem(*n_loci, true)
     }
 }
 

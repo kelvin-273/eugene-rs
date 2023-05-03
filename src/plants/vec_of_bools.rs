@@ -150,6 +150,7 @@ impl Draw for SingleChromGenotype {
     }
 }
 
+#[derive(Debug)]
 pub struct CrosspointSingleVob {
     start: bool,
     len_prefix: usize,
@@ -186,6 +187,7 @@ impl Crosspoint<SingleChromGenotype, SingleChromGamete, usize> for CrosspointSin
     }
 }
 
+#[derive(Debug)]
 pub struct CrosspointMultiVob {
     start: bool,
     len_prefix: Vec<usize>,

@@ -7,7 +7,7 @@ use std::env;
 
 pub fn main() -> io::Result<()> {
     env::set_var("RUST_BACKTRACE", "1");
-    _main3()
+    _main2()
 }
 
 pub fn _main3() -> io::Result<()> {
@@ -29,7 +29,7 @@ pub fn _main3() -> io::Result<()> {
 
 pub fn _main2() -> io::Result<()> {
     use eugene::plants::bit_array::*;
-    let n_loci = 23;
+    let n_loci = 16;
     let n_pop = 6;
     let _res = enumerator_dominance::breeding_program_timeout_gametes::<
         SingleChromGenotype,

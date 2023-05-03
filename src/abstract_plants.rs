@@ -23,22 +23,17 @@ pub trait IndexAllele<Idx> {
     fn index(&self, idx: Idx) -> Allele;
 }
 
-pub trait Genotype<B: Gamete<Self>>: Sized + BioSize {
+pub trait Genotype<B: Gamete<Self>>: Sized + BioSize + std::fmt::Debug {
     fn lift_a(&self) -> WGen<Self, B>;
 
     fn from_gametes(gx: &B, gy: &B) -> Self;
-
-    #[cfg(not(debug_assertions))]
-    fn debug_fmt(self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
-        unimplemented!();
-    }
 }
 
-pub trait Gamete<A: Genotype<Self>>: Sized + BioSize {
+pub trait Gamete<A: Genotype<Self>>: Sized + BioSize + std::fmt::Debug {
     fn lift_b(&self) -> WGam<A, Self>;
 }
 
-pub trait Crosspoint<A: Genotype<B>, B: Gamete<A>, Data> {
+pub trait Crosspoint<A: Genotype<B>, B: Gamete<A>, Data>: std::fmt::Debug {
     fn cross(self, x: &A) -> B;
 
     fn crosspoints(data: &Data) -> Box<dyn std::iter::Iterator<Item = Self>>;

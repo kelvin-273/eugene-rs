@@ -173,6 +173,7 @@ impl Dominance<SingleChromGamete> for DomGamete {
     }
 }
 
+#[derive(Debug)]
 pub struct CrosspointBitVec {
     start: bool,
     head: usize,
@@ -195,10 +196,12 @@ impl Crosspoint<SingleChromGenotype, SingleChromGamete, usize> for CrosspointBit
             n_loci: x.n_loci,
             gamete: {
                 let mut gx = BitVec::from_elem(x.n_loci, false);
-                for (i, b) in (0..self.head).zip(c1.iter()) {
+                for i in (0..self.head) {
+                    let b = c1[i];
                     gx.set(i, b);
                 }
-                for (i, b) in (self.head..x.n_loci).zip(c1.iter()) {
+                for i in (self.head..x.n_loci) {
+                    let b = c2[i];
                     gx.set(i, b);
                 }
                 gx
@@ -207,12 +210,13 @@ impl Crosspoint<SingleChromGenotype, SingleChromGamete, usize> for CrosspointBit
     }
 
     fn crosspoints(n_loci: &usize) -> Box<dyn std::iter::Iterator<Item = Self>> {
-        Box::new(
-            [false, true]
-                .iter()
-                .zip(0..*n_loci)
-                .map(|(&start, head)| CrosspointBitVec { start, head }),
-        )
+        let n_loci = *n_loci;
+        Box::new([false, true].iter().flat_map(move |start| {
+            (0..n_loci).map(|head| CrosspointBitVec {
+                start: *start,
+                head,
+            })
+        }))
     }
 }
 

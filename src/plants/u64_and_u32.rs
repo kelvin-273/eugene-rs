@@ -77,6 +77,7 @@ impl Crosspoint<u64, u32, ()> for u32 {
     }
 }
 
+#[derive(Debug)]
 struct CrosspointSingleU64U32 {
     start: bool,
     len_prefix: usize,

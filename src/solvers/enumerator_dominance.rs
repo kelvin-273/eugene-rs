@@ -6,7 +6,11 @@ use std::rc::Rc;
 /// Runs the enumeration with dominance pruning from the pop_0 to the ideotype.
 /// Dominance pruning is performed on gametes
 /// Returns the breeding_program rooted at the ideotype
-pub fn breeding_program<A, B, K, D, Data>(pop_0: Vec<A>, ideotype: A, data: Data) -> Option<WGen<A, B>>
+pub fn breeding_program<A, B, K, D, Data>(
+    pop_0: Vec<A>,
+    ideotype: A,
+    data: Data,
+) -> Option<WGen<A, B>>
 where
     A: Genotype<B> + PartialEq + Clone + Feasible<Data>,
     B: Gamete<A> + Hash + Eq + Clone,
@@ -20,7 +24,7 @@ pub fn breeding_program_timeout_genotypes<A, B, K, D, Data>(
     pop_0: Vec<A>,
     ideotype: A,
     gen_max_opt: Option<usize>,
-    data: Data
+    data: Data,
 ) -> Option<WGen<A, B>>
 where
     A: Genotype<B> + PartialEq + Clone + Feasible<Data>,
@@ -44,12 +48,17 @@ where
         pop = filter_non_dominating_key::<Rc<WGen<A, B>>, A, _, D>(pop, |wx| wx.genotype.clone());
 
         // create all gametes
-        let pop_g: Vec<Rc<WGam<A, B>>> = pop.iter().flat_map(|wx| K::crosspoints(&data).map(|k| {
-            Rc::new(WGam {
-                gamete: k.cross(&wx.genotype),
-                history: vec![wx.clone()]
+        let pop_g: Vec<Rc<WGam<A, B>>> = pop
+            .iter()
+            .flat_map(|wx| {
+                K::crosspoints(&data).map(|k| {
+                    Rc::new(WGam {
+                        gamete: k.cross(&wx.genotype),
+                        history: vec![wx.clone()],
+                    })
+                })
             })
-        })).collect();
+            .collect();
 
         // create all genotypes from genotypes
         pop = (0..pop_g.len())
@@ -60,9 +69,10 @@ where
                 let wgy = &pop_g[j];
                 Rc::new(WGen {
                     genotype: A::from_gametes(&wgx.gamete.clone(), &wgy.gamete.clone()),
-                    history: Some((wgx.clone(), wgy.clone()))
+                    history: Some((wgx.clone(), wgy.clone())),
                 })
-            }).collect();
+            })
+            .collect();
         gen_i += 1;
     }
 
@@ -97,9 +107,12 @@ where
     while !pop.iter().any(|x| x.genotype == ideotype) && timeout_check(gen_i) {
         let mut h: HashMap<B, Vec<Rc<WGen<A, B>>>> = HashMap::new();
 
+        //K::crosspoints(&data).for_each(|kx| println!("k: {:?}", kx));
         // collect all possible wrapped gametes
         for x in &pop {
-            let s: HashSet<B> = K::crosspoints(&data).map(|k| k.cross(&x.genotype)).collect();
+            let s: HashSet<B> = K::crosspoints(&data)
+                .map(|k| k.cross(&x.genotype))
+                .collect();
             for g in filter_non_dominating::<B, D>(s) {
                 h.entry(g.clone())
                     .and_modify(|v| (*v).push(x.clone()))
@@ -107,16 +120,17 @@ where
             }
         }
         // remove dominated gametes
-        let next_gametes: Vec<Rc<WGam<A, B>>> = filter_non_dominating_key::<_, _, _, D>(h, |(g, v)| g.clone())
-            .into_iter()
-            .map(|(g, v)| {
-                Rc::new(WGam {
-                    gamete: g,
-                    history: v,
+        let next_gametes: Vec<Rc<WGam<A, B>>> =
+            filter_non_dominating_key::<_, _, _, D>(h, |(g, v)| g.clone())
+                .into_iter()
+                .map(|(g, v)| {
+                    Rc::new(WGam {
+                        gamete: g,
+                        history: v,
+                    })
                 })
-            })
-            .collect();
-        println!("pop_g.len: {}", next_gametes.len());
+                .collect();
+        //println!("{:?}", next_gametes.iter().map(|wgx| &wgx.gamete).collect::<Vec<&B>>());
         // construct next population from collected gametes
         pop = {
             next_gametes
@@ -265,10 +279,7 @@ mod tests {
 
     #[test]
     fn simplest_test() {
-        let x = SingleChromGenotype::from_str(
-            "010",
-            "101"
-        );
+        let x = SingleChromGenotype::from_str("010", "101");
         assert_ne!(
             breeding_program_timeout_gametes::<
                 SingleChromGenotype,
@@ -283,10 +294,7 @@ mod tests {
 
     #[test]
     fn simple_test() {
-        let x = SingleChromGenotype::from_str(
-            "01010101",
-            "10101010"
-        );
+        let x = SingleChromGenotype::from_str("01010101", "10101010");
         assert_ne!(
             breeding_program_timeout_gametes::<
                 SingleChromGenotype,
@@ -302,11 +310,15 @@ mod tests {
     #[test]
     fn time_test() {
         let n_loci = 13;
-        let pop_0 = (0..n_loci).map(|i| {
-            SingleChromGenotype::new(
-                (0..n_loci).map(|j| if i == j { (true, true) } else { (false, false) }).collect()
-            )
-        }).collect();
+        let pop_0 = (0..n_loci)
+            .map(|i| {
+                SingleChromGenotype::new(
+                    (0..n_loci)
+                        .map(|j| if i == j { (true, true) } else { (false, false) })
+                        .collect(),
+                )
+            })
+            .collect();
         assert_ne!(
             breeding_program_timeout_gametes::<
                 SingleChromGenotype,
@@ -314,7 +326,12 @@ mod tests {
                 CrosspointBitVec,
                 DomGamete,
                 usize,
-            >(pop_0, SingleChromGenotype::ideotype(n_loci), Some(10), n_loci),
+            >(
+                pop_0,
+                SingleChromGenotype::ideotype(n_loci),
+                Some(10),
+                n_loci
+            ),
             None
         );
     }

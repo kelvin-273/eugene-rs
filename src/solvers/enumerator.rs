@@ -8,7 +8,7 @@ where
     B: Gamete<A> + Hash + Eq + Clone,
     K: Crosspoint<A, B, Data>,
 {
-    breeding_program_naive::<A, B, K, Data>(pop_0, ideotype, data)
+    breeding_program_gamete::<A, B, K, Data>(pop_0, ideotype, data)
 }
 
 pub fn breeding_program_gamete<A, B, K, Data>(pop_0: Vec<A>, ideotype: A, data: Data) -> Option<WGen<A, B>>

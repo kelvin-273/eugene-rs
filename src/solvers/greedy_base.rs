@@ -11,13 +11,13 @@ where
     S: HaploidSegment<A, B> + Clone,
 {
     // Generate minimal ordered set of segments
-    let min_segments = min_covering_segments::<A, B, K, S>(n_loci, &pop_0);
+    let min_segments = min_covering_segments::<A, B, S>(n_loci, &pop_0);
     println!("no. segments: {}", min_segments.len());
     // Construct crossing tree from segments
     None
 }
 
-fn min_covering_segments<A, B, K, S>(n_loci: usize, pop_0: &Vec<A>) -> Vec<S>
+fn min_covering_segments<A, B, S>(n_loci: usize, pop_0: &Vec<A>) -> Vec<S>
 where
     A: Genotype<B> + Diploid<B> + SingleChrom,
     B: Gamete<A> + Haploid + SingleChrom,
@@ -139,7 +139,19 @@ where
         std::cmp::Ordering::Equal => y.end().partial_cmp(&x.end()).unwrap(),
         res => res,
     });
-    vec![]
+    unimplemented!();
+}
+
+/// Finds the number of generations required to construct the ideotype from pop_0.
+/// Assumes that the ideotype is not in pop_0.
+pub fn min_generations<A, B, K, S>(n_loci: usize, pop_0: &Vec<A>) -> usize
+where
+    A: Genotype<B> + Diploid<B> + SingleChrom,
+    B: Gamete<A> + Haploid + SingleChrom,
+    S: HaploidSegment<A, B> + Clone,
+{
+    let n_segments = min_covering_segments::<A, B, S>(n_loci, pop_0).len();
+    (n_segments as f64).log2().ceil() as usize + 1
 }
 
 #[cfg(test)]

@@ -20,9 +20,9 @@ pub fn _main4() -> io::Result<()> {
         CrosspointBitVec,
         SegmentBitVec,
         >(
+        n_loci,
         SingleChromGenotype::init_pop_random(&mut thread_rng(), n_loci, n_pop),
         SingleChromGenotype::ideotype(n_loci),
-        n_loci
         );
     Ok(())
 }

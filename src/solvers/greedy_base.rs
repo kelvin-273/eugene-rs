@@ -4,7 +4,7 @@ use std::rc::Rc;
 /// Constraints:
 /// - has to be able to produce segments
 /// - has to have two genotypes
-pub fn breeding_program<A, B, K, S>(pop_0: Vec<A>, ideotype: A, n_loci: usize) -> Option<WGen<A, B>>
+pub fn breeding_program<A, B, K, S>(n_loci: usize, pop_0: Vec<A>, ideotype: A) -> Option<WGen<A, B>>
 where
     A: Genotype<B> + Diploid<B> + SingleChrom,
     B: Gamete<A> + Haploid + SingleChrom,
@@ -213,9 +213,9 @@ mod tests {
         let mut rng = rand::thread_rng();
 
         breeding_program::<SingleChromGenotype, SingleChromGamete, CrosspointBitVec, SegmentBitVec>(
+            n_loci,
             SingleChromGenotype::init_pop_random(&mut rng, n_loci, n_pop),
             SingleChromGenotype::ideotype(n_loci),
-            n_loci,
         );
     }
 }

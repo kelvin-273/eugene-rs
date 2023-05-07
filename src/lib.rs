@@ -14,19 +14,23 @@
 //! let n_loci = 10;
 //! let n_pop = 6;
 //! let pop_0 = SingleChromGenotype::init_pop_random(&mut rng, n_loci, n_pop);
-//! let ideotype = SingleChromGenotype::ideotype(n_loci, n_pop);
+//! let ideotype = SingleChromGenotype::ideotype(n_loci);
 //!
-//! let result = breeding_program(n_loci, pop_0, ideotype);
+//! let result = breeding_program::<
+//!     SingleChromGenotype,
+//!     SingleChromGamete,
+//!     CrosspointBitVec,
+//!     SegmentBitVec
+//!     >(n_loci, pop_0, ideotype);
 //! ```
 
 /// Exports the traits used by the algorithms in `solvers`
 pub mod abstract_plants;
+pub mod plants;
 pub mod solvers;
 pub mod visualisation;
-pub mod plants;
 
 mod play {
     #[cfg(test)]
-    mod tests {
-    }
+    mod tests {}
 }

@@ -147,6 +147,8 @@ pub trait Diploid<B: Haploid> {
     fn lower(&self) -> B;
 }
 
+pub trait SingleChrom {}
+
 pub trait Dominance<T> {
     fn dom(x: &T, y: &T) -> bool;
 }

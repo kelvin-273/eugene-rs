@@ -7,12 +7,29 @@ use std::env;
 
 pub fn main() -> io::Result<()> {
     env::set_var("RUST_BACKTRACE", "1");
-    _main2()
+    _main4()
+}
+
+pub fn _main4() -> io::Result<()> {
+    use eugene::plants::bit_array::*;
+    let n_loci = 20;
+    let n_pop = 1024;
+    let _res = greedy_base::breeding_program::<
+        SingleChromGenotype,
+        SingleChromGamete,
+        CrosspointBitVec,
+        SegmentBitVec,
+        >(
+        SingleChromGenotype::init_pop_random(&mut thread_rng(), n_loci, n_pop),
+        SingleChromGenotype::ideotype(n_loci),
+        n_loci
+        );
+    Ok(())
 }
 
 pub fn _main3() -> io::Result<()> {
     use eugene::plants::bit_array::*;
-    let n_loci = 5;
+    let n_loci = 11;
     let n_pop = 6;
     let _res = enumerator::breeding_program::<
         SingleChromGenotype,

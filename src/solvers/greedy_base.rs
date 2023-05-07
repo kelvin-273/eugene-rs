@@ -4,37 +4,50 @@ use std::rc::Rc;
 /// Constraints:
 /// - has to be able to produce segments
 /// - has to have two genotypes
-fn breeding_program<A, B, K, S>(pop_0: Vec<A>, ideotype: A) -> Option<WGen<A, B>>
+pub fn breeding_program<A, B, K, S>(pop_0: Vec<A>, ideotype: A, n_loci: usize) -> Option<WGen<A, B>>
 where
     A: Genotype<B> + Diploid<B> + SingleChrom,
     B: Gamete<A> + Haploid + SingleChrom,
-    S: HaploidSegment<A, B> + Copy,
+    S: HaploidSegment<A, B> + Clone,
 {
-    // Generate ordered set of segments
-    let segments = generate_segments::<A, B, K, S>(&pop_0);
-    // Choose min set cover
-    let min_segments = min_1d_geometric_set_cover::<A, B, S>(segments);
+    // Generate minimal ordered set of segments
+    let min_segments = min_covering_segments::<A, B, K, S>(n_loci, &pop_0);
+    println!("no. segments: {}", min_segments.len());
     // Construct crossing tree from segments
     None
 }
 
-fn generate_segments<A, B, K, S>(pop_0: &Vec<A>) -> Vec<S>
+fn min_covering_segments<A, B, K, S>(n_loci: usize, pop_0: &Vec<A>) -> Vec<S>
 where
     A: Genotype<B> + Diploid<B> + SingleChrom,
     B: Gamete<A> + Haploid + SingleChrom,
-    S: HaploidSegment<A, B> + Copy,
+    S: HaploidSegment<A, B> + Clone,
 {
-    pop_0
-        .iter()
-        .flat_map(|x| generate_segments_genotype_diploid::<A, B, S>(x).into_iter())
-        .collect()
+    let mut segment_pigeonholes: Vec<Option<S>> = vec![None; n_loci];
+    for x in pop_0 {
+        for c in generate_segments_genotype_diploid::<A, B, S>(n_loci, x) {
+            let s = c.start();
+            let e = c.end();
+            if segment_pigeonholes[s].is_none() {
+                segment_pigeonholes[s] = Some(c);
+            } else {
+                segment_pigeonholes[s].as_mut().map(|c_old| {
+                    if c_old.end() < e {
+                        *c_old = c
+                    } else {
+                    }
+                });
+            }
+        }
+    }
+    segment_pigeonholes.iter().filter_map(|c| c.clone()).collect()
 }
 
-fn generate_segments_genotype_diploid<A, B, S>(x: &A) -> Vec<S>
+fn generate_segments_genotype_diploid<A, B, S>(n_loci: usize, x: &A) -> Vec<S>
 where
     A: Genotype<B> + Diploid<B> + SingleChrom,
     B: Gamete<A> + Haploid + SingleChrom,
-    S: HaploidSegment<A, B> + Copy,
+    S: HaploidSegment<A, B> + Clone,
 {
     let q1_true = generate_segments_gamete_haploid::<A, B, S>(&x.upper());
     let q2_true = generate_segments_gamete_haploid::<A, B, S>(&x.lower());
@@ -52,8 +65,8 @@ where
 
     // oh dear god, does this even work?
     while i < q.0.len() && j < q.1.len() {
-        let c1 = q.0[i];
-        let c2 = q.1[i];
+        let c1 = q.0[i].clone();
+        let c2 = q.1[j].clone();
         let (s1, e1) = (c1.start(), c1.end());
         let (s2, e2) = (c2.start(), c2.end());
 
@@ -70,16 +83,21 @@ where
                 used1[i] = true;
             }
             i += 1;
-        } else if e2 == 2 - 1 {
-            panic!("That 2 should be an instance of n_loci");
+        } else {
             out.push(S::join(&c1, &c2));
             used1[i] = true;
             used2[j] = true;
-            i += 1;
+            // break early if possible
+            if e2 == n_loci - 1 {
+                i = q.0.len();
+                j = q.1.len();
+            } else {
+                i += 1;
+            }
         }
     }
-    out.extend_from_slice(&q.0[i..]);
-    out.extend_from_slice(&q.1[j..]);
+    q.0[i..].iter().for_each(|c| out.push(c.clone()));
+    q.1[j..].iter().for_each(|c| out.push(c.clone()));
     out
 }
 
@@ -123,8 +141,6 @@ where
     });
     vec![]
 }
-
-trait SingleChrom {}
 
 #[cfg(test)]
 mod tests {
@@ -187,5 +203,19 @@ mod tests {
         assert_eq!(f(0x0000_0f01), vec![(20, 23), (31, 31)]);
         assert_eq!(f(0x1000_0f01), vec![(3, 3), (20, 23), (31, 31)]);
         assert_eq!(f(0x8000_0f01), vec![(0, 0), (20, 23), (31, 31)]);
+    }
+
+    #[test]
+    fn bitvec_breeding_program_test() {
+        use crate::plants::bit_array::*;
+        let n_loci = 10;
+        let n_pop = 6;
+        let mut rng = rand::thread_rng();
+
+        breeding_program::<SingleChromGenotype, SingleChromGamete, CrosspointBitVec, SegmentBitVec>(
+            SingleChromGenotype::init_pop_random(&mut rng, n_loci, n_pop),
+            SingleChromGenotype::ideotype(n_loci),
+            n_loci,
+        );
     }
 }

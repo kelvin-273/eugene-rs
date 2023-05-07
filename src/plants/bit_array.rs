@@ -2,6 +2,7 @@ use crate::abstract_plants::*;
 use bit_vec::BitVec;
 use num;
 use rand::prelude::*;
+use std::rc::Rc;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub struct SingleChromGamete {
@@ -107,11 +108,17 @@ impl BioSize for SingleChromGenotype {
 
 impl Diploid<SingleChromGamete> for SingleChromGenotype {
     fn upper(&self) -> SingleChromGamete {
-        unimplemented!();
+        SingleChromGamete {
+            n_loci: self.n_loci,
+            gamete: self.chrom1.clone()
+        }
     }
 
     fn lower(&self) -> SingleChromGamete {
-        unimplemented!();
+        SingleChromGamete {
+            n_loci: self.n_loci,
+            gamete: self.chrom2.clone()
+        }
     }
 }
 
@@ -217,6 +224,66 @@ impl Crosspoint<SingleChromGenotype, SingleChromGamete, usize> for CrosspointBit
                 head,
             })
         }))
+    }
+}
+
+impl SingleChrom for SingleChromGenotype {}
+
+impl SingleChrom for SingleChromGamete {}
+
+#[derive(Debug, Clone)]
+pub struct SegmentBitVec {
+    start: usize,
+    end: usize,
+    wgam: Rc<WGam<SingleChromGenotype, SingleChromGamete>>,
+}
+
+impl Segment<SingleChromGenotype, SingleChromGamete> for SegmentBitVec {}
+
+impl HaploidSegment<SingleChromGenotype, SingleChromGamete> for SegmentBitVec {
+    fn start(&self) -> usize {
+        self.start
+    }
+
+    fn end(&self) -> usize {
+        self.end
+    }
+
+    fn gamete(&self) -> Rc<WGam<SingleChromGenotype, SingleChromGamete>> {
+        self.wgam.clone()
+    }
+
+    fn join(&self, other: &Self) -> Self {
+        let s1 = self.start();
+        let e1 = self.end();
+        let wg1 = self.gamete();
+        let s2 = other.start();
+        let e2 = other.end();
+        let wg2 = other.gamete();
+        assert!(s1 < s2);
+        SegmentBitVec::from_start_end_gamete(
+            s1,
+            e2,
+            Rc::new(WGam::new({
+                CrosspointBitVec::new(false, s2)
+                    .cross(&SingleChromGenotype::from_gametes(&wg1.gamete, &wg2.gamete))
+            })),
+        )
+    }
+
+    fn from_start_end_gamete(
+        s: usize,
+        e: usize,
+        g: Rc<WGam<SingleChromGenotype, SingleChromGamete>>,
+    ) -> Self
+    where
+        SingleChromGamete: Haploid,
+    {
+        Self {
+            start: s,
+            end: e,
+            wgam: g,
+        }
     }
 }
 

@@ -157,7 +157,7 @@ where
         })
 }
 
-fn filter_non_dominating<T, D>(s: impl IntoIterator<Item = T>) -> Vec<T>
+pub fn filter_non_dominating<T, D>(s: impl IntoIterator<Item = T>) -> Vec<T>
 where
     D: Dominance<T>,
 {
@@ -184,7 +184,7 @@ where
         .collect()
 }
 
-fn filter_non_dominating_key<T, U, F, D>(s: impl IntoIterator<Item = T>, key: F) -> Vec<T>
+pub fn filter_non_dominating_key<T, U, F, D>(s: impl IntoIterator<Item = T>, key: F) -> Vec<T>
 where
     F: Fn(&T) -> U,
     D: Dominance<U>,

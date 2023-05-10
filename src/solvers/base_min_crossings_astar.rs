@@ -16,7 +16,7 @@ where
     let state_0: State<WGen<A, B>> = State::new(start);
     // Initialise priority queue
 
-    let successors = |state: &State<WGen<A, B>>| unimplemented!();
+    let successors = |state: &State<WGen<A, B>>| naive_successors::<A, B, K>(&state);
 
     let heuristic = |state: &State<WGen<A, B>>| {
         min_generations::<A, B, K, S>(
@@ -137,4 +137,25 @@ impl<'a, A> Iterator for StateIter<'a, A> {
             }
         }
     }
+}
+
+fn naive_successors<A, B, K>(state: &State<WGen<A, B>>) -> Vec<(State<WGen<A, B>>, usize)>
+{
+    let mut out = vec![];
+    let xs = state.iter().map(|x| x).collect::<Vec<&WGen<A, B>>>();
+    for i in 0..xs.len() {
+        for j in i..xs.len() {
+            for z in non_dominated_crossings::<A, B, K>(xs[i], xs[j]) {
+                out.push((State {
+                    head: Rc::new(StateData::Next(z, state.head.clone())),
+                    hash: 0
+                }, 1))
+            }
+        }
+    }
+    out
+}
+
+pub fn non_dominated_crossings<A, B, K>(x: &WGen<A, B>, y: &WGen<A, B>) -> Vec<WGen<A, B>> {
+    vec![]
 }

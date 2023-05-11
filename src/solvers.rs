@@ -11,5 +11,7 @@ pub mod enumerator_dominance;
 pub mod greedy_base;
 /// Finds the min generations for multi-chromosome diploid plants
 pub mod greedy_multichrom_ti;
-/// Finds the min crossings for base problem
+/// Finds the min crossings for base problem using A*
 pub mod base_min_crossings_astar;
+/// Finds the min crossings for base problem using zigzag decomposition
+pub mod base_min_crossings_zigzag;

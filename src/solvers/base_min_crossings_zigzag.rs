@@ -5,9 +5,10 @@ struct Segment<T> {
     data: T,
 }
 
-fn min_covering_segments<T, I>(n_loci: usize, segments: I) -> Vec<Segment<T>> where
+fn min_covering_segments<T, I>(n_loci: usize, segments: I) -> Vec<Segment<T>>
+where
     T: Copy,
-    I: IntoIterator<Item = Segment<T>>
+    I: IntoIterator<Item = Segment<T>>,
 {
     let mut segment_pigeonholes: Vec<Option<Segment<T>>> = (0..n_loci).map(|_| None).collect();
     for c in segments {

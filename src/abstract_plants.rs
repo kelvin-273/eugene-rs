@@ -10,7 +10,7 @@ pub trait BioSize {
         self.get_sizes()[chromosome_i].1
     }
 
-    fn get_n_chrom(&self, chromosome_i: usize) -> usize {
+    fn get_n_chrom(&self) -> usize {
         self.get_sizes().len()
     }
 

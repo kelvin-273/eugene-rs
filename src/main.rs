@@ -1,5 +1,5 @@
 use eugene::solvers::*;
-use eugene::visualisation;
+use eugene::extra::visualisation;
 use rand::prelude::*;
 use std::io;
 use std::rc::Rc;

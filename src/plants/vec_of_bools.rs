@@ -1,7 +1,6 @@
 use crate::abstract_plants::*;
-use crate::visualisation;
-use crate::visualisation::Draw;
-use rand::distributions::{Distribution, Uniform};
+use crate::extra::visualisation;
+use crate::extra::visualisation::Draw;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SingleChromGamete {
@@ -64,7 +63,7 @@ impl Draw for SingleChromGamete {
     fn view_box_size(&self) -> Option<(usize, usize)> {
         Some((
             self.get_n_loci(0) * visualisation::BLOCKSIZE + 1,
-            self.get_n_chrom(0) * visualisation::BLOCKSIZE + 1,
+            self.get_n_chrom() * visualisation::BLOCKSIZE + 1,
         ))
     }
 
@@ -141,7 +140,7 @@ impl Draw for SingleChromGenotype {
     fn view_box_size(&self) -> Option<(usize, usize)> {
         Some((
             self.get_n_loci(0) * visualisation::BLOCKSIZE + 1,
-            self.get_n_chrom(0) * visualisation::BLOCKSIZE + 1,
+            self.get_n_chrom() * visualisation::BLOCKSIZE + 1,
         ))
     }
 
@@ -202,11 +201,10 @@ impl CrosspointMultiVob {
 impl Crosspoint<SingleChromGenotype, SingleChromGamete, (usize, usize)> for CrosspointMultiVob {
     fn cross(self, x: &SingleChromGenotype) -> SingleChromGamete {
         let n_loci = x.array.len();
-        let j_max = self.len_prefix.len();
         let mut j = 0;
         let mut v = Vec::with_capacity(n_loci);
         let mut current_chrom = self.start;
-        for i in (0..n_loci) {
+        for i in 0..n_loci {
             while j < self.len_prefix.len() && i >= self.len_prefix[j] {
                 current_chrom = !current_chrom;
                 j += 1;
@@ -220,8 +218,6 @@ impl Crosspoint<SingleChromGenotype, SingleChromGamete, (usize, usize)> for Cros
     }
 
     fn crosspoints(data: &(usize, usize)) -> Box<dyn std::iter::Iterator<Item = Self>> {
-        let k = data.0;
-        let n_loci = data.1;
         unimplemented!()
     }
 }
@@ -263,7 +259,7 @@ mod tests {
 
     #[test]
     fn vob_cross_test() {
-        /// Want to test that all of the crossings work
+        // Want to test that all of the crossings work
         let x = SingleChromGenotype::from_str("00101", "10011");
         assert_eq!(CrosspointSingleVob::new(true, 0).cross(&x), SingleChromGamete::from_str("10011"));
         assert_eq!(CrosspointSingleVob::new(true, 1).cross(&x), SingleChromGamete::from_str("00011"));

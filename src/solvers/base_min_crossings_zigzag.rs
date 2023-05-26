@@ -1,5 +1,3 @@
-use std::iter::FlatMap;
-
 #[derive(Debug, Copy, Clone)]
 struct Segment<T> {
     start: usize,

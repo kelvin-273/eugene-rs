@@ -1,6 +1,5 @@
 use crate::abstract_plants::*;
 use bit_vec::BitVec;
-use num;
 use rand::prelude::*;
 use std::rc::Rc;
 
@@ -203,11 +202,11 @@ impl Crosspoint<SingleChromGenotype, SingleChromGamete, usize> for CrosspointBit
             n_loci: x.n_loci,
             gamete: {
                 let mut gx = BitVec::from_elem(x.n_loci, false);
-                for i in (0..self.head) {
+                for i in 0..self.head {
                     let b = c1[i];
                     gx.set(i, b);
                 }
-                for i in (self.head..x.n_loci) {
+                for i in self.head..x.n_loci {
                     let b = c2[i];
                     gx.set(i, b);
                 }
@@ -255,7 +254,7 @@ impl HaploidSegment<SingleChromGenotype, SingleChromGamete> for SegmentBitVec {
 
     fn join(&self, other: &Self) -> Self {
         let s1 = self.start();
-        let e1 = self.end();
+        let _e1 = self.end();
         let wg1 = self.gamete();
         let s2 = other.start();
         let e2 = other.end();
@@ -351,7 +350,7 @@ mod tests {
     fn feasibility_random_population_test() {
         let n_loci = 13;
         let mut rng = thread_rng();
-        for _ in (0..100) {
+        for _ in 0..100 {
             assert!(SingleChromGenotype::is_feasible(
                 &n_loci,
                 &SingleChromGenotype::init_pop_random(&mut rng, n_loci, 6)

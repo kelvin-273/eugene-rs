@@ -28,7 +28,7 @@
 pub mod abstract_plants;
 pub mod plants;
 pub mod solvers;
-pub mod visualisation;
+pub mod extra;
 
 mod play {
     #[cfg(test)]

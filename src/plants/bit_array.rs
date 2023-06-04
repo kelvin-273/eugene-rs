@@ -97,6 +97,13 @@ impl SingleChromGenotype {
         }
         pop_0
     }
+
+    pub fn get(&self, chrom: bool, locus: usize) -> Option<bool> {
+        match chrom {
+            true => self.chrom1.get(locus),
+            false => self.chrom2.get(locus),
+        }
+    }
 }
 
 impl BioSize for SingleChromGenotype {

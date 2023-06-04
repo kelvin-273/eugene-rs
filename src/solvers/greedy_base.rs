@@ -131,7 +131,7 @@ where
 
 /// Finds the number of generations required to construct the ideotype from pop_0.
 /// Assumes that the ideotype is not in pop_0.
-pub fn min_generations<A, B, K, S>(n_loci: usize, pop_0: &Vec<A>) -> usize
+pub fn min_generations<A, B, S>(n_loci: usize, pop_0: &Vec<A>) -> usize
 where
     A: Genotype<B> + Diploid<B> + SingleChrom,
     B: Gamete<A> + Haploid + SingleChrom,

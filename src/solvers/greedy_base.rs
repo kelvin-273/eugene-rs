@@ -129,19 +129,6 @@ where
     out
 }
 
-fn min_1d_geometric_set_cover<A, B, S>(mut segments: Vec<S>) -> Vec<S>
-where
-    A: Genotype<B> + Diploid<B>,
-    B: Gamete<A> + Haploid,
-    S: HaploidSegment<A, B>,
-{
-    segments.sort_by(|x, y| match x.start().partial_cmp(&y.start()).unwrap() {
-        std::cmp::Ordering::Equal => y.end().partial_cmp(&x.end()).unwrap(),
-        res => res,
-    });
-    unimplemented!();
-}
-
 /// Finds the number of generations required to construct the ideotype from pop_0.
 /// Assumes that the ideotype is not in pop_0.
 pub fn min_generations<A, B, K, S>(n_loci: usize, pop_0: &Vec<A>) -> usize

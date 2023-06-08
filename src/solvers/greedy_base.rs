@@ -13,8 +13,30 @@ where
     // Generate minimal ordered set of segments
     let min_segments = min_covering_segments::<A, B, S>(n_loci, &pop_0);
     println!("no. segments: {}", min_segments.len());
+
     // Construct crossing tree from segments
-    None
+    let c_star = join_segments(&min_segments, 0, min_segments.len());
+    Some(WGen::new(A::from_gametes(&c_star.gamete().gamete, &c_star.gamete().gamete)))
+}
+
+fn join_segments<A, B, S>(segments_s0: &Vec<S>, i: usize, j: usize) -> S
+where
+    A: Genotype<B> + Diploid<B>,
+    B: Gamete<A> + Haploid,
+    S: HaploidSegment<A, B> + Clone
+{
+    // The base case can't return the raw segments as they are owned by the vector.
+    // Although, we could clone the base segments.
+    assert!(segments_s0.len() > 0);
+    assert!(i < j && j < segments_s0.len());
+    if j == i + 1 {
+        return segments_s0[i].clone();
+    } else {
+        let mid = (i + j) >> 1;
+        let res1 = join_segments::<A, B, S>(segments_s0, i, mid);
+        let res2 = join_segments::<A, B, S>(segments_s0, mid, j);
+        S::join(&res1, &res2)
+    }
 }
 
 fn min_covering_segments<A, B, S>(n_loci: usize, pop_0: &Vec<A>) -> Vec<S>

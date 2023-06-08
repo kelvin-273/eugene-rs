@@ -10,6 +10,7 @@ where
     B: Gamete<A> + Haploid + SingleChrom,
     S: HaploidSegment<A, B> + Clone,
 {
+    dbg!(&pop_0);
     // Generate minimal ordered set of segments
     let min_segments = min_covering_segments::<A, B, S>(n_loci, &pop_0);
     println!("no. segments: {}", min_segments.len());
@@ -28,7 +29,7 @@ where
     // The base case can't return the raw segments as they are owned by the vector.
     // Although, we could clone the base segments.
     assert!(segments_s0.len() > 0);
-    assert!(i < j && j < segments_s0.len());
+    assert!(i < j && j <= segments_s0.len());
     if j == i + 1 {
         return segments_s0[i].clone();
     } else {
@@ -62,7 +63,19 @@ where
             }
         }
     }
-    segment_pigeonholes.iter().filter_map(|c| c.clone()).collect()
+    segment_pigeonholes.iter()
+        .scan(None, |state, c| {
+            c.map(|c| {
+                match state {
+                    Some(_) => todo!(),
+                    None => {
+                        *state = Some((c.start(), c.end()));
+                        c.clone()
+                    },
+                }
+            })
+        })
+        .collect()
 }
 
 fn generate_segments_genotype_diploid<A, B, S>(n_loci: usize, x: &A) -> Vec<S>

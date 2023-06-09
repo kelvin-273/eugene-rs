@@ -1,9 +1,9 @@
-use eugene::solvers::*;
 use eugene::extra::visualisation;
+use eugene::solvers::*;
 use rand::prelude::*;
+use std::env;
 use std::io;
 use std::rc::Rc;
-use std::env;
 
 pub fn main() -> io::Result<()> {
     env::set_var("RUST_BACKTRACE", "1");
@@ -18,7 +18,7 @@ pub fn _main5() -> io::Result<()> {
         n_loci,
         SingleChromGenotype::init_pop_random(&mut thread_rng(), n_loci, n_pop),
         SingleChromGenotype::ideotype(n_loci),
-        );
+    );
     Ok(())
 }
 
@@ -31,11 +31,11 @@ pub fn _main4() -> io::Result<()> {
         SingleChromGamete,
         CrosspointBitVec,
         SegmentBitVec,
-        >(
+    >(
         n_loci,
         SingleChromGenotype::init_pop_random(&mut thread_rng(), n_loci, n_pop),
         SingleChromGenotype::ideotype(n_loci),
-        );
+    );
     Ok(())
 }
 
@@ -48,11 +48,11 @@ pub fn _main3() -> io::Result<()> {
         SingleChromGamete,
         CrosspointBitVec,
         usize,
-        >(
+    >(
         SingleChromGenotype::init_pop_random(&mut thread_rng(), n_loci, n_pop),
         SingleChromGenotype::ideotype(n_loci),
-        n_loci
-        );
+        n_loci,
+    );
     Ok(())
 }
 

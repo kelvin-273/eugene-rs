@@ -16,14 +16,17 @@ where
 
     // Construct crossing tree from segments
     let c_star = join_segments(&min_segments, 0, min_segments.len());
-    Some(WGen::new(A::from_gametes(&c_star.gamete().gamete, &c_star.gamete().gamete)))
+    Some(WGen::new(A::from_gametes(
+        &c_star.gamete().gamete,
+        &c_star.gamete().gamete,
+    )))
 }
 
 fn join_segments<A, B, S>(segments_s0: &Vec<S>, i: usize, j: usize) -> S
 where
     A: Genotype<B> + Diploid<B>,
     B: Gamete<A> + Haploid,
-    S: HaploidSegment<A, B> + Clone
+    S: HaploidSegment<A, B> + Clone,
 {
     // The base case can't return the raw segments as they are owned by the vector.
     // Although, we could clone the base segments.
@@ -62,25 +65,27 @@ where
             }
         }
     }
-    segment_pigeonholes.iter()
+    segment_pigeonholes
+        .iter()
         .scan(None, |state, c| {
-            c.as_ref().map(|c| {
-                match state {
-                    Some((s, e)) => {
-                        assert!(*s < c.start());
-                        if *e < c.end() {
-                            *s = c.start();
-                            *e = c.end();
-                            Some(c)
-                        } else { None }
-                    },
-                    None => {
-                        *state = Some((c.start(), c.end()));
+            c.as_ref().map(|c| match state {
+                Some((s, e)) => {
+                    assert!(*s < c.start());
+                    if *e < c.end() {
+                        *s = c.start();
+                        *e = c.end();
                         Some(c)
-                    },
+                    } else {
+                        None
+                    }
+                }
+                None => {
+                    *state = Some((c.start(), c.end()));
+                    Some(c)
                 }
             })
-        }).filter_map(|c| c.map(|c| c.clone()))
+        })
+        .filter_map(|c| c.map(|c| c.clone()))
         .collect()
 }
 

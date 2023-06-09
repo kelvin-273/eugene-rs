@@ -25,8 +25,8 @@ impl HomozygousInstances {
         } else {
             stack.push(0)
         }
-        
-        Self { 
+
+        Self {
             n_loci,
             key: vec![0; n_loci],
             stack,
@@ -48,7 +48,7 @@ impl Iterator for HomozygousInstances {
             return None;
         }
 
-        // either its the first key, 
+        // either its the first key,
         while self.i < self.n_loci {
             let c_max = *self.stack.last().unwrap();
             let prev = self.key[self.i - 1];

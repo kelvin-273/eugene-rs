@@ -116,14 +116,14 @@ impl Diploid<SingleChromGamete> for SingleChromGenotype {
     fn upper(&self) -> SingleChromGamete {
         SingleChromGamete {
             n_loci: self.n_loci,
-            gamete: self.chrom1.clone()
+            gamete: self.chrom1.clone(),
         }
     }
 
     fn lower(&self) -> SingleChromGamete {
         SingleChromGamete {
             n_loci: self.n_loci,
-            gamete: self.chrom2.clone()
+            gamete: self.chrom2.clone(),
         }
     }
 }

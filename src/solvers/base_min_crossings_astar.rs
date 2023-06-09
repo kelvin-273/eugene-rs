@@ -69,7 +69,7 @@ fn successors_single_node_extensios(
         let mut wz = WGen::new(x_star);
         wz.history = Some((wg.clone(), wg.clone()));
         let new_state = state.push(Rc::new(wz));
-        return vec![(new_state, 1)]
+        return vec![(new_state, 1)];
     }
 
     let n_gametes = gametes.len();

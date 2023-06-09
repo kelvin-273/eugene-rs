@@ -261,15 +261,45 @@ mod tests {
     fn vob_cross_test() {
         // Want to test that all of the crossings work
         let x = SingleChromGenotype::from_str("00101", "10011");
-        assert_eq!(CrosspointSingleVob::new(true, 0).cross(&x), SingleChromGamete::from_str("10011"));
-        assert_eq!(CrosspointSingleVob::new(true, 1).cross(&x), SingleChromGamete::from_str("00011"));
-        assert_eq!(CrosspointSingleVob::new(true, 2).cross(&x), SingleChromGamete::from_str("00011"));
-        assert_eq!(CrosspointSingleVob::new(true, 3).cross(&x), SingleChromGamete::from_str("00111"));
-        assert_eq!(CrosspointSingleVob::new(true, 4).cross(&x), SingleChromGamete::from_str("00101"));
-        assert_eq!(CrosspointSingleVob::new(false, 0).cross(&x), SingleChromGamete::from_str("00101"));
-        assert_eq!(CrosspointSingleVob::new(false, 1).cross(&x), SingleChromGamete::from_str("10101"));
-        assert_eq!(CrosspointSingleVob::new(false, 2).cross(&x), SingleChromGamete::from_str("10101"));
-        assert_eq!(CrosspointSingleVob::new(false, 3).cross(&x), SingleChromGamete::from_str("10001"));
-        assert_eq!(CrosspointSingleVob::new(false, 4).cross(&x), SingleChromGamete::from_str("10011"));
+        assert_eq!(
+            CrosspointSingleVob::new(true, 0).cross(&x),
+            SingleChromGamete::from_str("10011")
+        );
+        assert_eq!(
+            CrosspointSingleVob::new(true, 1).cross(&x),
+            SingleChromGamete::from_str("00011")
+        );
+        assert_eq!(
+            CrosspointSingleVob::new(true, 2).cross(&x),
+            SingleChromGamete::from_str("00011")
+        );
+        assert_eq!(
+            CrosspointSingleVob::new(true, 3).cross(&x),
+            SingleChromGamete::from_str("00111")
+        );
+        assert_eq!(
+            CrosspointSingleVob::new(true, 4).cross(&x),
+            SingleChromGamete::from_str("00101")
+        );
+        assert_eq!(
+            CrosspointSingleVob::new(false, 0).cross(&x),
+            SingleChromGamete::from_str("00101")
+        );
+        assert_eq!(
+            CrosspointSingleVob::new(false, 1).cross(&x),
+            SingleChromGamete::from_str("10101")
+        );
+        assert_eq!(
+            CrosspointSingleVob::new(false, 2).cross(&x),
+            SingleChromGamete::from_str("10101")
+        );
+        assert_eq!(
+            CrosspointSingleVob::new(false, 3).cross(&x),
+            SingleChromGamete::from_str("10001")
+        );
+        assert_eq!(
+            CrosspointSingleVob::new(false, 4).cross(&x),
+            SingleChromGamete::from_str("10011")
+        );
     }
 }

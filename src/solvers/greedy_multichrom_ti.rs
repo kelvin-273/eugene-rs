@@ -1,6 +1,7 @@
 use crate::abstract_plants::*;
 
-fn breeding_program<A, B, K>(pop_0: Vec<A>, ideotype: A) -> Option<WGen<A, B>> where
+fn breeding_program<A, B, K>(pop_0: Vec<A>, ideotype: A) -> Option<WGen<A, B>>
+where
     A: Genotype<B>,
     B: Gamete<A>,
 {

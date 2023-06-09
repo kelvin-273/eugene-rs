@@ -26,9 +26,9 @@
 
 /// Exports the traits used by the algorithms in `solvers`
 pub mod abstract_plants;
+pub mod extra;
 pub mod plants;
 pub mod solvers;
-pub mod extra;
 
 mod play {
     #[cfg(test)]

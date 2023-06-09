@@ -11,7 +11,11 @@ where
     breeding_program_gamete::<A, B, K, Data>(pop_0, ideotype, data)
 }
 
-pub fn breeding_program_gamete<A, B, K, Data>(pop_0: Vec<A>, ideotype: A, data: Data) -> Option<WGen<A, B>>
+pub fn breeding_program_gamete<A, B, K, Data>(
+    pop_0: Vec<A>,
+    ideotype: A,
+    data: Data,
+) -> Option<WGen<A, B>>
 where
     A: Genotype<B> + PartialEq + Clone + Feasible<Data>,
     B: Gamete<A> + Hash + Eq + Clone,

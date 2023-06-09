@@ -76,7 +76,6 @@ where
 
 pub const BLOCKSIZE: usize = 10;
 pub trait Draw {
-
     /// Returns (width, height) of the viewBox needed to contain self.
     fn view_box_size(&self) -> Option<(usize, usize)>;
 
@@ -125,10 +124,7 @@ where
     // create dotfile with nodes containing links to the svg files
     // run dot
     let mut v: Vec<(usize, usize)> = Vec::new();
-    fn collect_edges<A, B>(
-        node: Rc<WGenS<A, B>>,
-        h: &HashMap<A, usize>,
-    ) -> Vec<(usize, usize)>
+    fn collect_edges<A, B>(node: Rc<WGenS<A, B>>, h: &HashMap<A, usize>) -> Vec<(usize, usize)>
     where
         A: Hash + Eq,
     {
@@ -154,7 +150,13 @@ where
     let mut buffer_dot_file = fs::File::create("/tmp/tree-image/tree.dot")?;
     buffer_dot_file.write(b"digraph G {\n")?;
     for val in h.values() {
-        buffer_dot_file.write(format!("\tx{} [label=\"\", image=\"/tmp/tree-image/node{}.svg\"]\n", *val, *val).as_bytes());
+        buffer_dot_file.write(
+            format!(
+                "\tx{} [label=\"\", image=\"/tmp/tree-image/node{}.svg\"]\n",
+                *val, *val
+            )
+            .as_bytes(),
+        );
     }
     for (a, b) in v {
         buffer_dot_file.write(format!("\tx{} -> x{}\n", a, b).as_bytes());

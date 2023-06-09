@@ -62,16 +62,24 @@ pub struct WGam<A, B> {
 
 impl<A, B> WGam<A, B> {
     pub fn new(gamete: B) -> Self {
-        Self { gamete, history: vec![] }
+        Self {
+            gamete,
+            history: vec![],
+        }
     }
 
-    pub fn extract_first(self: Rc<Self>) -> Rc<WGamS<A, B>> where
+    pub fn extract_first(self: Rc<Self>) -> Rc<WGamS<A, B>>
+    where
         A: Clone,
-        B: Clone
+        B: Clone,
     {
         Rc::new(WGamS {
             gamete: self.gamete.clone(),
-            history: self.history.first().map(|x| x.clone().extract_first()).unwrap()
+            history: self
+                .history
+                .first()
+                .map(|x| x.clone().extract_first())
+                .unwrap(),
         })
     }
 }
@@ -79,27 +87,34 @@ impl<A, B> WGam<A, B> {
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct WGenS<A, B> {
     pub genotype: A,
-    pub history: Option<(Rc<WGamS<A, B>>, Rc<WGamS<A, B>>)>
+    pub history: Option<(Rc<WGamS<A, B>>, Rc<WGamS<A, B>>)>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct WGamS<A, B> {
     pub gamete: B,
-    pub history: Rc<WGenS<A, B>>
+    pub history: Rc<WGenS<A, B>>,
 }
 
 impl<A, B> WGen<A, B> {
     pub fn new(genotype: A) -> Self {
-        Self { genotype, history: None }
+        Self {
+            genotype,
+            history: None,
+        }
     }
 
-    pub fn extract_first(self: Rc<Self>) -> Rc<WGenS<A, B>> where
+    pub fn extract_first(self: Rc<Self>) -> Rc<WGenS<A, B>>
+    where
         A: Clone,
-        B: Clone
+        B: Clone,
     {
         Rc::new(WGenS {
             genotype: self.genotype.clone(),
-            history: self.history.as_ref().map(|(lg, rg)| (lg.clone().extract_first(), rg.clone().extract_first()))
+            history: self
+                .history
+                .as_ref()
+                .map(|(lg, rg)| (lg.clone().extract_first(), rg.clone().extract_first())),
         })
     }
 }
@@ -121,11 +136,13 @@ impl From<bool> for Allele {
 
 pub trait Segment<A: Genotype<B>, B: Gamete<A>> {}
 
-pub trait HaploidSegment<A, B>: Segment<A, B> where
+pub trait HaploidSegment<A, B>: Segment<A, B>
+where
     A: Genotype<B> + Diploid<B>,
-    B: Gamete<A> + Haploid
+    B: Gamete<A> + Haploid,
 {
-    fn from_start_end_gamete(s: usize, e: usize, g: Rc<WGam<A, B>>) -> Self where
+    fn from_start_end_gamete(s: usize, e: usize, g: Rc<WGam<A, B>>) -> Self
+    where
         B: Haploid;
 
     fn start(&self) -> usize;
@@ -161,7 +178,7 @@ pub trait Traverse<A, B, S> {
     fn traverse_gen_preorder(x: &Rc<WGen<A, B>>, state: &mut S) {
         Self::f_gen(x, state);
         match &x.history {
-            None => {},
+            None => {}
             Some((gx, gy)) => {
                 Self::traverse_gam_preorder(gx, state);
                 Self::traverse_gam_preorder(gy, state);
@@ -171,12 +188,14 @@ pub trait Traverse<A, B, S> {
 
     fn traverse_gam_preorder(gx: &Rc<WGam<A, B>>, state: &mut S) {
         Self::f_gam(gx, state);
-        gx.history.iter().for_each(|x| Self::traverse_gen_preorder(x, state));
+        gx.history
+            .iter()
+            .for_each(|x| Self::traverse_gen_preorder(x, state));
     }
 
     fn traverse_gen_postorder(x: &Rc<WGen<A, B>>, state: &mut S) {
         match &x.history {
-            None => {},
+            None => {}
             Some((gx, gy)) => {
                 Self::traverse_gam_postorder(gx, state);
                 Self::traverse_gam_postorder(gy, state);
@@ -186,7 +205,9 @@ pub trait Traverse<A, B, S> {
     }
 
     fn traverse_gam_postorder(gx: &Rc<WGam<A, B>>, state: &mut S) {
-        gx.history.iter().for_each(|x| Self::traverse_gen_postorder(x, state));
+        gx.history
+            .iter()
+            .for_each(|x| Self::traverse_gen_postorder(x, state));
         Self::f_gam(gx, state);
     }
 }

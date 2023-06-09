@@ -1,4 +1,5 @@
 use crate::abstract_plants::*;
+use crate::extra::analysis::*;
 use crate::plants::bit_array::*;
 use crate::solvers::enumerator_dominance::filter_non_dominating_key;
 use crate::solvers::greedy_base;
@@ -56,10 +57,21 @@ fn successors_single_node_extensios(
 ) -> impl IntoIterator<Item = (State<Rc<WG>>, usize)> {
     let gametes: Vec<Rc<WGam<SingleChromGenotype, SingleChromGamete>>> = state
         .iter()
-        .flat_map(|x| {
-            non_dominated_gametes(x.clone())
-        })
+        .flat_map(|x| non_dominated_gametes(x.clone()))
         .collect();
+
+    let g_star = gametes
+        .iter()
+        .filter(|wg| wg.gamete.alleles().iter().all(|a| *a == Allele::O))
+        .next();
+    if let Some(wg) = g_star {
+        let x_star = SingleChromGenotype::from_gametes(&wg.gamete, &wg.gamete);
+        let mut wz = WGen::new(x_star);
+        wz.history = Some((wg.clone(), wg.clone()));
+        let new_state = state.push(Rc::new(wz));
+        return vec![(new_state, 1)]
+    }
+
     let n_gametes = gametes.len();
     let out = (0..gametes.len())
         .flat_map(|i| ((i + 1)..n_gametes).map(move |j| (i, j)))
@@ -74,9 +86,6 @@ fn successors_single_node_extensios(
         })
         .collect::<Vec<(State<Rc<WG>>, usize)>>();
     println!("Len first successors: {}", out.len());
-    out.iter().for_each(|s| {
-        dbg!(s);
-    });
     out
 }
 
@@ -413,15 +422,19 @@ fn heuristic(
         SingleChromGenotype,
         SingleChromGamete,
         CrosspointBitVec,
-        SegmentMC<Rc<WGam<SingleChromGenotype, SingleChromGamete>>>
+        SegmentMC<Rc<WGam<SingleChromGenotype, SingleChromGamete>>>,
     >(
         n_loci,
         state.iter().map(|wx| wx.genotype.clone()).collect(),
         SingleChromGenotype::ideotype(n_loci),
     );
-    let n_generations: usize = todo!();
-    let n_crossings_div2: usize = todo!();
-    n_generations.max(n_crossings_div2)
+    t.map(|t| {
+        let t_single = Rc::new(t).extract_first();
+        let n_generations: usize = generations(&t_single);
+        let n_crossings_div2: usize = crossings(&t_single) >> 1;
+        n_generations.max(n_crossings_div2)
+    })
+    .unwrap_or(usize::MAX)
 }
 
 fn clone_last_from_state<A: Clone, B>(state: State<Rc<WGen<A, B>>>) -> Option<WGen<A, B>> {
@@ -466,7 +479,10 @@ impl SegmentMC<Rc<SingleChromGamete>> {
     }
 }
 
-impl Segment<SingleChromGenotype, SingleChromGamete> for SegmentMC<Rc<WGam<SingleChromGenotype, SingleChromGamete>>> {}
+impl Segment<SingleChromGenotype, SingleChromGamete>
+    for SegmentMC<Rc<WGam<SingleChromGenotype, SingleChromGamete>>>
+{
+}
 
 impl HaploidSegment<SingleChromGenotype, SingleChromGamete>
     for SegmentMC<Rc<WGam<SingleChromGenotype, SingleChromGamete>>>
@@ -480,22 +496,27 @@ impl HaploidSegment<SingleChromGenotype, SingleChromGamete>
     fn gamete(&self) -> Rc<WGam<SingleChromGenotype, SingleChromGamete>> {
         self.g.clone()
     }
-    fn from_start_end_gamete(s: usize, e: usize, g: Rc<WGam<SingleChromGenotype, SingleChromGamete>>) -> Self {
+    fn from_start_end_gamete(
+        s: usize,
+        e: usize,
+        g: Rc<WGam<SingleChromGenotype, SingleChromGamete>>,
+    ) -> Self {
         Self { s, e, g }
     }
     fn join(&self, other: &Self) -> Self {
         println!("self:  {:?}", &self);
         println!("other: {:?}", &other);
         assert!(self.s < other.s && other.s <= self.e + 1 && self.e < other.e);
-        let z = SingleChromGenotype::from_gametes(
-            &self.g.gamete,
-            &other.g.gamete
-        );
+        let z = SingleChromGenotype::from_gametes(&self.g.gamete, &other.g.gamete);
         let mut wz = z.lift_a();
         wz.history = Some((self.g.clone(), other.g.clone()));
         let gz = CrosspointBitVec::new(false, other.s).cross(&z);
         let mut wgz = WGam::new(gz);
-        SegmentMC { s: self.s, e: other.e, g: Rc::new(wgz) }
+        SegmentMC {
+            s: self.s,
+            e: other.e,
+            g: Rc::new(wgz),
+        }
     }
 }
 
@@ -595,14 +616,15 @@ mod tests {
 
     #[test]
     fn breeding_program_test() {
-        assert_ne!(
-            breeding_program(
-                3,
-                vec![SingleChromGenotype::from_str("010", "101",)],
-                SingleChromGenotype::ideotype(3)
-            ),
-            None
+        let res = breeding_program(
+            3,
+            vec![SingleChromGenotype::from_str("010", "101")],
+            SingleChromGenotype::ideotype(3),
         );
+        assert_ne!(None, res);
+        let res_val = Rc::new(res.unwrap()).extract_first();
+        assert_eq!(2, generations(res_val.as_ref()));
+        assert_eq!(2, crossings(res_val.as_ref()));
     }
 
     #[test]

@@ -10,7 +10,6 @@ where
     B: Gamete<A> + Haploid + SingleChrom,
     S: HaploidSegment<A, B> + Clone,
 {
-    dbg!(&pop_0);
     // Generate minimal ordered set of segments
     let min_segments = min_covering_segments::<A, B, S>(n_loci, &pop_0);
     println!("no. segments: {}", min_segments.len());
@@ -65,16 +64,23 @@ where
     }
     segment_pigeonholes.iter()
         .scan(None, |state, c| {
-            c.map(|c| {
+            c.as_ref().map(|c| {
                 match state {
-                    Some(_) => todo!(),
+                    Some((s, e)) => {
+                        assert!(*s < c.start());
+                        if *e < c.end() {
+                            *s = c.start();
+                            *e = c.end();
+                            Some(c)
+                        } else { None }
+                    },
                     None => {
                         *state = Some((c.start(), c.end()));
-                        c.clone()
+                        Some(c)
                     },
                 }
             })
-        })
+        }).filter_map(|c| c.map(|c| c.clone()))
         .collect()
 }
 
@@ -88,6 +94,7 @@ where
     let q2_true = generate_segments_gamete_haploid::<A, B, S>(&x.lower());
     let mut q = (&q1_true, &q2_true);
 
+    println!("Finished generating individual segments");
     let mut used1_true = vec![false; q1_true.len()];
     let mut used2_true = vec![false; q2_true.len()];
     let mut used1 = &mut used1_true;

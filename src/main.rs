@@ -7,7 +7,19 @@ use std::env;
 
 pub fn main() -> io::Result<()> {
     env::set_var("RUST_BACKTRACE", "1");
-    _main4()
+    _main5()
+}
+
+pub fn _main5() -> io::Result<()> {
+    use eugene::plants::bit_array::*;
+    let n_loci = 7;
+    let n_pop = 2;
+    let _res = base_min_crossings_astar::breeding_program(
+        n_loci,
+        SingleChromGenotype::init_pop_random(&mut thread_rng(), n_loci, n_pop),
+        SingleChromGenotype::ideotype(n_loci),
+        );
+    Ok(())
 }
 
 pub fn _main4() -> io::Result<()> {

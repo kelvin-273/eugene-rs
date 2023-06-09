@@ -33,7 +33,7 @@ impl Gamete<SingleChromGenotype> for SingleChromGamete {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub struct SingleChromGenotype {
     n_loci: usize,
     chrom1: BitVec,

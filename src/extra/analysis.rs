@@ -23,7 +23,7 @@ struct Triple<A> {
 /// Computes the number of crossings in a crossing schedule.
 ///
 /// Assumes that each crossing can only be created once, i.e. only one (x, y, z) ∀x,y,z.
-pub fn crossings<A, B>(wz: WGenS<A, B>) -> usize
+pub fn crossings<A, B>(wz: &WGenS<A, B>) -> usize
 where
     A: Clone + Hash + Eq,
 {

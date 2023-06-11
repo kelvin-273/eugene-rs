@@ -12,7 +12,6 @@ where
 {
     // Generate minimal ordered set of segments
     let min_segments = min_covering_segments::<A, B, S>(n_loci, &pop_0);
-    println!("no. segments: {}", min_segments.len());
 
     // Construct crossing tree from segments
     let c_star = join_segments(&min_segments, 0, min_segments.len());
@@ -99,7 +98,6 @@ where
     let q2_true = generate_segments_gamete_haploid::<A, B, S>(&x.lower());
     let mut q = (&q1_true, &q2_true);
 
-    println!("Finished generating individual segments");
     let mut used1_true = vec![false; q1_true.len()];
     let mut used2_true = vec![false; q2_true.len()];
     let mut used1 = &mut used1_true;

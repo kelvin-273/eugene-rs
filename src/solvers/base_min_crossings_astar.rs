@@ -29,14 +29,11 @@ where
         // generate single node extensions
         out.extend(successors_single_node_extensios(state));
         // generate zigzag consolidating extensions
-        out.extend(successors_zigzag_extensions(state));
+        //out.extend(successors_zigzag_extensions(state));
         out
     };
 
-    let heuristic = |state: &State<Rc<WG>>| {
-        println!("Called the heuristic");
-        heuristic(n_loci, state)
-    };
+    let heuristic = |state: &State<Rc<WG>>| heuristic(n_loci, state);
 
     let success = |state: &State<Rc<WG>>| {
         println!("Called the success test");
@@ -55,34 +52,45 @@ where
 fn successors_single_node_extensios(
     state: &State<Rc<WG>>,
 ) -> impl IntoIterator<Item = (State<Rc<WG>>, usize)> {
-    let gametes: Vec<Rc<WGam<SingleChromGenotype, SingleChromGamete>>> = state
+    let gametes: Vec<(usize, Rc<WGam<SingleChromGenotype, SingleChromGamete>>)> = state
         .iter()
-        .flat_map(|x| non_dominated_gametes(x.clone()))
+        .enumerate()
+        .flat_map(|(i, x)| {
+            non_dominated_gametes(x.clone())
+                .into_iter()
+                .map(move |gx| (i, gx))
+        })
         .collect();
+    let first_j = gametes
+        .iter()
+        .enumerate()
+        .find(|(i_gamete, (i, gx))| i >= &state.most_recent_parent)
+        .map_or(0, |(i, igx)| i);
 
     let g_star = gametes
         .iter()
-        .filter(|wg| wg.gamete.alleles().iter().all(|a| *a == Allele::O))
+        .filter(|(i, wg)| wg.gamete.alleles().iter().all(|a| *a == Allele::O))
         .next();
-    if let Some(wg) = g_star {
+    if let Some((_, wg)) = g_star {
         let x_star = SingleChromGenotype::from_gametes(&wg.gamete, &wg.gamete);
         let mut wz = WGen::new(x_star);
         wz.history = Some((wg.clone(), wg.clone()));
         let new_state = state.push(Rc::new(wz));
-        return vec![(new_state, 1)];
+        // TODO: halt the astar when this is found <11-06-23> //
+        return vec![(new_state, 2)];
     }
 
     let n_gametes = gametes.len();
     let out = (0..gametes.len())
-        .flat_map(|i| ((i + 1)..n_gametes).map(move |j| (i, j)))
+        .flat_map(|i| ((i + 1).max(first_j)..n_gametes).map(move |j| (i, j)))
         .map(|(i, j)| {
-            let wg1 = (&gametes[i]).clone();
-            let wg2 = (&gametes[j]).clone();
+            let (idx, wg1) = (&gametes[i]).clone();
+            let (idy, wg2) = (&gametes[j]).clone();
             let z = SingleChromGenotype::from_gametes(&wg1.gamete, &wg2.gamete);
             let mut wz = WGen::new(z);
             wz.history = Some((wg1, wg2));
-            let new_state = state.push(Rc::new(wz));
-            (new_state, 1)
+            let new_state = state.push_with_most_recent_parent(Rc::new(wz), idy);
+            (new_state, 2)
         })
         .collect::<Vec<(State<Rc<WG>>, usize)>>();
     println!("Len first successors: {}", out.len());
@@ -298,21 +306,32 @@ type Link<A> = Rc<StateData<A>>;
 #[derive(Clone, Debug)]
 struct State<A> {
     head: Link<A>,
-    hash: u32,
+    most_recent_parent: usize,
+    depth: usize,
 }
 
 impl<A> State<A> {
     pub fn new(v: Vec<A>) -> Self {
         Self {
             head: Rc::new(StateData::Start(v)),
-            hash: 0,
+            most_recent_parent: 0,
+            depth: 0,
         }
     }
 
     pub fn push(&self, x: A) -> Self {
         Self {
-            hash: 0,
+            most_recent_parent: 0,
             head: Rc::new(StateData::Next(x, self.head.clone())),
+            depth: self.depth + 1,
+        }
+    }
+
+    pub fn push_with_most_recent_parent(&self, x: A, most_recent_parent: usize) -> Self {
+        Self {
+            most_recent_parent,
+            head: Rc::new(StateData::Next(x, self.head.clone())),
+            depth: self.depth + 1,
         }
     }
 
@@ -330,7 +349,7 @@ impl<A> State<A> {
 
 impl<A> std::hash::Hash for State<A> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_u32(self.hash)
+        state.write_usize(self.most_recent_parent)
     }
 }
 
@@ -400,7 +419,8 @@ fn naive_successors<A, B, K>(state: &State<WGen<A, B>>) -> Vec<(State<WGen<A, B>
                 out.push((
                     State {
                         head: Rc::new(StateData::Next(z, state.head.clone())),
-                        hash: todo!(),
+                        most_recent_parent: j,
+                        depth: state.depth + 1,
                     },
                     1,
                 ))
@@ -430,8 +450,8 @@ fn heuristic(
     );
     t.map(|t| {
         let t_single = Rc::new(t).extract_first();
-        let n_generations: usize = generations(&t_single);
-        let n_crossings_div2: usize = crossings(&t_single) >> 1;
+        let n_generations: usize = generations(&t_single) << 1;
+        let n_crossings_div2: usize = crossings(&t_single);
         n_generations.max(n_crossings_div2)
     })
     .unwrap_or(usize::MAX)
@@ -504,8 +524,6 @@ impl HaploidSegment<SingleChromGenotype, SingleChromGamete>
         Self { s, e, g }
     }
     fn join(&self, other: &Self) -> Self {
-        println!("self:  {:?}", &self);
-        println!("other: {:?}", &other);
         assert!(self.s < other.s && other.s <= self.e + 1 && self.e < other.e);
         let z = SingleChromGenotype::from_gametes(&self.g.gamete, &other.g.gamete);
         let mut wz = z.lift_a();

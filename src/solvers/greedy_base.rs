@@ -41,7 +41,7 @@ where
     }
 }
 
-fn min_covering_segments<A, B, S>(n_loci: usize, pop_0: &Vec<A>) -> Vec<S>
+pub fn min_covering_segments<A, B, S>(n_loci: usize, pop_0: &Vec<A>) -> Vec<S>
 where
     A: Genotype<B> + Diploid<B> + SingleChrom,
     B: Gamete<A> + Haploid + SingleChrom,

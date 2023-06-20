@@ -93,7 +93,7 @@ fn successors_single_node_extensios(
             (new_state, 2)
         })
         .collect::<Vec<(State<Rc<WG>>, usize)>>();
-    println!("Len first successors: {}", out.len());
+    println!("successors: {}", out.len());
     out
 }
 
@@ -438,23 +438,16 @@ fn heuristic(
     n_loci: usize,
     state: &State<Rc<WGen<SingleChromGenotype, SingleChromGamete>>>,
 ) -> usize {
-    let t = greedy_base::breeding_program::<
+    let n_segments = greedy_base::min_covering_segments::<
         SingleChromGenotype,
         SingleChromGamete,
-        CrosspointBitVec,
         SegmentMC<Rc<WGam<SingleChromGenotype, SingleChromGamete>>>,
     >(
         n_loci,
-        state.iter().map(|wx| wx.genotype.clone()).collect(),
-        SingleChromGenotype::ideotype(n_loci),
-    );
-    t.map(|t| {
-        let t_single = Rc::new(t).extract_first();
-        let n_generations: usize = generations(&t_single) << 1;
-        let n_crossings_div2: usize = crossings(&t_single);
-        n_generations.max(n_crossings_div2)
-    })
-    .unwrap_or(usize::MAX)
+        &state.iter().map(|wgx| wgx.genotype.clone()).collect(),
+    )
+    .len();
+    ((n_segments + 1) >> 1).max((n_segments as f32).log2().ceil() as usize)
 }
 
 fn clone_last_from_state<A: Clone, B>(state: State<Rc<WGen<A, B>>>) -> Option<WGen<A, B>> {

@@ -36,7 +36,7 @@ pub fn _main6() -> io::Result<()> {
 
 pub fn _main5() -> io::Result<()> {
     use eugene::plants::bit_array::*;
-    let n_loci = 8;
+    let n_loci = 7;
     let n_pop = 2;
     let _res = base_min_crossings_astar::breeding_program(
         n_loci,

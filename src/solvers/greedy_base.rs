@@ -41,7 +41,7 @@ where
     }
 }
 
-fn min_covering_segments<A, B, S>(n_loci: usize, pop_0: &Vec<A>) -> Vec<S>
+pub fn min_covering_segments<A, B, S>(n_loci: usize, pop_0: &Vec<A>) -> Vec<S>
 where
     A: Genotype<B> + Diploid<B> + SingleChrom,
     B: Gamete<A> + Haploid + SingleChrom,
@@ -68,7 +68,7 @@ where
         .iter()
         .scan(None, |state, c| {
             c.as_ref().map(|c| match state {
-                Some((s, e)) => {
+                Some((ref mut s, ref mut e)) => {
                     assert!(*s < c.start());
                     if *e < c.end() {
                         *s = c.start();

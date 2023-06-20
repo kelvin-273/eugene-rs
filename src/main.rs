@@ -7,7 +7,31 @@ use std::rc::Rc;
 
 pub fn main() -> io::Result<()> {
     env::set_var("RUST_BACKTRACE", "1");
-    _main5()
+    _main6()
+}
+
+pub fn _main6() -> io::Result<()> {
+    use eugene::extra::analysis;
+    use eugene::plants::bit_array::*;
+    let mut rng = thread_rng();
+    let n_loci = 18;
+    let n_pop = 6;
+    for _ in 0..1 {
+        let pop0 = SingleChromGenotype::init_pop_random(&mut rng, n_loci, n_pop);
+        dbg!(&pop0);
+        let ideo = SingleChromGenotype::ideotype(n_loci);
+        let t = greedy_base::breeding_program::<_, _, CrosspointBitVec, SegmentBitVec>(
+            n_loci,
+            pop0.clone(),
+            ideo,
+        )
+        .unwrap();
+        let n_seg = greedy_base::min_covering_segments::<_, _, SegmentBitVec>(n_loci, &pop0).len();
+        let n_crs = analysis::crossings(&Rc::new(t.clone()).extract_first());
+        dbg!(&t);
+        println!("Segments: {}\tCrossings: {}", n_seg, n_crs);
+    }
+    Ok(())
 }
 
 pub fn _main5() -> io::Result<()> {

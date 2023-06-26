@@ -104,6 +104,11 @@ impl SingleChromGenotype {
             false => self.chrom2.get(locus),
         }
     }
+
+    pub fn produces_target_gamete(&self) -> bool {
+        let mut swaps = 0;
+        false
+    }
 }
 
 impl BioSize for SingleChromGenotype {
@@ -267,16 +272,11 @@ impl HaploidSegment<SingleChromGenotype, SingleChromGamete> for SegmentBitVec {
         let e2 = other.end();
         let wg2 = other.gamete();
         assert!(s1 < s2);
-        let mut z = WGen::new(SingleChromGenotype::from_gametes(&wg1.gamete, &wg2.gamete));SingleChromGenotype::from_gametes(&wg1.gamete, &wg2.gamete)
-        let gz = CrosspointBitVec::new(false, s2)
-            .cross(&z);
-        let mut wgz = WGam::new(z);
-        wgz.history.push(z);
-        SegmentBitVec::from_start_end_gamete(
-            s1,
-            e2,
-            Rc::new(wgz),
-        )
+        let mut z = WGen::new(SingleChromGenotype::from_gametes(&wg1.gamete, &wg2.gamete));
+        let gz = CrosspointBitVec::new(false, s2).cross(&z.genotype);
+        let mut wgz = WGam::new(gz);
+        wgz.history.push(Rc::new(z));
+        SegmentBitVec::from_start_end_gamete(s1, e2, Rc::new(wgz))
     }
 
     fn from_start_end_gamete(

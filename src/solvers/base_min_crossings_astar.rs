@@ -5,7 +5,10 @@ use crate::solvers::enumerator_dominance::filter_non_dominating_key;
 use crate::solvers::greedy_base;
 use crate::solvers::greedy_base::min_generations;
 use pathfinding::directed::astar::astar;
+use std::collections::hash_map::DefaultHasher;
 use std::collections::{HashMap, HashSet};
+use std::hash::Hash;
+use std::hash::Hasher;
 use std::rc::Rc;
 
 type WG = WGen<SingleChromGenotype, SingleChromGamete>;
@@ -24,13 +27,8 @@ where
     // Initialise priority queue
 
     let successors = |state: &State<Rc<WG>>| {
-        let mut out = vec![];
         println!("Called the successors");
-        // generate single node extensions
-        out.extend(successors_single_node_extensios(state));
-        // generate zigzag consolidating extensions
-        //out.extend(successors_zigzag_extensions(state));
-        out
+        successors_single_node_extensions(state)
     };
 
     let heuristic = |state: &State<Rc<WG>>| heuristic(n_loci, state);
@@ -49,9 +47,10 @@ where
     clone_last_from_state(x.to_owned())
 }
 
-fn successors_single_node_extensios(
+fn successors_single_node_extensions(
     state: &State<Rc<WG>>,
 ) -> impl IntoIterator<Item = (State<Rc<WG>>, usize)> {
+    // vector of the genotype indices and rc gametes
     let gametes: Vec<(usize, Rc<WGam<SingleChromGenotype, SingleChromGamete>>)> = state
         .iter()
         .enumerate()
@@ -345,21 +344,59 @@ impl<A> State<A> {
         }
         aux(head)
     }
+
+    pub fn hash(&self) -> u64
+    where
+        A: Hash,
+    {
+        let mut hasher1: DefaultHasher = Default::default();
+        let mut intermediat_v: Vec<u64> = self
+            .iter()
+            .map(|x| {
+                x.hash(&mut hasher1);
+                hasher1.finish()
+            })
+            .collect();
+        intermediat_v.sort();
+
+        let mut hasher2: DefaultHasher = Default::default();
+        intermediat_v.hash(&mut hasher2);
+        hasher2.finish()
+    }
 }
 
 impl<A> std::hash::Hash for State<A> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         state.write_usize(self.most_recent_parent)
+        //state.write_u8(0)
     }
 }
 
-impl<A: PartialEq> PartialEq for State<A> {
+// impl<A: PartialEq> PartialEq for State<A> {
+//     fn eq(&self, other: &Self) -> bool {
+//         self.head == other.head
+//     }
+// }
+
+impl PartialEq for State<Rc<WG>> {
     fn eq(&self, other: &Self) -> bool {
-        self.head == other.head
+        //match (self.head.as_ref(), other.head.as_ref()) {
+        //    (StateData::Start(ref v1), StateData::Start(ref v2)) => todo!(),
+        //    (StateData::Start(_), StateData::Next(_, _)) => false,
+        //    (StateData::Next(_, _), StateData::Start(_)) => false,
+        //    (StateData::Next(x1, _), StateData::Next(x2, _)) => x1.genotype == x2.genotype,
+        //}
+        let mut v1: Vec<_> = self.iter().map(|x| x.genotype.clone()).collect();
+        let mut v2: Vec<_> = other.iter().map(|x| x.genotype.clone()).collect();
+        v1.sort();
+        v2.sort();
+        v1 == v2
     }
 }
 
-impl<A: PartialEq> Eq for State<A> {}
+//impl<A: PartialEq> Eq for State<A> {}
+
+impl Eq for State<Rc<WG>> {}
 
 struct StateIter<'a, A: 'a> {
     current: &'a StateData<A>,

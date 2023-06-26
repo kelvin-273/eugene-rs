@@ -1,17 +1,39 @@
-use eugene::extra::visualisation;
+use eugene::extra::*;
 use eugene::solvers::*;
 use rand::prelude::*;
 use std::env;
 use std::io;
 use std::rc::Rc;
 
-pub fn main() -> io::Result<()> {
+fn main() -> io::Result<()> {
     env::set_var("RUST_BACKTRACE", "1");
-    _main6()
+    _main7()
 }
 
-pub fn _main6() -> io::Result<()> {
-    use eugene::extra::analysis;
+fn _main7() -> io::Result<()> {
+    use eugene::plants::bit_array::*;
+    let mut lines = io::stdin().lines();
+    while let Some(Ok(s)) = lines.next() {
+        println!("string: {}", &s);
+        let (n_loci, pop0) = instance_generators::parse_homozygous(&s);
+        dbg!(&n_loci);
+        dbg!(&pop0);
+        let ideo = SingleChromGenotype::ideotype(n_loci);
+        let t = base_min_crossings_astar::breeding_program(
+            n_loci,
+            pop0.clone(),
+            ideo,
+        )
+        .unwrap();
+        let n_seg = greedy_base::min_covering_segments::<_, _, SegmentBitVec>(n_loci, &pop0).len();
+        let n_crs = analysis::crossings(&Rc::new(t.clone()).extract_first());
+        dbg!(&t);
+        println!("Segments: {}\tCrossings: {}", n_seg, n_crs);
+    }
+    Ok(())
+}
+
+fn _main6() -> io::Result<()> {
     use eugene::plants::bit_array::*;
     let mut rng = thread_rng();
     let n_loci = 18;
@@ -34,9 +56,9 @@ pub fn _main6() -> io::Result<()> {
     Ok(())
 }
 
-pub fn _main5() -> io::Result<()> {
+fn _main5() -> io::Result<()> {
     use eugene::plants::bit_array::*;
-    let n_loci = 7;
+    let n_loci = 16;
     let n_pop = 2;
     let _res = base_min_crossings_astar::breeding_program(
         n_loci,
@@ -46,7 +68,7 @@ pub fn _main5() -> io::Result<()> {
     Ok(())
 }
 
-pub fn _main4() -> io::Result<()> {
+fn _main4() -> io::Result<()> {
     use eugene::plants::bit_array::*;
     let n_loci = 20;
     let n_pop = 1024;
@@ -63,7 +85,7 @@ pub fn _main4() -> io::Result<()> {
     Ok(())
 }
 
-pub fn _main3() -> io::Result<()> {
+fn _main3() -> io::Result<()> {
     use eugene::plants::bit_array::*;
     let n_loci = 11;
     let n_pop = 6;
@@ -80,7 +102,7 @@ pub fn _main3() -> io::Result<()> {
     Ok(())
 }
 
-pub fn _main2() -> io::Result<()> {
+fn _main2() -> io::Result<()> {
     use eugene::plants::bit_array::*;
     let n_loci = 16;
     let n_pop = 6;
@@ -99,7 +121,7 @@ pub fn _main2() -> io::Result<()> {
     Ok(())
 }
 
-pub fn _main1() -> io::Result<()> {
+fn _main1() -> io::Result<()> {
     use eugene::plants::vec_of_bools::*;
     let n_loci = 8;
     let pop0: Vec<SingleChromGenotype> =

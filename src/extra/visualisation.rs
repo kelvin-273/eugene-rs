@@ -105,9 +105,9 @@ where
     {
         let n = h.len();
         h.entry(node.genotype.clone()).or_insert(n);
-        node.history.as_ref().map(|(lg, rg)| {
-            aux(lg.history.clone(), h);
-            aux(rg.history.clone(), h);
+        node.history.clone().map(|(lg, rg)| {
+            lg.history.clone().map(|g| aux(g, h));
+            rg.history.clone().map(|g| aux(g, h));
         });
     }
     aux(tree.clone(), &mut h);
@@ -124,27 +124,29 @@ where
     // create dotfile with nodes containing links to the svg files
     // run dot
     let mut v: Vec<(usize, usize)> = Vec::new();
-    fn collect_edges<A, B>(node: Rc<WGenS<A, B>>, h: &HashMap<A, usize>) -> Vec<(usize, usize)>
-    where
+    fn collect_edges<A, B>(
+        node: Rc<WGenS<A, B>>,
+        h: &HashMap<A, usize>,
+        v: &mut Vec<(usize, usize)>,
+    ) where
         A: Hash + Eq,
     {
         let z = h.get(&node.genotype).unwrap();
-        node.history
-            .as_ref()
-            .map(|(lg, rg)| {
-                let mut v = Vec::new();
-                let x = h.get(&lg.history.as_ref().genotype).unwrap();
-                v.push((*x, *z));
-                v.append(&mut collect_edges(lg.history.clone(), h));
+        node.history.clone().map(|(lg, rg)| {
+            let g = &lg.history.clone()?.genotype;
+            let x = h.get(g).unwrap();
+            v.push((*x, *z));
+            collect_edges(lg.history.clone()?, h, &mut v);
 
-                let y = h.get(&rg.history.as_ref().genotype).unwrap();
-                v.push((*y, *z));
-                v.append(&mut collect_edges(rg.history.clone(), h));
-                v
-            })
-            .unwrap_or(vec![])
+            let g = &rg.history.clone()?.genotype;
+            let y = h.get(g).unwrap();
+            v.push((*y, *z));
+            collect_edges(rg.history.clone()?, h, &mut v);
+            Some(v)
+        });
     }
-    v = collect_edges(tree.clone(), &h);
+    let mut v = Vec::new();
+    collect_edges(tree.clone(), &h, &mut v);
 
     // create dotviz file
     let mut buffer_dot_file = fs::File::create("/tmp/tree-image/tree.dot")?;
@@ -170,7 +172,7 @@ pub fn draw_tree_gametes<A, B>(tree: Rc<WGenS<A, B>>) -> io::Result<()>
 where
     B: Draw + Eq + Hash + Clone,
 {
-    // collect all the unique genotypes a hashmap of all the unique genotypes
+    // Create a hash map from gamete
     let mut h: HashMap<B, usize> = HashMap::new();
     fn aux<A, B>(node: Rc<WGamS<A, B>>, h: &mut HashMap<B, usize>)
     where
@@ -178,9 +180,11 @@ where
     {
         let n = h.len();
         h.entry(node.gamete.clone()).or_insert(n);
-        node.history.history.as_ref().map(|(lg, rg)| {
-            aux(lg.clone(), h);
-            aux(rg.clone(), h);
+        node.history.clone().map(|wx| {
+            wx.history.as_ref().map(|(lg, rg)| {
+                aux(lg.clone(), h);
+                aux(rg.clone(), h);
+            });
         });
     }
     match tree.history.as_ref() {
@@ -213,15 +217,17 @@ where
         B: Hash + Eq,
     {
         let gz = h.get(&node.gamete).unwrap();
-        node.history.history.as_ref().map(|(lg, rg)| {
-            let x = h.get(&lg.gamete).unwrap();
-            v.push((*x, *gz));
-            collect_edges(lg.clone(), h, &mut v);
+        match node.history {
+            Some(wx) => wx.history.as_ref().map(|(lg, rg)| {
+                let x = h.get(&lg.gamete).unwrap();
+                v.push((*x, *gz));
+                collect_edges(lg.clone(), h, &mut v);
 
-            let y = h.get(&rg.gamete).unwrap();
-            v.push((*y, *gz));
-            collect_edges(rg.clone(), h, &mut v);
-        });
+                let y = h.get(&rg.gamete).unwrap();
+                v.push((*y, *gz));
+                collect_edges(rg.clone(), h, &mut v);
+            }),
+        };
     }
     match tree.history.as_ref() {
         None => {}

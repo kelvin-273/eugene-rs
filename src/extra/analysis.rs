@@ -3,14 +3,13 @@ use std::collections::HashSet;
 use std::hash::Hash;
 
 pub fn generations<A, B>(wz: &WGenS<A, B>) -> usize {
-    match &wz.history {
-        None => 0,
-        Some((gx, gy)) => {
-            let wx = gx.history.as_ref();
-            let wy = gy.history.as_ref();
-            generations(wx).max(generations(wy)) + 1
-        }
-    }
+    // This is cursed.
+    (|| {
+        let (gx, gy) = wz.history?;
+        let wx = gx.history?.as_ref();
+        let wy = gy.history?.as_ref();
+        Some(generations(wx).max(generations(wy)) + 1)
+    })().unwrap_or(0)
 }
 
 #[derive(Hash, PartialEq, Eq)]
@@ -31,24 +30,22 @@ where
     where
         A: Clone + Hash + Eq,
     {
-        match &wz.history {
-            None => 0,
-            Some((wgx, wgy)) => {
-                let triple = Triple {
-                    x: wgx.history.genotype.clone(),
-                    y: wgy.history.genotype.clone(),
-                    z: wz.genotype.clone(),
-                };
-                if s.contains(&triple) {
-                    0
-                } else {
-                    s.insert(triple);
-                    let resx = aux(s, wgx.history.as_ref());
-                    let resy = aux(s, wgy.history.as_ref());
-                    1 + resx + resy
-                }
+        (|| {
+            let (wgx, wgy) = wz.history?;
+            let triple = Triple {
+                x: wgx.history?.genotype.clone(),
+                y: wgy.history?.genotype.clone(),
+                z: wz.genotype.clone(),
+            };
+            if s.contains(&triple) {
+                Some(0)
+            } else {
+                s.insert(triple);
+                let resx = aux(s, wgx.history?.as_ref());
+                let resy = aux(s, wgy.history?.as_ref());
+                Some(1 + resx + resy)
             }
-        }
+        })().unwrap_or(0)
     }
     let mut s: HashSet<Triple<A>> = HashSet::new();
     aux(&mut s, &wz)

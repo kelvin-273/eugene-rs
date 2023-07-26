@@ -68,6 +68,25 @@ impl<A, B> WGam<A, B> {
         }
     }
 
+    pub fn extract_first_from_ref(self: &Self) -> WGamS<A, B>
+    where
+        A: Clone,
+        B: Clone,
+    {
+        WGamS {
+            gamete: self.gamete.clone(),
+            history: self
+                .history
+                .first()
+                .map(|x| x.clone().extract_first())
+        }
+    }
+
+    /// Given an Rc pointer, returns a new Rc pointer to the first extractable wrapped gamete.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the list of source genotypes is empty.
     pub fn extract_first(self: Rc<Self>) -> Rc<WGamS<A, B>>
     where
         A: Clone,
@@ -79,7 +98,6 @@ impl<A, B> WGam<A, B> {
                 .history
                 .first()
                 .map(|x| x.clone().extract_first())
-                .unwrap(),
         })
     }
 }
@@ -93,7 +111,7 @@ pub struct WGenS<A, B> {
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct WGamS<A, B> {
     pub gamete: B,
-    pub history: Rc<WGenS<A, B>>,
+    pub history: Option<Rc<WGenS<A, B>>>,
 }
 
 impl<A, B> WGen<A, B> {

@@ -5,9 +5,9 @@ use std::hash::Hash;
 pub fn generations<A, B>(wz: &WGenS<A, B>) -> usize {
     // This is cursed.
     (|| {
-        let (gx, gy) = wz.history?;
-        let wx = gx.history?.as_ref();
-        let wy = gy.history?.as_ref();
+        let (gx, gy) = wz.history.as_ref()?;
+        let wx = gx.history.as_ref()?;
+        let wy = gy.history.as_ref()?;
         Some(generations(wx).max(generations(wy)) + 1)
     })().unwrap_or(0)
 }
@@ -26,27 +26,28 @@ pub fn crossings<A, B>(wz: &WGenS<A, B>) -> usize
 where
     A: Clone + Hash + Eq,
 {
-    fn aux<A, B>(s: &mut HashSet<Triple<A>>, wz: &WGenS<A, B>) -> usize
+    fn aux<'a, A, B>(s: &mut HashSet<Triple<&'a A>>, wz: &'a WGenS<A, B>) -> usize
     where
         A: Clone + Hash + Eq,
     {
         (|| {
-            let (wgx, wgy) = wz.history?;
+            let (wgx, wgy) = wz.history.as_ref()?;
+
             let triple = Triple {
-                x: wgx.history?.genotype.clone(),
-                y: wgy.history?.genotype.clone(),
-                z: wz.genotype.clone(),
+                x: &wgx.history.as_ref()?.genotype,
+                y: &wgy.history.as_ref()?.genotype,
+                z: &wz.genotype,
             };
             if s.contains(&triple) {
                 Some(0)
             } else {
                 s.insert(triple);
-                let resx = aux(s, wgx.history?.as_ref());
-                let resy = aux(s, wgy.history?.as_ref());
+                let resx = aux(s, wgx.history.as_ref()?);
+                let resy = aux(s, wgy.history.as_ref()?);
                 Some(1 + resx + resy)
             }
         })().unwrap_or(0)
     }
-    let mut s: HashSet<Triple<A>> = HashSet::new();
+    let mut s: HashSet<Triple<&A>> = HashSet::new();
     aux(&mut s, &wz)
 }

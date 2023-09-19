@@ -136,12 +136,12 @@ where
             let g = &lg.history.clone()?.genotype;
             let x = h.get(g).unwrap();
             v.push((*x, *z));
-            collect_edges(lg.history.clone()?, h, &mut v);
+            collect_edges(lg.history.clone()?, h, v);
 
             let g = &rg.history.clone()?.genotype;
             let y = h.get(g).unwrap();
             v.push((*y, *z));
-            collect_edges(rg.history.clone()?, h, &mut v);
+            collect_edges(rg.history.clone()?, h, v);
             Some(v)
         });
     }
@@ -217,7 +217,8 @@ where
         B: Hash + Eq,
     {
         let gz = h.get(&node.gamete).unwrap();
-        match node.history {
+        match &node.history {
+            None => { None },
             Some(wx) => wx.history.as_ref().map(|(lg, rg)| {
                 let x = h.get(&lg.gamete).unwrap();
                 v.push((*x, *gz));

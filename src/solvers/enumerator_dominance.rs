@@ -214,6 +214,33 @@ where
         .collect()
 }
 
+pub fn filter_non_dominating_fn<T>(
+    s: impl IntoIterator<Item = T>,
+    func: impl Fn(&T, &T) -> bool,
+) -> Vec<T> {
+    let v: Vec<T> = s.into_iter().collect();
+    let mut keeps: Vec<bool> = vec![true; v.len()];
+    for i in 0..v.len() {
+        let x = &v[i];
+        for j in i + 1..v.len() {
+            let y = &v[j];
+            if func(x, y) {
+                keeps[j] = false;
+            } else if func(y, x) {
+                keeps[i] = false;
+                break;
+            }
+        }
+    }
+    v.into_iter()
+        .enumerate()
+        .filter_map(|(i, x)| match keeps[i] {
+            true => Some(x),
+            false => None,
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -17,3 +17,5 @@ pub mod base_min_crossings_astar;
 pub mod base_min_crossings_zigzag;
 /// Finds the min crossings for base problem using LNS approaches
 pub mod base_min_crossings_lns;
+/// Finds the min crossings for base problem using backtracking
+pub mod base_min_crossings_backtracking;

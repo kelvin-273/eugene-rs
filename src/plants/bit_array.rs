@@ -71,6 +71,14 @@ impl SingleChromGenotype {
         }
     }
 
+    pub fn blank(n_loci: usize) -> Self {
+        Self {
+            n_loci,
+            chrom1: BitVec::from_elem(n_loci, false),
+            chrom2: BitVec::from_elem(n_loci, false),
+        }
+    }
+
     fn random_genotype<R>(rng: &mut R, n_loci: usize) -> Self
     where
         R: Rng + ?Sized,

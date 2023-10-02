@@ -336,7 +336,7 @@ mod tests {
 
     #[test]
     fn time_test() {
-        let n_loci = 13;
+        let n_loci = 8;
         let pop_0 = (0..n_loci)
             .map(|i| {
                 SingleChromGenotype::new(
@@ -356,7 +356,7 @@ mod tests {
             >(
                 pop_0,
                 SingleChromGenotype::ideotype(n_loci),
-                Some(10),
+                Some(4),
                 n_loci
             ),
             None

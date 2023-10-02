@@ -706,9 +706,4 @@ mod tests {
         );
         assert!(res.iter().all(|c| c.g == gx));
     }
-
-    #[test]
-    fn heuristic_test() {
-        panic!()
-    }
 }

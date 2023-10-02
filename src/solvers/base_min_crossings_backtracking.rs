@@ -132,7 +132,7 @@ pub fn subproblems_shallow(dist_array: &Vec<usize>) -> Vec<(usize, usize)> {
     }
     // union all intersecting ranges
     let mut v: Vec<(usize, usize)> = (0..n_pop)
-        .map(|i| *s.get(&i).unwrap())
+        .map(|i| *s.get(&i).expect("i not in (0..n_pop)"))
         .zip((0..n_pop).map(|i| *e.get(&i).unwrap()))
         .collect();
     v.sort();
@@ -180,6 +180,10 @@ mod tests {
         assert_eq!(
             subproblems_shallow(&vec![1, 2, 1, 2, 1, 3, 4, 3, 5, 0]),
             vec![(0, 4), (5, 7), (8, 8), (9, 9)]
-        )
+        );
+        assert_eq!(
+            subproblems_shallow(&vec![0, 1, 0, 1, 0, 1, 0, 2, 3, 2, 4, 2]),
+            vec![(0, 6), (7, 11)]
+        );
     }
 }

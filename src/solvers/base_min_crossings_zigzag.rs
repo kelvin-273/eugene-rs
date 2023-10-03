@@ -83,7 +83,7 @@ fn min_cover_segments_from_groups<T>(
 
     fn f_obj<T>(state: &State<T>) -> usize {
         unimplemented!()
-    };
+    }
 
     fn aux<T>(state: &mut State<T>, current_obj: usize) -> usize {
         let mut out = current_obj;

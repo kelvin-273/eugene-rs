@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 //! Plant breeding program modelling and solving library.
 //!
 //! Components are of the plant breeding programs are separated modules.

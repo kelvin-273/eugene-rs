@@ -1,32 +1,21 @@
-use crate::abstract_plants::*;
-use crate::extra::analysis;
 use crate::plants::bit_array::*;
 use crate::solvers::enumerator_dominance;
 use crate::solvers::greedy_base;
-use std::rc::Rc;
 
 pub fn min_crossings(n_loci: usize, pop_0: Vec<SingleChromGenotype>) -> Option<usize> {
     if pop_0.contains(&SingleChromGenotype::ideotype(n_loci)) {
         return Some(0);
     }
-
-    let initial_solution = greedy_base::breeding_program::<
-        SingleChromGenotype,
-        SingleChromGamete,
-        CrosspointBitVec,
-        SegmentBitVec,
-    >(n_loci, pop_0.clone(), SingleChromGenotype::ideotype(n_loci))?;
-
-    Some(usize::MAX)
+    unimplemented!();
 }
 
 pub fn min_crossings_distribtue(dist_array: &Vec<usize>) -> Option<usize> {
     // TODO: assert valid dist_array <19-09-23> //
     let n_loci = dist_array.len();
-    let n_pop = dist_array.iter().max().unwrap() + 1;
+    let _n_pop = dist_array.iter().max().unwrap() + 1;
     let n_tree_cells = 2 * n_loci;
-    let mut tree_left = vec![0; n_tree_cells];
-    let mut tree_right = vec![0; n_tree_cells];
+    let mut _tree_left = vec![0; n_tree_cells];
+    let mut _tree_right = vec![0; n_tree_cells];
     let mut tree_xs = vec![vec![vec![0; n_loci]; 2]; n_tree_cells];
     // create each of the initial population
     for (i, x) in dist_array.iter().enumerate() {
@@ -119,7 +108,6 @@ where
 /// ```
 pub fn subproblems_shallow(dist_array: &Vec<usize>) -> Vec<(usize, usize)> {
     use std::collections::HashMap;
-    let n_loci = dist_array.len();
     let n_pop = dist_array.iter().max().unwrap_or(&0) + 1;
     // collect start and end points of each genotype
     let mut s = HashMap::new();
@@ -131,21 +119,26 @@ pub fn subproblems_shallow(dist_array: &Vec<usize>) -> Vec<(usize, usize)> {
         e.insert(*x, i);
     }
     // union all intersecting ranges
-    let mut v: Vec<(usize, usize)> = (0..n_pop)
-        .map(|i| *s.get(&i).expect("i not in (0..n_pop)"))
-        .zip((0..n_pop).map(|i| *e.get(&i).unwrap()))
+    let mut ranges: Vec<(usize, usize)> = (0..n_pop)
+        .map(|i| -> (usize, usize) {
+            (
+                *s.get(&i).expect("i not in (0..n_pop)"),
+                *e.get(&i).expect("i not in (0..n_pop)"),
+            )
+        })
         .collect();
-    v.sort();
-    let mut b: Vec<bool> = (0..n_pop).map(|_| true).collect();
-    for i in (0..n_pop - 1) {
-        if v[i].1 > v[i + 1].0 {
-            v[i + 1] = (v[i].0, v[i].1.max(v[i + 1].1));
-            b[i] = false;
+    ranges.sort();
+    let mut chosen: Vec<bool> = (0..n_pop).map(|_| true).collect();
+    for i in 0..n_pop - 1 {
+        if ranges[i].1 > ranges[i + 1].0 {
+            ranges[i + 1] = (ranges[i].0, ranges[i].1.max(ranges[i + 1].1));
+            chosen[i] = false;
         }
     }
-    v.iter()
+    ranges
+        .iter()
         .enumerate()
-        .filter_map(|(i, x)| match b[i] {
+        .filter_map(|(i, x)| match chosen[i] {
             true => Some((x.0, x.1)),
             false => None,
         })
@@ -160,7 +153,7 @@ mod tests {
     #[test]
     fn minimal_covering_subsets_test() {
         let subsets: Vec<Vec<usize>> = (0..6).combinations(4).collect_vec();
-        let mut si = MinimalCoveringSubsets::new(subsets.clone(), |v| {
+        let si = MinimalCoveringSubsets::new(subsets.clone(), |v| {
             (0..6).all(|i| v.iter().any(|s| s.contains(&i)))
         });
         for cov in si.into_iter() {

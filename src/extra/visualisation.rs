@@ -3,7 +3,6 @@ use std::fs;
 use std::hash::Hash;
 use std::io;
 use std::io::prelude::*;
-use std::os::unix::prelude::*;
 use std::rc::Rc;
 use svg::node::element::path::Data;
 use svg::node::element::Group;

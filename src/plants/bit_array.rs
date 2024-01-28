@@ -168,6 +168,13 @@ impl Feasible<usize> for SingleChromGenotype {
 }
 
 impl SingleChromGamete {
+    pub fn bool_array(v: &Vec<bool>) -> Self {
+        Self {
+            n_loci: v.len(),
+            gamete: BitVec::from_iter(v.iter().map(|b| *b))
+        }
+    }
+
     pub fn from_str(s1: &str) -> Self {
         let f = |c: char| match c {
             '0' => false,

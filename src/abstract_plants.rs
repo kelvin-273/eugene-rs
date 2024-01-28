@@ -152,6 +152,15 @@ impl From<bool> for Allele {
     }
 }
 
+impl Into<bool> for Allele {
+    fn into(self) -> bool {
+        match self {
+            Allele::Z => false,
+            Allele::O => true,
+        }
+    }
+}
+
 pub trait Segment<A: Genotype<B>, B: Gamete<A>> {}
 
 pub trait HaploidSegment<A, B>: Segment<A, B>

@@ -5,13 +5,171 @@ use crate::solvers::enumerator_dominance::filter_non_dominating_key;
 use crate::solvers::greedy_base;
 use crate::solvers::greedy_base::min_generations;
 use pathfinding::directed::astar::astar;
+use pyo3::prelude::*;
 use std::collections::hash_map::DefaultHasher;
+use std::collections::VecDeque;
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use std::hash::Hasher;
 use std::rc::Rc;
 
 type WG = WGen<SingleChromGenotype, SingleChromGamete>;
+
+/// Runs a breeding program given `n_loci` and `pop_0` where `pop_0` is a population of single
+/// chromosome diploid genotypes with `n_loci` loci.
+#[pyo3::pyfunction]
+pub fn breeding_program_python(
+    n_loci: usize,
+    pop_0: Vec<Vec<Vec<bool>>>,
+) -> PyResult<
+    Option<(
+        Vec<Vec<Vec<i32>>>,
+        Vec<&'static str>,
+        Vec<usize>,
+        Vec<usize>,
+        usize,
+    )>,
+> {
+    let ideotype = SingleChromGenotype::ideotype(n_loci);
+    let pop_0 = pop_0
+        .iter()
+        .map(|x| {
+            SingleChromGenotype::new(
+                x[0].iter()
+                    .zip(x[1].iter())
+                    .map(|(a, b)| (*a, *b))
+                    .collect(),
+            )
+        })
+        .collect();
+    let res = breeding_program(n_loci, pop_0, ideotype);
+    match res {
+        None => Ok(None),
+        Some(x_star) => {
+            // get the number of crossings and cells required
+            let mut q_node = VecDeque::new();
+            let mut q_leaf = VecDeque::new();
+            let mut n_cells = 1;
+            let mut n_cross = 0;
+
+            // create index_map
+            let mut index_map: HashMap<SingleChromGenotype, usize> = HashMap::new();
+            index_map.insert(x_star.genotype.clone(), 0);
+
+            q_node.push_back(&x_star);
+            if x_star.history.is_some() {
+                n_cross += 1;
+            }
+
+            // using q_node to process all genotypes for the counting
+            while let Some(z) = q_node.pop_front() {
+                if let Some((wgx, wgy)) = &z.history {
+                    // QUESTION: how is it that a single & here
+                    // makes all the difference?
+                    let x = wgx.history.first().unwrap().as_ref();
+                    if !index_map.contains_key(&x.genotype) {
+                        index_map.insert(x.genotype.clone(), n_cells);
+                        n_cells += 1;
+                        q_node.push_back(x);
+                        if x.history.is_some() {
+                            n_cross += 1;
+                        }
+                    }
+
+                    let y = wgy.history.first().unwrap().as_ref();
+                    if !index_map.contains_key(&y.genotype) {
+                        index_map.insert(y.genotype.clone(), n_cells);
+                        n_cells += 1;
+                        q_node.push_back(y);
+                        if x.history.is_some() {
+                            n_cross += 1;
+                        }
+                    }
+                }
+            }
+            index_map.drain();
+
+            // initialise arrays
+            let mut tree_data = vec![vec![vec![0; n_loci]; 2]; n_cells];
+            let mut tree_type = vec!["Null"; n_cells];
+            let mut tree_left = vec![0; n_cells];
+            let mut tree_right = vec![0; n_cells];
+
+            // flush index_map because nodes and leaves have mixed order
+            index_map.drain();
+            index_map.insert(x_star.genotype.clone(), 0);
+
+            if x_star.history.is_none() {
+                q_leaf.push_back(&x_star);
+            } else {
+                q_node.push_back(&x_star);
+            }
+            let mut i_node = 0;
+            let mut i_leaf = n_cross;
+
+            // using q_node to process all genotypes for the counting
+            while let Some(z) = q_node.pop_front() {
+                let &i_z = index_map.get(&z.genotype).unwrap();
+
+                // fill in data
+                for (j, a) in z.genotype.upper().alleles().iter().enumerate() {
+                    tree_data[i_z][0][j] = match a {
+                        Allele::Z => 0,
+                        Allele::O => 1,
+                    };
+                }
+                for (j, a) in z.genotype.lower().alleles().iter().enumerate() {
+                    tree_data[i_z][0][j] = match a {
+                        Allele::Z => 0,
+                        Allele::O => 1,
+                    };
+                }
+
+                if let Some((wgx, wgy)) = &z.history {
+                    // QUESTION: how is it that a single & here
+                    // makes all the difference?
+                    tree_type[i_z] = "Node";
+
+                    let x = wgx.history.first().unwrap().as_ref();
+                    if !index_map.contains_key(&x.genotype) {
+                        if x.history.is_some() {
+                            index_map.insert(x.genotype.clone(), i_node);
+                            i_node += 1;
+                        } else {
+                            index_map.insert(x.genotype.clone(), i_leaf);
+                            i_leaf += 1;
+                        }
+                        q_node.push_back(x);
+                    }
+                    let &i_x = index_map.get(&x.genotype).unwrap();
+                    tree_left[i_z] = i_x;
+
+                    let y = wgy.history.first().unwrap().as_ref();
+                    if !index_map.contains_key(&y.genotype) {
+                        if y.history.is_some() {
+                            index_map.insert(y.genotype.clone(), i_node);
+                            i_node += 1;
+                        } else {
+                            index_map.insert(y.genotype.clone(), i_leaf);
+                            i_leaf += 1;
+                        }
+                        q_node.push_back(y);
+                    }
+                    let &i_y = index_map.get(&y.genotype).unwrap();
+                    tree_right[i_z] = i_y;
+                } else {
+                    tree_type[i_z] = "Leaf";
+                }
+            }
+
+            let objective = n_cross;
+
+            Ok(Some((
+                tree_data, tree_type, tree_left, tree_right, objective,
+            )))
+        }
+    }
+}
 
 pub fn breeding_program(
     n_loci: usize,
@@ -335,7 +493,7 @@ impl<A> State<A> {
     }
 
     pub fn count_nodes(&self) -> usize {
-        let mut head = &self.head;
+        let head = &self.head;
         fn aux<A>(head: &Link<A>) -> usize {
             match head.as_ref() {
                 StateData::Start(_) => 0,

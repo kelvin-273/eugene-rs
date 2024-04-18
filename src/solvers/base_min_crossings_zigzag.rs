@@ -72,16 +72,16 @@ impl<'a, T> State<'a, T> {
 }
 
 fn min_cover_segments_from_groups<T>(
-    n_loci: usize,
+    _n_loci: usize,
     segment_groups: Vec<Vec<Segment<T>>>,
 ) -> Vec<Vec<Segment<T>>> {
-    let n_groups = segment_groups.len();
-    let mut state = State::<T> {
+    let _n_groups = segment_groups.len();
+    let _state = State::<T> {
         segments: &segment_groups,
         selected_groups: (0..segment_groups.len()).map(|_| true).collect(),
     };
 
-    fn f_obj<T>(state: &State<T>) -> usize {
+    fn f_obj<T>(_state: &State<T>) -> usize {
         unimplemented!()
     }
 
@@ -101,6 +101,6 @@ fn min_cover_segments_from_groups<T>(
     unimplemented!();
 }
 
-pub fn breeding_program<A, B>(n_loci: usize, pop_0: Vec<A>, ideotype: A) {
+pub fn breeding_program<A, B>(_n_loci: usize, _pop_0: Vec<A>, _ideotype: A) {
     unimplemented!();
 }

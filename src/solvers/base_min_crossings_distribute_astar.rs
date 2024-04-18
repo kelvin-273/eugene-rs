@@ -3,7 +3,7 @@ use pathfinding::prelude::*;
 pub struct BaseSolution {}
 
 pub fn breeding_program(dist_array: Vec<u8>) -> BaseSolution {
-    let res = astar(&dist_array, successors, heuristic, success);
+    let _res = astar(&dist_array, successors, heuristic, success);
     unimplemented!()
 }
 

@@ -25,7 +25,7 @@ fn _main7() -> io::Result<()> {
             ideo,
         )
         .unwrap();
-        let n_seg = greedy_base::min_covering_segments::<_, _, SegmentBitVec>(n_loci, &pop0).len();
+        let n_seg = base_min_generations_segment::min_covering_segments::<_, _, SegmentBitVec>(n_loci, &pop0).len();
         let n_crs = analysis::crossings(&Rc::new(t.clone()).extract_first());
         dbg!(&t);
         println!("Segments: {}\tCrossings: {}", n_seg, n_crs);
@@ -42,13 +42,13 @@ fn _main6() -> io::Result<()> {
         let pop0 = SingleChromGenotype::init_pop_random(&mut rng, n_loci, n_pop);
         dbg!(&pop0);
         let ideo = SingleChromGenotype::ideotype(n_loci);
-        let t = greedy_base::breeding_program::<_, _, CrosspointBitVec, SegmentBitVec>(
+        let t = base_min_generations_segment::breeding_program::<_, _, CrosspointBitVec, SegmentBitVec>(
             n_loci,
             pop0.clone(),
             ideo,
         )
         .unwrap();
-        let n_seg = greedy_base::min_covering_segments::<_, _, SegmentBitVec>(n_loci, &pop0).len();
+        let n_seg = base_min_generations_segment::min_covering_segments::<_, _, SegmentBitVec>(n_loci, &pop0).len();
         let n_crs = analysis::crossings(&Rc::new(t.clone()).extract_first());
         dbg!(&t);
         println!("Segments: {}\tCrossings: {}", n_seg, n_crs);
@@ -72,7 +72,7 @@ fn _main4() -> io::Result<()> {
     use eugene_rs::plants::bit_array::*;
     let n_loci = 20;
     let n_pop = 1024;
-    let _res = greedy_base::breeding_program::<
+    let _res = base_min_generations_segment::breeding_program::<
         SingleChromGenotype,
         SingleChromGamete,
         CrosspointBitVec,
@@ -89,7 +89,7 @@ fn _main3() -> io::Result<()> {
     use eugene_rs::plants::bit_array::*;
     let n_loci = 11;
     let n_pop = 6;
-    let _res = enumerator::breeding_program::<
+    let _res = base_min_generations_enumerator::breeding_program::<
         SingleChromGenotype,
         SingleChromGamete,
         CrosspointBitVec,
@@ -106,7 +106,7 @@ fn _main2() -> io::Result<()> {
     use eugene_rs::plants::bit_array::*;
     let n_loci = 16;
     let n_pop = 6;
-    let _res = enumerator_dominance::breeding_program_timeout_gametes::<
+    let _res = base_min_generations_enumerator_dominance::breeding_program_timeout_gametes::<
         SingleChromGenotype,
         SingleChromGamete,
         CrosspointBitVec,
@@ -126,7 +126,7 @@ fn _main1() -> io::Result<()> {
     let n_loci = 8;
     let pop0: Vec<SingleChromGenotype> =
         vec![SingleChromGenotype::from_str("01010101", "10101010")];
-    if let Some(res) = enumerator_dominance::breeding_program::<
+    if let Some(res) = base_min_generations_enumerator_dominance::breeding_program::<
         SingleChromGenotype,
         SingleChromGamete,
         CrosspointSingleVob,
@@ -152,7 +152,7 @@ fn _main0() -> io::Result<()> {
         SingleChromGenotype::from_str("0010000000", "0000000000"),
         SingleChromGenotype::from_str("0010100000", "0001000000"),
     ];
-    if let Some(res) = enumerator_dominance::breeding_program::<
+    if let Some(res) = base_min_generations_enumerator_dominance::breeding_program::<
         SingleChromGenotype,
         SingleChromGamete,
         CrosspointSingleVob,

@@ -114,7 +114,7 @@ impl SingleChromGenotype {
     }
 
     pub fn produces_target_gamete(&self) -> bool {
-        let mut swaps = 0;
+        let _swaps = 0;
         false
     }
 }
@@ -287,7 +287,7 @@ impl HaploidSegment<SingleChromGenotype, SingleChromGamete> for SegmentBitVec {
         let e2 = other.end();
         let wg2 = other.gamete();
         assert!(s1 < s2);
-        let mut z = WGen::new(SingleChromGenotype::from_gametes(&wg1.gamete, &wg2.gamete));
+        let z = WGen::new(SingleChromGenotype::from_gametes(&wg1.gamete, &wg2.gamete));
         let gz = CrosspointBitVec::new(false, s2).cross(&z.genotype);
         let mut wgz = WGam::new(gz);
         wgz.history.push(Rc::new(z));

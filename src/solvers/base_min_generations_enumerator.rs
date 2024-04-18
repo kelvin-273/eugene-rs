@@ -153,7 +153,7 @@ mod tests {
 
     #[test]
     fn function_name_test() {
-        let res = breeding_program::<u64, u32, u64_and_u32::CrosspointSingleU64U32, usize>(vec![
+        let _res = breeding_program::<u64, u32, u64_and_u32::CrosspointSingleU64U32, usize>(vec![
             (0b001 << 32) | 0b001,
             (0b010 << 32) | 0b010,
             (0b100 << 32) | 0b100,

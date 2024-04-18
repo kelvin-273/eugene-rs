@@ -122,7 +122,7 @@ fn successors_single_node_extensions(
     let out = (0..gametes.len())
         .flat_map(|i| ((i + 1).max(first_j)..n_gametes).map(move |j| (i, j)))
         .map(|(i, j)| {
-            let (idx, wg1) = (&gametes[i]).clone();
+            let (_idx, wg1) = (&gametes[i]).clone();
             let (idy, wg2) = (&gametes[j]).clone();
             let z = SingleChromGenotype::from_gametes(&wg1.gamete, &wg2.gamete);
             let mut wz = WGen::new(z);
@@ -135,7 +135,7 @@ fn successors_single_node_extensions(
 }
 
 fn non_dominated_gametes(x: Rc<WG>) -> Vec<Rc<WGam<SingleChromGenotype, SingleChromGamete>>> {
-    let mut hashset: HashSet<SingleChromGamete> = HashSet::new();
+    let _hashset: HashSet<SingleChromGamete> = HashSet::new();
     let res = segments_from_range_genotype(&x.genotype, 0, x.genotype.get_n_loci(0));
     res.iter()
         .map(|c| c.g.clone())
@@ -208,7 +208,7 @@ fn _zigzag_costs_r(x: &SingleChromGenotype) -> Vec<usize> {
 fn _zigzag_switch_points(x: &SingleChromGenotype) -> Vec<bool> {
     let n_loci = x.get_n_loci(0);
     let mut out: Vec<bool> = vec![false; n_loci]; // n_loci 0 would cause n_loci - 1 to overflow
-    let f = |c: bool, i: usize| x.get(c, i).unwrap();
+    let _f = |c: bool, i: usize| x.get(c, i).unwrap();
     let column = |i: usize| {
         (
             x.get(false, i).unwrap() as u8,
@@ -246,7 +246,7 @@ fn _zigzag_switch_points(x: &SingleChromGenotype) -> Vec<bool> {
     out
 }
 
-fn _consodiate_zigzag(state: &State<Rc<WG>>, x: Rc<WG>, i: usize, j: usize) -> State<WG> {
+fn _consodiate_zigzag(_state: &State<Rc<WG>>, x: Rc<WG>, i: usize, j: usize) -> State<WG> {
     // assert that i..j is a zigzag
     let dp = _zigzag_costs_r(&x.genotype);
     assert!((i..j).all(|k| dp[k] > 0));
@@ -486,7 +486,7 @@ fn naive_successors<A, B, K>(state: &State<WGen<A, B>>) -> Vec<(State<WGen<A, B>
     out
 }
 
-pub fn non_dominated_crossings<A, B, K>(x: &WGen<A, B>, y: &WGen<A, B>) -> Vec<WGen<A, B>> {
+pub fn non_dominated_crossings<A, B, K>(_x: &WGen<A, B>, _y: &WGen<A, B>) -> Vec<WGen<A, B>> {
     unimplemented!()
 }
 
@@ -509,7 +509,7 @@ fn heuristic(
 fn clone_last_from_state<A: Clone, B>(state: State<Rc<WGen<A, B>>>) -> Option<WGen<A, B>> {
     match state.head.as_ref() {
         StateData::Start(v) => v.last().map(|x| x.as_ref().clone()),
-        StateData::Next(x, n) => Some(x.as_ref().clone()),
+        StateData::Next(x, _n) => Some(x.as_ref().clone()),
     }
 }
 
@@ -578,7 +578,7 @@ impl HaploidSegment<SingleChromGenotype, SingleChromGamete>
         let mut wz = z.lift_a();
         wz.history = Some((self.g.clone(), other.g.clone()));
         let gz = CrosspointBitVec::new(false, other.s).cross(&z);
-        let mut wgz = WGam::new(gz);
+        let wgz = WGam::new(gz);
         SegmentMC {
             s: self.s,
             e: other.e,

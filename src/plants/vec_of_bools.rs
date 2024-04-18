@@ -217,7 +217,7 @@ impl Crosspoint<SingleChromGenotype, SingleChromGamete, (usize, usize)> for Cros
         SingleChromGamete::new(v)
     }
 
-    fn crosspoints(data: &(usize, usize)) -> Box<dyn std::iter::Iterator<Item = Self>> {
+    fn crosspoints(_data: &(usize, usize)) -> Box<dyn std::iter::Iterator<Item = Self>> {
         unimplemented!()
     }
 }

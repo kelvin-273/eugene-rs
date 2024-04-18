@@ -56,7 +56,7 @@ pub fn breeding_program_python(
 /// Constraints:
 /// - has to be able to produce segments
 /// - has to have two genotypes
-pub fn breeding_program<A, B, K, S>(n_loci: usize, pop_0: Vec<A>, ideotype: A) -> Option<WGen<A, B>>
+pub fn breeding_program<A, B, K, S>(n_loci: usize, pop_0: Vec<A>, _ideotype: A) -> Option<WGen<A, B>>
 where
     A: Genotype<B> + Diploid<B> + SingleChrom,
     B: Gamete<A> + Haploid + SingleChrom,
@@ -276,7 +276,7 @@ mod tests {
             self.wgam.clone()
         }
 
-        fn join(&self, other: &Self) -> Self {
+        fn join(&self, _other: &Self) -> Self {
             self.clone()
             //SegmentU32 {
             //    start: self.start(),

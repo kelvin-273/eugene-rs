@@ -1,6 +1,4 @@
 use crate::plants::bit_array::*;
-use crate::solvers::enumerator_dominance;
-use crate::solvers::greedy_base;
 
 pub fn min_crossings(n_loci: usize, pop_0: Vec<SingleChromGenotype>) -> Option<usize> {
     if pop_0.contains(&SingleChromGenotype::ideotype(n_loci)) {
@@ -22,76 +20,11 @@ pub fn min_crossings_distribtue(dist_array: &Vec<usize>) -> Option<usize> {
         tree_xs[*x][0][i] = 1;
         tree_xs[*x][1][i] = 1;
     }
-    return None;
+    None
 }
 
-pub fn enumerate_covering_subsets<S>(subsets: Vec<S>) {
-    let v = enumerator_dominance::filter_non_dominating_fn(subsets, |x, y| false);
-}
-
-pub struct MinimalCoveringSubsets<S, F>
-where
-    F: Fn(Vec<&S>) -> bool,
-{
-    n: usize,
-    v: Vec<S>,
-    x: Vec<usize>,
-    i: usize,
-    f: F,
-    finished: bool,
-}
-
-impl<S, F> MinimalCoveringSubsets<S, F>
-where
-    F: Fn(Vec<&S>) -> bool,
-{
-    pub fn new(v: Vec<S>, f: F) -> Self {
-        let n = v.len();
-        let mut x = Vec::with_capacity(n);
-        x.push(0);
-        MinimalCoveringSubsets {
-            n,
-            v,
-            x,
-            i: 0,
-            f,
-            finished: false,
-        }
-    }
-}
-
-impl<S, F> Iterator for MinimalCoveringSubsets<S, F>
-where
-    F: Fn(Vec<&S>) -> bool,
-{
-    type Item = Vec<usize>;
-    fn next(&mut self) -> Option<Self::Item> {
-        macro_rules! g {
-            () => {
-                (self.f)(self.x.iter().map(|j| &self.v[*j]).collect())
-            };
-        }
-        let first_i = self.i;
-
-        // unset current
-        self.x.pop();
-        // move forward
-        self.i += 1;
-        while self.i < self.n {
-            self.x.push(self.i);
-            if g!() {
-                return Some(self.x.clone());
-            }
-            self.i += 1;
-        }
-        // if at end start working backwards, unsetting until first false unless i == 0 and true
-        self.i -= 1;
-        while self.i > 0 && self.x.last().map(|s| *s == self.i).unwrap_or(false) {
-            self.x.pop();
-            self.i -= 1;
-        }
-        None
-    }
+pub fn enumerate_covering_subsets<S>(_subsets: Vec<S>) {
+    unimplemented!();
 }
 
 /// Given a distribute array, returns the ranges, as tuples (s, e), where for any range (s, e) and
@@ -148,25 +81,6 @@ pub fn subproblems_shallow(dist_array: &Vec<usize>) -> Vec<(usize, usize)> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use itertools::Itertools;
-
-    #[test]
-    fn minimal_covering_subsets_test() {
-        let subsets: Vec<Vec<usize>> = (0..6).combinations(4).collect_vec();
-        let si = MinimalCoveringSubsets::new(subsets.clone(), |v| {
-            (0..6).all(|i| v.iter().any(|s| s.contains(&i)))
-        });
-        for cov in si.into_iter() {
-            println!("{:?}", cov);
-            println!(
-                "{:?}",
-                cov.iter()
-                    .map(|i| &subsets[*i])
-                    .collect::<Vec<&Vec<usize>>>()
-            );
-        }
-        //assert_eq!(1, 1);
-    }
 
     #[test]
     fn subproblems_shallow_test() {

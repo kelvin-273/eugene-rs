@@ -1,21 +1,23 @@
 [package]
-name = "eugene"
+name = "eugene_rs"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
-name = "eugene"
+name = "eugene_rs"
 version = "0.1.0"
 edition = "2021"
 features = ["extension-module"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 bit-vec = "*"
 svg = "*"
 rand = "*"
 num = "*"
+grb = "*"
 pathfinding = "*"
 itertools = "0.11.0"
-pyo3 = "0.20.2"
+pyo3 = { version = "0.21.2", features = ["extension-module"] }

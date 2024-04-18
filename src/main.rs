@@ -1,5 +1,5 @@
-use eugene::extra::*;
-use eugene::solvers::*;
+use eugene_rs::extra::*;
+use eugene_rs::solvers::*;
 use rand::prelude::*;
 use std::env;
 use std::io;
@@ -11,7 +11,7 @@ fn main() -> io::Result<()> {
 }
 
 fn _main7() -> io::Result<()> {
-    use eugene::plants::bit_array::*;
+    use eugene_rs::plants::bit_array::*;
     let mut lines = io::stdin().lines();
     while let Some(Ok(s)) = lines.next() {
         println!("string: {}", &s);
@@ -34,7 +34,7 @@ fn _main7() -> io::Result<()> {
 }
 
 fn _main6() -> io::Result<()> {
-    use eugene::plants::bit_array::*;
+    use eugene_rs::plants::bit_array::*;
     let mut rng = thread_rng();
     let n_loci = 18;
     let n_pop = 6;
@@ -57,7 +57,7 @@ fn _main6() -> io::Result<()> {
 }
 
 fn _main5() -> io::Result<()> {
-    use eugene::plants::bit_array::*;
+    use eugene_rs::plants::bit_array::*;
     let n_loci = 16;
     let n_pop = 2;
     let _res = base_min_crossings_astar::breeding_program(
@@ -69,7 +69,7 @@ fn _main5() -> io::Result<()> {
 }
 
 fn _main4() -> io::Result<()> {
-    use eugene::plants::bit_array::*;
+    use eugene_rs::plants::bit_array::*;
     let n_loci = 20;
     let n_pop = 1024;
     let _res = greedy_base::breeding_program::<
@@ -86,7 +86,7 @@ fn _main4() -> io::Result<()> {
 }
 
 fn _main3() -> io::Result<()> {
-    use eugene::plants::bit_array::*;
+    use eugene_rs::plants::bit_array::*;
     let n_loci = 11;
     let n_pop = 6;
     let _res = enumerator::breeding_program::<
@@ -103,7 +103,7 @@ fn _main3() -> io::Result<()> {
 }
 
 fn _main2() -> io::Result<()> {
-    use eugene::plants::bit_array::*;
+    use eugene_rs::plants::bit_array::*;
     let n_loci = 16;
     let n_pop = 6;
     let _res = enumerator_dominance::breeding_program_timeout_gametes::<
@@ -122,7 +122,7 @@ fn _main2() -> io::Result<()> {
 }
 
 fn _main1() -> io::Result<()> {
-    use eugene::plants::vec_of_bools::*;
+    use eugene_rs::plants::vec_of_bools::*;
     let n_loci = 8;
     let pop0: Vec<SingleChromGenotype> =
         vec![SingleChromGenotype::from_str("01010101", "10101010")];
@@ -142,7 +142,7 @@ fn _main1() -> io::Result<()> {
 }
 
 fn _main0() -> io::Result<()> {
-    use eugene::plants::vec_of_bools::*;
+    use eugene_rs::plants::vec_of_bools::*;
     let n_loci = 10;
     let pop0: Vec<SingleChromGenotype> = vec![
         SingleChromGenotype::from_str("0000011000", "0000000000"),

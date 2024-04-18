@@ -1,6 +1,54 @@
 use crate::abstract_plants::*;
+use crate::plants::bit_array::*;
+use crate::solution::BaseSolution;
+use pyo3::prelude::*;
 use std::hash::Hash;
 use std::rc::Rc;
+
+/// Runs a breeding program given `n_loci` and `pop_0` where `pop_0` is a population of single
+/// chromosome diploid genotypes with `n_loci` loci.
+#[pyo3::pyfunction]
+pub fn breeding_program_python(
+    n_loci: usize,
+    pop_0: Vec<Vec<Vec<bool>>>,
+) -> PyResult<
+    Option<(
+        Vec<Vec<Vec<i32>>>,
+        Vec<&'static str>,
+        Vec<usize>,
+        Vec<usize>,
+        usize,
+    )>,
+> {
+    let ideotype = SingleChromGenotype::ideotype(n_loci);
+    let pop_0 = pop_0
+        .iter()
+        .map(|x| {
+            SingleChromGenotype::new(
+                x[0].iter()
+                    .zip(x[1].iter())
+                    .map(|(a, b)| (*a, *b))
+                    .collect(),
+            )
+        })
+        .collect();
+    let res = breeding_program::<SingleChromGenotype, SingleChromGamete, CrosspointBitVec, usize>(
+        pop_0, ideotype, n_loci,
+    );
+    match res {
+        None => Ok(None),
+        Some(x_star) => {
+            let sol = BaseSolution::min_gen_from_wgen(n_loci, &x_star);
+            Ok(Some((
+                sol.tree_data,
+                sol.tree_type,
+                sol.tree_left,
+                sol.tree_right,
+                sol.objective,
+            )))
+        }
+    }
+}
 
 pub fn breeding_program<A, B, K, Data>(pop_0: Vec<A>, ideotype: A, data: Data) -> Option<WGen<A, B>>
 where
@@ -96,4 +144,21 @@ where
         println!("gen_i: {},\tpop.len: {}", gen_i, pop.len());
     }
     Some(ideotype.lift_a())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::plants::u64_and_u32;
+
+    #[test]
+    fn function_name_test() {
+        let res = breeding_program::<u64, u32, u64_and_u32::CrosspointSingleU64U32, usize>(vec![
+            (0b001 << 32) | 0b001,
+            (0b010 << 32) | 0b010,
+            (0b100 << 32) | 0b100,
+        ],
+        (0b111 << 32) | 0b111,
+        3);
+    }
 }

@@ -78,9 +78,36 @@ impl Crosspoint<u64, u32, ()> for u32 {
 }
 
 #[derive(Debug)]
-struct CrosspointSingleU64U32 {
+pub struct CrosspointSingleU64U32 {
     start: bool,
     len_prefix: usize,
+}
+
+impl Crosspoint<u64, u32, usize> for CrosspointSingleU64U32 {
+    fn cross(self, x: &u64) -> u32 {
+        if self.len_prefix > 31 {
+            panic!("consuming too many bits for n_loci = 32")
+        };
+        let mask_u32 = (1 << 32) - 1;
+        let mask_shift = 31 - self.len_prefix;
+        let mask_pref: u32 = ((mask_u32 >> (mask_shift)) << (mask_shift)) as u32;
+        let head: u32 = (x >> 32) as u32;
+        let tail: u32 = (x & mask_u32) as u32;
+        match self.start {
+            true => (head & mask_pref) | (tail & !mask_pref),
+            false => (head & !mask_pref) | (tail & mask_pref),
+        }
+    }
+
+    fn crosspoints(n_loci: &usize) -> Box<dyn std::iter::Iterator<Item = Self>> {
+        let n_loci = *n_loci;
+        Box::new((0..=1).flat_map(move |start| {
+            (0..n_loci).map(move |len_prefix| CrosspointSingleU64U32 {
+                start: start != 0,
+                len_prefix,
+            })
+        }))
+    }
 }
 
 impl Crosspoint<u64, u32, ()> for CrosspointSingleU64U32 {
@@ -106,5 +133,20 @@ impl Crosspoint<u64, u32, ()> for CrosspointSingleU64U32 {
                 len_prefix,
             })
         }))
+    }
+}
+
+impl Feasible<usize> for u64 {
+    fn is_feasible(n_loci: &usize, pop: &Vec<Self>) -> bool {
+        let mut total = 0;
+        for x in pop {
+            total |= x;
+        }
+        if *n_loci > 32 {
+            panic!("n_loci greater than 64")
+        }
+        let total_l = total >> 32;
+        let total_r = total & ((1 << 32) - 1);
+        (total_l | total_r) == ((1 << 32) - 1)
     }
 }

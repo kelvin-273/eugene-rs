@@ -1,7 +1,60 @@
 use crate::abstract_plants::*;
+use crate::solution::BaseSolution;
+use crate::plants::bit_array::*;
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use std::rc::Rc;
+use pyo3::prelude::*;
+
+/// Runs a breeding program given `n_loci` and `pop_0` where `pop_0` is a population of single
+/// chromosome diploid genotypes with `n_loci` loci.
+#[pyo3::pyfunction]
+pub fn breeding_program_python(
+    n_loci: usize,
+    pop_0: Vec<Vec<Vec<bool>>>,
+) -> PyResult<
+    Option<(
+        Vec<Vec<Vec<i32>>>,
+        Vec<&'static str>,
+        Vec<usize>,
+        Vec<usize>,
+        usize,
+    )>,
+> {
+    let ideotype = SingleChromGenotype::ideotype(n_loci);
+    let pop_0 = pop_0
+        .iter()
+        .map(|x| {
+            SingleChromGenotype::new(
+                x[0].iter()
+                    .zip(x[1].iter())
+                    .map(|(a, b)| (*a, *b))
+                    .collect(),
+            )
+        })
+        .collect();
+    let res = breeding_program::<
+        SingleChromGenotype,
+        SingleChromGamete,
+        CrosspointBitVec,
+        DomGamete,
+        usize,
+        >(pop_0, ideotype, n_loci);
+    match res {
+        None => Ok(None),
+        Some(x_star) => {
+            let sol = BaseSolution::min_gen_from_wgen(n_loci, &x_star);
+            Ok(Some((
+                sol.tree_data,
+                sol.tree_type,
+                sol.tree_left,
+                sol.tree_right,
+                sol.objective,
+            )))
+        }
+    }
+}
+
 
 /// Runs the enumeration with dominance pruning from the pop_0 to the ideotype.
 /// Dominance pruning is performed on gametes
@@ -121,7 +174,7 @@ where
         }
         // remove dominated gametes
         let next_gametes: Vec<Rc<WGam<A, B>>> =
-            filter_non_dominating_key::<_, _, _, D>(h, |(g, v)| g.clone())
+            filter_non_dominating_key::<_, _, _, D>(h, |(g, _v)| g.clone())
                 .into_iter()
                 .map(|(g, v)| {
                     Rc::new(WGam {
@@ -137,7 +190,7 @@ where
                 .iter()
                 .enumerate()
                 .flat_map(|(i, wg1)| {
-                    next_gametes[i..].iter().enumerate().map(|(j, wg2)| {
+                    next_gametes[i..].iter().enumerate().map(|(_j, wg2)| {
                         Rc::new(WGen {
                             genotype: A::from_gametes(&wg1.gamete, &wg2.gamete),
                             history: Some((wg1.clone(), wg2.clone())),
@@ -244,7 +297,6 @@ pub fn filter_non_dominating_fn<T>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::plants::bit_array::*;
     use rand::prelude::*;
 
     #[test]
@@ -257,7 +309,7 @@ mod tests {
             }
         }
 
-        for _ in (0..100) {
+        for _ in 0..100 {
             let n: usize = random::<usize>() % 100 + 1;
             let v: Vec<i32> = (0..n).map(|_| random()).collect();
             let res = filter_non_dominating::<i32, i32>(v.to_owned());
@@ -289,13 +341,13 @@ mod tests {
 
     #[test]
     fn filter_non_dominating_pair_test() {
-        for _ in (0..100) {
+        for _ in 0..100 {
             let n: usize = random::<usize>() % 100 + 1;
             let v: Vec<Pair> = (0..n).map(|_| Pair::random()).collect();
             let res = filter_non_dominating::<Pair, Pair>(v);
             assert!(res.len() > 0);
-            for i in (0..res.len()) {
-                for j in (0..i) {
+            for i in 0..res.len() {
+                for j in 0..i {
                     let x = &res[i];
                     let y = &res[j];
                     assert!((x.a < y.a || x.b < y.b) && (x.a > y.a || x.b > y.b));

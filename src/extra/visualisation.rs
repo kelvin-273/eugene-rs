@@ -4,9 +4,7 @@ use std::hash::Hash;
 use std::io;
 use std::io::prelude::*;
 use std::rc::Rc;
-use svg::node::element::path::Data;
 use svg::node::element::Group;
-use svg::node::element::Path;
 use svg::node::element::Rectangle;
 use svg::Document;
 
@@ -19,22 +17,14 @@ fn allele_colour(allele: Allele) -> String {
     }
 }
 
-fn allele_colour_crossover(allele: Option<Allele>) -> String {
-    match allele {
-        None => "gray".to_owned(),
-        Some(Allele::Z) => "blue".to_owned(),
-        Some(Allele::O) => "yellow".to_owned(),
-    }
-}
-
 pub fn draw_gen_base<A, B>(x: &A, offset: (i32, i32)) -> Group
 where
     A: Diploid<B>,
     B: BioSize + Haploid,
 {
     Group::new()
-        .add(draw_gam_base::<B>(&x.upper(), (0, 0)))
-        .add(draw_gam_base::<B>(&x.lower(), (0, 10)))
+        .add(draw_gam_base::<B>(&x.upper(), (offset.0 + 0, offset.1 + 0)))
+        .add(draw_gam_base::<B>(&x.lower(), (offset.0 + 0, offset.1 + 10)))
 }
 
 pub fn draw_gam_base<B>(x: &B, offset: (i32, i32)) -> Group
@@ -42,7 +32,7 @@ where
     B: BioSize + Haploid,
 {
     let g = Group::new();
-    let size = x.get_sizes();
+    //let size = x.get_sizes();
     x.alleles()
         .iter()
         .enumerate()
@@ -58,19 +48,18 @@ where
         .fold(g, |d, square| d.add(square))
 }
 
-pub fn draw_base<A, B>(filename: &str, x: &A)
+pub fn draw_base<A, B>(filename: &str, x: &A) -> io::Result<()>
 where
     A: BioSize + Diploid<B>,
     B: BioSize + Haploid,
 {
-    let size = x.get_sizes();
     //let doc = Document::new()
     //    // TODO: replace this a viewBox that covers everything //
     //    .set("viewBox", (0, 0, size[0].1 * 10 + 1, 2*10 + 1));
     let doc = Document::new();
 
     let out = doc.add(draw_gen_base(x, (0, 0)));
-    svg::save(filename, &out);
+    svg::save(filename, &out)
 }
 
 pub const BLOCKSIZE: usize = 10;
@@ -116,13 +105,13 @@ where
     //
     // for every genotype create an svg for the genotype
     for (key, val) in h.iter() {
-        key.draw_to_file(format!("/tmp/tree-image/node{}.svg", val).as_str());
+        key.draw_to_file(format!("/tmp/tree-image/node{}.svg", val).as_str())?;
     }
 
     // traverse the tree collecting edges from genotype to genotype
     // create dotfile with nodes containing links to the svg files
     // run dot
-    let mut v: Vec<(usize, usize)> = Vec::new();
+    //let mut v: Vec<(usize, usize)> = Vec::new();
     fn collect_edges<A, B>(
         node: Rc<WGenS<A, B>>,
         h: &HashMap<A, usize>,
@@ -157,10 +146,10 @@ where
                 *val, *val
             )
             .as_bytes(),
-        );
+        )?;
     }
     for (a, b) in v {
-        buffer_dot_file.write(format!("\tx{} -> x{}\n", a, b).as_bytes());
+        buffer_dot_file.write(format!("\tx{} -> x{}\n", a, b).as_bytes())?;
     }
 
     buffer_dot_file.write(b"}")?;
@@ -201,7 +190,7 @@ where
     //
     // for every genotype create an svg for the genotype
     for (key, val) in h.iter() {
-        key.draw_to_file(format!("/tmp/tree-image/node{}.svg", val).as_str());
+        key.draw_to_file(format!("/tmp/tree-image/node{}.svg", val).as_str())?;
     }
 
     // traverse the tree collecting edges from genotype to genotype

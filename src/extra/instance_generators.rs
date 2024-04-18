@@ -1,4 +1,3 @@
-use crate::abstract_plants;
 use crate::plants::bit_array;
 
 /// A struct to iterate over Homozygous instances
@@ -93,4 +92,27 @@ pub fn parse_homozygous(s: &str) -> (usize, Vec<bit_array::SingleChromGenotype>)
         v.push(x);
     }
     (v.len(), array_to_homo(&v))
+}
+
+struct DistributeInstances {
+    xs: Vec<u8>,
+    max_xs: Vec<u8>,
+}
+
+impl DistributeInstances {
+    pub fn new(n_loci: usize) -> Self {
+        assert!(n_loci <= u8::MAX.into());
+        Self { 
+            xs: (0..n_loci as u8).map(|i| i % 2).collect(),
+            max_xs: (0..n_loci as u8).map(|i| i.min(1)).collect()
+        }
+    }
+}
+
+impl Iterator for DistributeInstances {
+    type Item = Vec<u8>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        todo!()
+    }
 }

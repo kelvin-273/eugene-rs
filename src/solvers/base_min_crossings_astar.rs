@@ -1,13 +1,10 @@
 use crate::abstract_plants::*;
-use crate::extra::analysis::*;
 use crate::plants::bit_array::*;
-use crate::solvers::enumerator_dominance::filter_non_dominating_key;
-use crate::solvers::greedy_base;
-use crate::solvers::greedy_base::min_generations;
+use crate::solvers::base_min_generations_segment;
+use crate::solution::*;
 use pathfinding::directed::astar::astar;
 use pyo3::prelude::*;
 use std::collections::hash_map::DefaultHasher;
-use std::collections::VecDeque;
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use std::hash::Hasher;
@@ -46,126 +43,13 @@ pub fn breeding_program_python(
     match res {
         None => Ok(None),
         Some(x_star) => {
-            // get the number of crossings and cells required
-            let mut q_node = VecDeque::new();
-            let mut q_leaf = VecDeque::new();
-            let mut n_cells = 1;
-            let mut n_cross = 0;
-
-            // create index_map
-            let mut index_map: HashMap<SingleChromGenotype, usize> = HashMap::new();
-            index_map.insert(x_star.genotype.clone(), 0);
-
-            q_node.push_back(&x_star);
-            if x_star.history.is_some() {
-                n_cross += 1;
-            }
-
-            // using q_node to process all genotypes for the counting
-            while let Some(z) = q_node.pop_front() {
-                if let Some((wgx, wgy)) = &z.history {
-                    // QUESTION: how is it that a single & here
-                    // makes all the difference?
-                    let x = wgx.history.first().unwrap().as_ref();
-                    if !index_map.contains_key(&x.genotype) {
-                        index_map.insert(x.genotype.clone(), n_cells);
-                        n_cells += 1;
-                        q_node.push_back(x);
-                        if x.history.is_some() {
-                            n_cross += 1;
-                        }
-                    }
-
-                    let y = wgy.history.first().unwrap().as_ref();
-                    if !index_map.contains_key(&y.genotype) {
-                        index_map.insert(y.genotype.clone(), n_cells);
-                        n_cells += 1;
-                        q_node.push_back(y);
-                        if x.history.is_some() {
-                            n_cross += 1;
-                        }
-                    }
-                }
-            }
-            index_map.drain();
-
-            // initialise arrays
-            let mut tree_data = vec![vec![vec![0; n_loci]; 2]; n_cells];
-            let mut tree_type = vec!["Null"; n_cells];
-            let mut tree_left = vec![0; n_cells];
-            let mut tree_right = vec![0; n_cells];
-
-            // flush index_map because nodes and leaves have mixed order
-            index_map.drain();
-            index_map.insert(x_star.genotype.clone(), 0);
-
-            if x_star.history.is_none() {
-                q_leaf.push_back(&x_star);
-            } else {
-                q_node.push_back(&x_star);
-            }
-            let mut i_node = 0;
-            let mut i_leaf = n_cross;
-
-            // using q_node to process all genotypes for the counting
-            while let Some(z) = q_node.pop_front() {
-                let &i_z = index_map.get(&z.genotype).unwrap();
-
-                // fill in data
-                for (j, a) in z.genotype.upper().alleles().iter().enumerate() {
-                    tree_data[i_z][0][j] = match a {
-                        Allele::Z => 0,
-                        Allele::O => 1,
-                    };
-                }
-                for (j, a) in z.genotype.lower().alleles().iter().enumerate() {
-                    tree_data[i_z][0][j] = match a {
-                        Allele::Z => 0,
-                        Allele::O => 1,
-                    };
-                }
-
-                if let Some((wgx, wgy)) = &z.history {
-                    // QUESTION: how is it that a single & here
-                    // makes all the difference?
-                    tree_type[i_z] = "Node";
-
-                    let x = wgx.history.first().unwrap().as_ref();
-                    if !index_map.contains_key(&x.genotype) {
-                        if x.history.is_some() {
-                            index_map.insert(x.genotype.clone(), i_node);
-                            i_node += 1;
-                        } else {
-                            index_map.insert(x.genotype.clone(), i_leaf);
-                            i_leaf += 1;
-                        }
-                        q_node.push_back(x);
-                    }
-                    let &i_x = index_map.get(&x.genotype).unwrap();
-                    tree_left[i_z] = i_x;
-
-                    let y = wgy.history.first().unwrap().as_ref();
-                    if !index_map.contains_key(&y.genotype) {
-                        if y.history.is_some() {
-                            index_map.insert(y.genotype.clone(), i_node);
-                            i_node += 1;
-                        } else {
-                            index_map.insert(y.genotype.clone(), i_leaf);
-                            i_leaf += 1;
-                        }
-                        q_node.push_back(y);
-                    }
-                    let &i_y = index_map.get(&y.genotype).unwrap();
-                    tree_right[i_z] = i_y;
-                } else {
-                    tree_type[i_z] = "Leaf";
-                }
-            }
-
-            let objective = n_cross;
-
+            let sol = BaseSolution::min_cross_from_wgen(n_loci, &x_star);
             Ok(Some((
-                tree_data, tree_type, tree_left, tree_right, objective,
+                sol.tree_data,
+                sol.tree_type,
+                sol.tree_left,
+                sol.tree_right,
+                sol.objective,
             )))
         }
     }
@@ -185,22 +69,19 @@ where
     // Initialise priority queue
 
     let successors = |state: &State<Rc<WG>>| {
-        println!("Called the successors");
         successors_single_node_extensions(state)
     };
 
     let heuristic = |state: &State<Rc<WG>>| heuristic(n_loci, state);
 
     let success = |state: &State<Rc<WG>>| {
-        println!("Called the success test");
         match state.head.as_ref() {
             StateData::Start(ref v) => v.iter().any(|wx| wx.genotype == ideotype),
-            StateData::Next(x, tail) => x.genotype == ideotype,
+            StateData::Next(x, _tail) => x.genotype == ideotype,
         }
     };
 
-    let (v, obj) = astar(&state_0, successors, heuristic, success)?;
-    println!("obj: {}", obj);
+    let (v, _obj) = astar(&state_0, successors, heuristic, success)?;
     let x = v.last()?;
     clone_last_from_state(x.to_owned())
 }
@@ -221,12 +102,12 @@ fn successors_single_node_extensions(
     let first_j = gametes
         .iter()
         .enumerate()
-        .find(|(i_gamete, (i, gx))| i >= &state.most_recent_parent)
-        .map_or(0, |(i, igx)| i);
+        .find(|(_i_gamete, (i, _gx))| i >= &state.most_recent_parent)
+        .map_or(0, |(i, _igx)| i);
 
     let g_star = gametes
         .iter()
-        .filter(|(i, wg)| wg.gamete.alleles().iter().all(|a| *a == Allele::O))
+        .filter(|(_i, wg)| wg.gamete.alleles().iter().all(|a| *a == Allele::O))
         .next();
     if let Some((_, wg)) = g_star {
         let x_star = SingleChromGenotype::from_gametes(&wg.gamete, &wg.gamete);
@@ -250,26 +131,29 @@ fn successors_single_node_extensions(
             (new_state, 2)
         })
         .collect::<Vec<(State<Rc<WG>>, usize)>>();
-    println!("successors: {}", out.len());
     out
 }
 
-fn successors_zigzag_extensions(
-    state: &State<Rc<WG>>,
-) -> impl IntoIterator<Item = (State<Rc<WG>>, usize)> {
-    // for each genotype we want to identify the zigzags that are present and create new states
-    // that consolidate those zigzags.
-    // Question:
-    // - is there any symmetry breaking or dominance that can be exploited on these structures
-    // - given a maximal zigzag and its state after consolidation, are there subproblems that can
-    // be exploited or
-    // - True cost is in the number of odd zigzags
-    vec![]
+fn non_dominated_gametes(x: Rc<WG>) -> Vec<Rc<WGam<SingleChromGenotype, SingleChromGamete>>> {
+    let mut hashset: HashSet<SingleChromGamete> = HashSet::new();
+    let res = segments_from_range_genotype(&x.genotype, 0, x.genotype.get_n_loci(0));
+    res.iter()
+        .map(|c| c.g.clone())
+        //.collect::<HashSet<SingleChromGamete>>()
+        //.iter()
+        .map(|g| {
+            Rc::new({
+                let mut wg = WGam::new(g.clone());
+                wg.history.push(x.clone());
+                wg
+            })
+        })
+        .collect()
 }
 
 /// Computes a dp array of the min number of crossings to create a genotype x' that can produce a
 /// gamete up to index j from index i where i=0 or i-1 is homozygous 0.
-pub fn zigzag_costs_r(x: &SingleChromGenotype) -> Vec<usize> {
+fn _zigzag_costs_r(x: &SingleChromGenotype) -> Vec<usize> {
     let n_loci = x.get_n_loci(0);
     let column = |i| {
         (
@@ -321,7 +205,7 @@ pub fn zigzag_costs_r(x: &SingleChromGenotype) -> Vec<usize> {
     out
 }
 
-fn zigzag_switch_points(x: &SingleChromGenotype) -> Vec<bool> {
+fn _zigzag_switch_points(x: &SingleChromGenotype) -> Vec<bool> {
     let n_loci = x.get_n_loci(0);
     let mut out: Vec<bool> = vec![false; n_loci]; // n_loci 0 would cause n_loci - 1 to overflow
     let f = |c: bool, i: usize| x.get(c, i).unwrap();
@@ -362,9 +246,9 @@ fn zigzag_switch_points(x: &SingleChromGenotype) -> Vec<bool> {
     out
 }
 
-fn consodiate_zigzag(state: &State<Rc<WG>>, x: Rc<WG>, i: usize, j: usize) -> State<WG> {
+fn _consodiate_zigzag(state: &State<Rc<WG>>, x: Rc<WG>, i: usize, j: usize) -> State<WG> {
     // assert that i..j is a zigzag
-    let dp = zigzag_costs_r(&x.genotype);
+    let dp = _zigzag_costs_r(&x.genotype);
     assert!((i..j).all(|k| dp[k] > 0));
     // assert! zigzag can't be consolidated immediately
 
@@ -424,23 +308,6 @@ fn consodiate_zigzag(state: &State<Rc<WG>>, x: Rc<WG>, i: usize, j: usize) -> St
     }
     // extract genotype from the final segment
     unimplemented!()
-}
-
-fn non_dominated_gametes(x: Rc<WG>) -> Vec<Rc<WGam<SingleChromGenotype, SingleChromGamete>>> {
-    let mut hashset: HashSet<SingleChromGamete> = HashSet::new();
-    let res = segments_from_range_genotype(&x.genotype, 0, x.genotype.get_n_loci(0));
-    res.iter()
-        .map(|c| c.g.clone())
-        //.collect::<HashSet<SingleChromGamete>>()
-        //.iter()
-        .map(|g| {
-            Rc::new({
-                let mut wg = WGam::new(g.clone());
-                wg.history.push(x.clone());
-                wg
-            })
-        })
-        .collect()
 }
 
 impl<A: Clone, B> Clone for WGen<A, B> {
@@ -529,12 +396,6 @@ impl<A> std::hash::Hash for State<A> {
         //state.write_u8(0)
     }
 }
-
-// impl<A: PartialEq> PartialEq for State<A> {
-//     fn eq(&self, other: &Self) -> bool {
-//         self.head == other.head
-//     }
-// }
 
 impl PartialEq for State<Rc<WG>> {
     fn eq(&self, other: &Self) -> bool {
@@ -633,7 +494,7 @@ fn heuristic(
     n_loci: usize,
     state: &State<Rc<WGen<SingleChromGenotype, SingleChromGamete>>>,
 ) -> usize {
-    let n_segments = greedy_base::min_covering_segments::<
+    let n_segments = base_min_generations_segment::min_covering_segments::<
         SingleChromGenotype,
         SingleChromGamete,
         SegmentMC<Rc<WGam<SingleChromGenotype, SingleChromGamete>>>,
@@ -819,6 +680,7 @@ fn segment_from_range_gamete(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::extra::analysis;
 
     #[test]
     fn breeding_program_test() {
@@ -829,14 +691,14 @@ mod tests {
         );
         assert_ne!(None, res);
         let res_val = Rc::new(res.unwrap()).extract_first();
-        assert_eq!(2, generations(res_val.as_ref()));
-        assert_eq!(2, crossings(res_val.as_ref()));
+        assert_eq!(2, analysis::generations(res_val.as_ref()));
+        assert_eq!(2, analysis::crossings(res_val.as_ref()));
     }
 
     #[test]
     fn zigzag_cost_test() {
         assert_eq!(
-            zigzag_costs_r(&SingleChromGenotype::from_str(
+            _zigzag_costs_r(&SingleChromGenotype::from_str(
                 "0010110010001110010",
                 "0101011100110011010"
             )),

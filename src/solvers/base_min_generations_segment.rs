@@ -1,5 +1,57 @@
 use crate::abstract_plants::*;
+use crate::plants::bit_array::*;
+use crate::solution::BaseSolution;
 use std::rc::Rc;
+use pyo3::prelude::*;
+
+/// Runs a breeding program given `n_loci` and `pop_0` where `pop_0` is a population of single
+/// chromosome diploid genotypes with `n_loci` loci.
+#[pyo3::pyfunction]
+pub fn breeding_program_python(
+    n_loci: usize,
+    pop_0: Vec<Vec<Vec<bool>>>,
+) -> PyResult<
+    Option<(
+        Vec<Vec<Vec<i32>>>,
+        Vec<&'static str>,
+        Vec<usize>,
+        Vec<usize>,
+        usize,
+    )>,
+> {
+    let ideotype = SingleChromGenotype::ideotype(n_loci);
+    let pop_0 = pop_0
+        .iter()
+        .map(|x| {
+            SingleChromGenotype::new(
+                x[0].iter()
+                    .zip(x[1].iter())
+                    .map(|(a, b)| (*a, *b))
+                    .collect(),
+            )
+        })
+        .collect();
+    let res = breeding_program::<
+        SingleChromGenotype,
+        SingleChromGamete,
+        CrosspointBitVec,
+        SegmentBitVec,
+        >(n_loci, pop_0, ideotype);
+    match res {
+        None => Ok(None),
+        Some(x_star) => {
+            let sol = BaseSolution::min_gen_from_wgen(n_loci, &x_star);
+            Ok(Some((
+                sol.tree_data,
+                sol.tree_type,
+                sol.tree_left,
+                sol.tree_right,
+                sol.objective,
+            )))
+        }
+    }
+}
+
 
 /// Constraints:
 /// - has to be able to produce segments

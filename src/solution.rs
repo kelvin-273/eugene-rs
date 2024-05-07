@@ -44,7 +44,6 @@ fn wgen_to_base_sol(
     x_star: &WGen<SingleChromGenotype, SingleChromGamete>,
     obj: Objective,
 ) -> BaseSolution {
-    println!("x_star: {:#?}", x_star);
     // get the number of crossings and cells required
     let mut q_node = VecDeque::new();
     let mut q_leaf = VecDeque::new();
@@ -92,9 +91,6 @@ fn wgen_to_base_sol(
     }
     index_map.drain();
 
-    //println!("n_cells: {:#?}", n_cells);
-    //println!("n_cross: {:#?}", n_cross);
-
     // initialise arrays
     let mut tree_data = vec![vec![vec![0; n_loci]; 2]; n_cells];
     let mut tree_type = vec!["Null"; n_cells];
@@ -115,10 +111,7 @@ fn wgen_to_base_sol(
 
     // using q_node to process all genotypes for the counting
     while let Some(z) = q_node.pop_front() {
-        //println!("z: {:#?}", z.genotype);
-        //println!("z: {:#?}", z);
         let &i_z = index_map.get(&z.genotype).unwrap();
-        //println!("i_z: {:#?}", i_z);
 
         // fill in data
         for (j, a) in z.genotype.upper().alleles().iter().enumerate() {
@@ -138,7 +131,6 @@ fn wgen_to_base_sol(
             tree_type[i_z] = "Node";
 
             let x = wgx.history.first().unwrap().as_ref();
-            //println!("x: {:#?}", x.genotype);
             if !index_map.contains_key(&x.genotype) {
                 if x.history.is_some() {
                     i_node += 1;
@@ -153,7 +145,6 @@ fn wgen_to_base_sol(
             tree_left[i_z] = i_x;
 
             let y = wgy.history.first().unwrap().as_ref();
-            //println!("y: {:#?}", y.genotype);
             if !index_map.contains_key(&y.genotype) {
                 if y.history.is_some() {
                     i_node += 1;
@@ -171,9 +162,6 @@ fn wgen_to_base_sol(
         }
     }
 
-    println!("tree_type:\t{:?}", tree_type);
-    println!("tree_left:\t{:?}", tree_left);
-    println!("tree_right:\t{:?}", tree_right);
     // compute generations if required
     let objective = match obj {
         Objective::Crossings => n_cross,
@@ -186,7 +174,6 @@ fn wgen_to_base_sol(
                 generations_dp: &mut Vec<i32>,
                 i: usize,
             ) -> i32 {
-                //println!("i: {:#?}", i);
                 if generations_dp[i] < 0 {
                     generations_dp[i] = match tree_type[i] {
                         "Leaf" => 0,

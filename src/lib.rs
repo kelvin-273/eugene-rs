@@ -66,20 +66,20 @@ fn eugene_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     min_gen.add_submodule(&mg_segment)?;
 
     let mc_astar = PyModule::new_bound(m.py(), "astar")?;
-    let mc_mip = PyModule::new_bound(m.py(), "mip")?;
+    //let mc_mip = PyModule::new_bound(m.py(), "mip")?;
 
     mc_astar.add_function(wrap_pyfunction!(
         solvers::base_min_crossings_astar::breeding_program_python,
         &mc_astar
     )?)?;
 
-    mc_mip.add_function(wrap_pyfunction!(
-        solvers::base_min_crossings_mip::breeding_program_python_mip,
-        &mc_mip
-    )?)?;
+    //mc_mip.add_function(wrap_pyfunction!(
+    //    solvers::base_min_crossings_mip::breeding_program_python_mip,
+    //    &mc_mip
+    //)?)?;
 
     min_cross.add_submodule(&mc_astar)?;
-    min_cross.add_submodule(&mc_mip)?;
+    //min_cross.add_submodule(&mc_mip)?;
 
     m.add_submodule(&min_gen)?;
     m.add_submodule(&min_cross)?;

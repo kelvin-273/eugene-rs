@@ -14,7 +14,7 @@ pub mod greedy_multichrom_ti;
 /// Finds the min crossings for base problem using A*
 pub mod base_min_crossings_astar;
 /// Finds the min crossings for base problem using MIP
-pub mod base_min_crossings_mip;
+//pub mod base_min_crossings_mip;
 /// Finds the min crossings for base problem using zigzag decomposition
 pub mod base_min_crossings_zigzag;
 /// Finds the min crossings for base problem using LNS approaches

@@ -17,7 +17,7 @@ bit-vec = "*"
 svg = "*"
 rand = "*"
 num = "*"
-grb = "*"
+#grb = "*"
 pathfinding = "*"
-itertools = "0.11.0"
-pyo3 = { version = "0.21.2", features = ["extension-module"] }
+itertools = "*"
+pyo3 = { version = "*", features = ["extension-module"] }

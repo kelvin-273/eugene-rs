@@ -9,22 +9,12 @@ edition = "2021"
 name = "eugene_rs"
 version = "0.1.0"
 edition = "2021"
-features = ["extension-module"]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["cdylib"]
 
 [dependencies]
-bit-vec = "*"
-svg = "*"
-rand = "*"
-num = "*"
-#grb = "*"
-pathfinding = "*"
-#itertools = "*"
-#pyo3 = { version = "*", features = ["extension-module"] }
-
-[dependencies.pyo3]
-version = "0.21.1"
-features = ["extension-module", "abi3-py39"]
-
-[features]
-extension-module = ["pyo3/extension-module"]
+pyo3 = { version = "0.21.2", features = ["extension-module"] }
+pathfinding = "4.9.1"
+svg = "0.17.0"
+rand = "0.8.5"
+bit-vec = "0.6.3"
+grb = "2.0.0"

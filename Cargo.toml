@@ -19,5 +19,12 @@ rand = "*"
 num = "*"
 #grb = "*"
 pathfinding = "*"
-itertools = "*"
-pyo3 = { version = "*", features = ["extension-module"] }
+#itertools = "*"
+#pyo3 = { version = "*", features = ["extension-module"] }
+
+[dependencies.pyo3]
+version = "0.21.1"
+features = ["extension-module", "abi3-py39"]
+
+[features]
+extension-module = ["pyo3/extension-module"]

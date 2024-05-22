@@ -43,12 +43,18 @@ fn eugene_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     let min_cross = PyModule::new_bound(m.py(), "min_cross")?;
 
     let mg_naive1 = PyModule::new_bound(m.py(), "naive1")?;
+    let mg_naive12 = PyModule::new_bound(m.py(), "naive12")?;
     let mg_naive2 = PyModule::new_bound(m.py(), "naive2")?;
     let mg_segment = PyModule::new_bound(m.py(), "segment")?;
 
     mg_naive1.add_function(wrap_pyfunction!(
         solvers::base_min_generations_enumerator::breeding_program_python,
         &mg_naive1
+    )?)?;
+
+    mg_naive12.add_function(wrap_pyfunction!(
+        solvers::base_min_generations_enumerator2::breeding_program_python,
+        &mg_naive12
     )?)?;
 
     mg_naive2.add_function(wrap_pyfunction!(
@@ -62,6 +68,7 @@ fn eugene_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
 
     min_gen.add_submodule(&mg_naive1)?;
+    min_gen.add_submodule(&mg_naive12)?;
     min_gen.add_submodule(&mg_naive2)?;
     min_gen.add_submodule(&mg_segment)?;
 

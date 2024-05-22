@@ -137,6 +137,15 @@ impl<A, B> WGen<A, B> {
     }
 }
 
+impl<A, B> WGenS<A, B> {
+    pub fn new(genotype: A) -> Self {
+        Self { 
+            genotype,
+            history: None,
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Allele {
     Z,

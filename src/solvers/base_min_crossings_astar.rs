@@ -69,6 +69,7 @@ where
     // Initialise priority queue
 
     let successors = |state: &State<Rc<WG>>| {
+        println!("calling successors");
         successors_single_node_extensions(state)
     };
 
@@ -135,7 +136,7 @@ fn successors_single_node_extensions(
 }
 
 fn non_dominated_gametes(x: Rc<WG>) -> Vec<Rc<WGam<SingleChromGenotype, SingleChromGamete>>> {
-    let _hashset: HashSet<SingleChromGamete> = HashSet::new();
+    //let _hashset: HashSet<SingleChromGamete> = HashSet::new();
     let res = segments_from_range_genotype(&x.genotype, 0, x.genotype.get_n_loci(0));
     res.iter()
         .map(|c| c.g.clone())
@@ -150,166 +151,6 @@ fn non_dominated_gametes(x: Rc<WG>) -> Vec<Rc<WGam<SingleChromGenotype, SingleCh
         })
         .collect()
 }
-
-/// Computes a dp array of the min number of crossings to create a genotype x' that can produce a
-/// gamete up to index j from index i where i=0 or i-1 is homozygous 0.
-fn _zigzag_costs_r(x: &SingleChromGenotype) -> Vec<usize> {
-    let n_loci = x.get_n_loci(0);
-    let column = |i| {
-        (
-            x.get(false, i).unwrap() as u8,
-            x.get(true, i).unwrap() as u8,
-        )
-    };
-    let mut out: Vec<usize> = vec![0; n_loci];
-
-    let mut i = 0;
-    while i < n_loci {
-        // iterate over all contiguous (0, 0) columns
-        while i < n_loci && column(i) == (0, 0) {
-            out[i] = 0;
-            i += 1;
-        }
-        if i == n_loci {
-            break;
-        }
-
-        // iterate over all contiguous (1, 1) columns
-        out[i] = 1;
-        while i < n_loci && column(i) == (1, 1) {
-            out[i] = 1;
-            i += 1;
-        }
-        if i < n_loci && column(i) != (0, 0) {
-            out[i] = 1;
-        }
-
-        // Now we are going to launch from a heterozygous loci into the rest of a zigzag.
-        while i < n_loci && column(i) != (0, 0) {
-            let mut j = i + 1;
-            while j < n_loci && (column(j) == column(i) || column(j) == (1, 1)) {
-                out[j] = out[i];
-                j += 1;
-            }
-            if j == n_loci || column(j) == (0, 0) {
-                i = j;
-                break;
-            }
-            out[j] = out[i] + 1;
-            i = j;
-        }
-    }
-    for v in out.iter_mut() {
-        *v = (*v + 1) >> 1;
-    }
-    out
-}
-
-fn _zigzag_switch_points(x: &SingleChromGenotype) -> Vec<bool> {
-    let n_loci = x.get_n_loci(0);
-    let mut out: Vec<bool> = vec![false; n_loci]; // n_loci 0 would cause n_loci - 1 to overflow
-    let _f = |c: bool, i: usize| x.get(c, i).unwrap();
-    let column = |i: usize| {
-        (
-            x.get(false, i).unwrap() as u8,
-            x.get(true, i).unwrap() as u8,
-        )
-    };
-
-    let mut i = 0;
-    while i < n_loci {
-        // iterate over all contiguous (0, 0) columns
-        while i < n_loci && column(i) == (0, 0) {
-            i += 1;
-        }
-
-        // iterate over all contiguous (1, 1) columns
-        while i < n_loci && column(i) == (1, 1) {
-            i += 1;
-        }
-
-        // Now we are going to launch from a heterozygous loci into the rest of a zigzag.
-        while i < n_loci && column(i) != (0, 0) {
-            let mut j = i + 1;
-            while j < n_loci && (column(j) == column(i) || column(j) == (1, 1)) {
-                j += 1;
-            }
-            if j == n_loci || column(j) == (0, 0) {
-                i = j;
-                break;
-            } else {
-                out[j] = true;
-            }
-            i = j;
-        }
-    }
-    out
-}
-
-fn _consodiate_zigzag(_state: &State<Rc<WG>>, x: Rc<WG>, i: usize, j: usize) -> State<WG> {
-    // assert that i..j is a zigzag
-    let dp = _zigzag_costs_r(&x.genotype);
-    assert!((i..j).all(|k| dp[k] > 0));
-    // assert! zigzag can't be consolidated immediately
-
-    // extract segments and assume that segments are minimal
-    // all crossings in the first phase have the same start chromosome
-    type Val = Rc<WGam<SingleChromGenotype, SingleChromGamete>>;
-    let mut hash_map: HashMap<SingleChromGamete, Val> = HashMap::new();
-
-    let segments_s0: Vec<SegmentMC<Val>> = segments_from_range_genotype(&x.genotype, i, j)
-        .iter()
-        .map(|c| SegmentMC {
-            s: c.s,
-            e: c.e,
-            g: hash_map
-                .entry(c.g.clone())
-                .or_insert_with(|| {
-                    Rc::new({
-                        let mut wg = WGam::new(c.g.clone());
-                        wg.history.push(x.clone());
-                        wg
-                    })
-                })
-                .clone(),
-        })
-        .collect();
-    // Extract min covering subset
-    // Join segments
-    assert!({
-        // all adjacent pairs of segments are joinable
-        (0..segments_s0.len() - 1).all(|i| {
-            let SegmentMC {
-                s: s_x,
-                e: e_x,
-                g: _,
-            } = segments_s0[i];
-            let SegmentMC {
-                s: s_y,
-                e: e_y,
-                g: _,
-            } = segments_s0[i + 1];
-            s_x < s_y && s_y <= e_x && e_x < e_y
-        })
-    });
-    fn join_segments(segments_s0: &Vec<SegmentMC<Val>>, i: usize, j: usize) -> SegmentMC<Val> {
-        // The base case can't return the raw segments as they are owned by the vector.
-        // Although, we could clone the base segments.
-        assert!(segments_s0.len() > 0);
-        assert!(i < j && j < segments_s0.len());
-        if j == i + 1 {
-            return segments_s0[i].clone();
-        } else {
-            let mid = (i + j) >> 1;
-            let res1 = join_segments(segments_s0, i, mid);
-            let res2 = join_segments(segments_s0, mid, j);
-            SegmentMC::<Val>::join(&res1, &res2)
-        }
-    }
-    // extract genotype from the final segment
-    unimplemented!()
-}
-
 impl<A: Clone, B> Clone for WGen<A, B> {
     fn clone(&self) -> Self {
         WGen {
@@ -503,7 +344,9 @@ fn heuristic(
         &state.iter().map(|wgx| wgx.genotype.clone()).collect(),
     )
     .len();
-    ((n_segments + 1) >> 1).max((n_segments as f32).log2().ceil() as usize)
+    let res = (n_segments + 1) >> 1;
+    println!("res: {:#?}", res);
+    res
 }
 
 fn clone_last_from_state<A: Clone, B>(state: State<Rc<WGen<A, B>>>) -> Option<WGen<A, B>> {
@@ -676,6 +519,166 @@ fn segment_from_range_gamete(
     // TODO: resize out to exact capacity //
     out
 }
+
+/// Computes a dp array of the min number of crossings to create a genotype x' that can produce a
+/// gamete up to index j from index i where i=0 or i-1 is homozygous 0.
+fn _zigzag_costs_r(x: &SingleChromGenotype) -> Vec<usize> {
+    let n_loci = x.get_n_loci(0);
+    let column = |i| {
+        (
+            x.get(false, i).unwrap() as u8,
+            x.get(true, i).unwrap() as u8,
+        )
+    };
+    let mut out: Vec<usize> = vec![0; n_loci];
+
+    let mut i = 0;
+    while i < n_loci {
+        // iterate over all contiguous (0, 0) columns
+        while i < n_loci && column(i) == (0, 0) {
+            out[i] = 0;
+            i += 1;
+        }
+        if i == n_loci {
+            break;
+        }
+
+        // iterate over all contiguous (1, 1) columns
+        out[i] = 1;
+        while i < n_loci && column(i) == (1, 1) {
+            out[i] = 1;
+            i += 1;
+        }
+        if i < n_loci && column(i) != (0, 0) {
+            out[i] = 1;
+        }
+
+        // Now we are going to launch from a heterozygous loci into the rest of a zigzag.
+        while i < n_loci && column(i) != (0, 0) {
+            let mut j = i + 1;
+            while j < n_loci && (column(j) == column(i) || column(j) == (1, 1)) {
+                out[j] = out[i];
+                j += 1;
+            }
+            if j == n_loci || column(j) == (0, 0) {
+                i = j;
+                break;
+            }
+            out[j] = out[i] + 1;
+            i = j;
+        }
+    }
+    for v in out.iter_mut() {
+        *v = (*v + 1) >> 1;
+    }
+    out
+}
+
+fn _zigzag_switch_points(x: &SingleChromGenotype) -> Vec<bool> {
+    let n_loci = x.get_n_loci(0);
+    let mut out: Vec<bool> = vec![false; n_loci]; // n_loci 0 would cause n_loci - 1 to overflow
+    let _f = |c: bool, i: usize| x.get(c, i).unwrap();
+    let column = |i: usize| {
+        (
+            x.get(false, i).unwrap() as u8,
+            x.get(true, i).unwrap() as u8,
+        )
+    };
+
+    let mut i = 0;
+    while i < n_loci {
+        // iterate over all contiguous (0, 0) columns
+        while i < n_loci && column(i) == (0, 0) {
+            i += 1;
+        }
+
+        // iterate over all contiguous (1, 1) columns
+        while i < n_loci && column(i) == (1, 1) {
+            i += 1;
+        }
+
+        // Now we are going to launch from a heterozygous loci into the rest of a zigzag.
+        while i < n_loci && column(i) != (0, 0) {
+            let mut j = i + 1;
+            while j < n_loci && (column(j) == column(i) || column(j) == (1, 1)) {
+                j += 1;
+            }
+            if j == n_loci || column(j) == (0, 0) {
+                i = j;
+                break;
+            } else {
+                out[j] = true;
+            }
+            i = j;
+        }
+    }
+    out
+}
+
+fn _consodiate_zigzag(_state: &State<Rc<WG>>, x: Rc<WG>, i: usize, j: usize) -> State<WG> {
+    // assert that i..j is a zigzag
+    let dp = _zigzag_costs_r(&x.genotype);
+    assert!((i..j).all(|k| dp[k] > 0));
+    // assert! zigzag can't be consolidated immediately
+
+    // extract segments and assume that segments are minimal
+    // all crossings in the first phase have the same start chromosome
+    type Val = Rc<WGam<SingleChromGenotype, SingleChromGamete>>;
+    let mut hash_map: HashMap<SingleChromGamete, Val> = HashMap::new();
+
+    let segments_s0: Vec<SegmentMC<Val>> = segments_from_range_genotype(&x.genotype, i, j)
+        .iter()
+        .map(|c| SegmentMC {
+            s: c.s,
+            e: c.e,
+            g: hash_map
+                .entry(c.g.clone())
+                .or_insert_with(|| {
+                    Rc::new({
+                        let mut wg = WGam::new(c.g.clone());
+                        wg.history.push(x.clone());
+                        wg
+                    })
+                })
+                .clone(),
+        })
+        .collect();
+    // Extract min covering subset
+    // Join segments
+    assert!({
+        // all adjacent pairs of segments are joinable
+        (0..segments_s0.len() - 1).all(|i| {
+            let SegmentMC {
+                s: s_x,
+                e: e_x,
+                g: _,
+            } = segments_s0[i];
+            let SegmentMC {
+                s: s_y,
+                e: e_y,
+                g: _,
+            } = segments_s0[i + 1];
+            s_x < s_y && s_y <= e_x && e_x < e_y
+        })
+    });
+    fn join_segments(segments_s0: &Vec<SegmentMC<Val>>, i: usize, j: usize) -> SegmentMC<Val> {
+        // The base case can't return the raw segments as they are owned by the vector.
+        // Although, we could clone the base segments.
+        assert!(segments_s0.len() > 0);
+        assert!(i < j && j < segments_s0.len());
+        if j == i + 1 {
+            return segments_s0[i].clone();
+        } else {
+            let mid = (i + j) >> 1;
+            let res1 = join_segments(segments_s0, i, mid);
+            let res2 = join_segments(segments_s0, mid, j);
+            SegmentMC::<Val>::join(&res1, &res2)
+        }
+    }
+    // extract genotype from the final segment
+    unimplemented!()
+}
+
 
 #[cfg(test)]
 mod tests {

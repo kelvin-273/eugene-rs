@@ -20,9 +20,6 @@ pub fn breeding_program_python(
         usize,
     )>,
 > {
-    println!("Got passed 0th phase");
-    use std::io::Write;
-    std::io::stdout().lock().flush();
     let pop_0 = pop_0
         .iter()
         .map(|x| {
@@ -34,7 +31,6 @@ pub fn breeding_program_python(
             )
         })
         .collect();
-    println!("Got passed 0th phase");
     let res = breeding_program(n_loci, &pop_0);
     match res {
         None => Ok(None),
@@ -74,7 +70,6 @@ pub fn breeding_program(n_loci: usize, pop_0: &Vec<SingleChromGenotype>) -> Opti
             }
         }
     }
-    println!("Got passed first phase");
     let ideotype_gamete = SingleChromGamete::ideotype(n_loci);
     while !h.contains_key(&ideotype_gamete) {
         let contained_gametes: Vec<SingleChromGamete> = h.keys().map(|k| k.clone()).collect();
@@ -94,16 +89,11 @@ pub fn breeding_program(n_loci: usize, pop_0: &Vec<SingleChromGenotype>) -> Opti
                         h.insert(gz, wgz);
                     }
                 }
-                println!("Got passed third for");
             }
-            println!("Got passed second for");
         }
-        println!("Got passed first for");
     }
     let mut wx_star = WGenS::new(ideotype);
     let wgz = h.get(&ideotype_gamete)?;
     wx_star.history = Some((wgz.clone(), wgz.clone()));
-    println!("About to do conversion from WGenS to BaseSolution");
-    println!("wx_star: {:#?}", wx_star);
     Some(BaseSolution::min_gen_from_wgens(n_loci, &wx_star))
 }

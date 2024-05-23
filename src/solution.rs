@@ -60,7 +60,6 @@ fn wgen_to_base_sol(
 ) -> BaseSolution {
     // get the number of crossings and cells required
     let mut q_node = VecDeque::new();
-    let mut q_leaf = VecDeque::new();
     let mut n_cells = 1;
     let mut n_cross = 0;
 
@@ -115,11 +114,7 @@ fn wgen_to_base_sol(
     index_map.drain();
     index_map.insert(x_star.genotype.clone(), 0);
 
-    if x_star.history.is_none() {
-        q_leaf.push_back(&x_star);
-    } else {
-        q_node.push_back(&x_star);
-    }
+    q_node.push_back(&x_star);
     let mut i_node = 0;
     let mut i_leaf = n_cross;
 
@@ -156,7 +151,7 @@ fn wgen_to_base_sol(
                 q_node.push_back(x);
             }
             let &i_x = index_map.get(&x.genotype).unwrap();
-            tree_left[i_z] = i_x;
+            tree_left[i_z] = i_x + 1;
 
             let y = wgy.history.first().unwrap().as_ref();
             if !index_map.contains_key(&y.genotype) {
@@ -170,7 +165,7 @@ fn wgen_to_base_sol(
                 q_node.push_back(y);
             }
             let &i_y = index_map.get(&y.genotype).unwrap();
-            tree_right[i_z] = i_y;
+            tree_right[i_z] = i_y + 1;
         } else {
             tree_type[i_z] = "Leaf";
         }
@@ -233,7 +228,6 @@ fn wgens_to_base_sol(
 ) -> BaseSolution {
     // get the number of crossings and cells required
     let mut q_node = VecDeque::new();
-    let mut q_leaf = VecDeque::new();
     let mut n_cells = 1;
     let mut n_cross = 0;
 
@@ -250,14 +244,15 @@ fn wgens_to_base_sol(
         n_cross += 1;
     }
 
-    print!("About to enter while loop the first time");
-
     // using q_node to process all genotypes for the counting
     while let Some(z) = q_node.pop_front() {
         if let Some((wgx, wgy)) = z.history.as_ref() {
             // QUESTION: how is it that a single & here
             // makes all the difference?
-            let x = wgx.history.as_ref().expect("gamete wgx should have a history");
+            let x = wgx
+                .history
+                .as_ref()
+                .expect("gamete wgx should have a history");
             if !index_map.contains_key(&x.genotype) {
                 index_map.insert(x.genotype.clone(), n_cells);
                 n_cells += 1;
@@ -267,7 +262,10 @@ fn wgens_to_base_sol(
                 }
             }
 
-            let y = wgy.history.as_ref().expect("gamete wgy should have a history");
+            let y = wgy
+                .history
+                .as_ref()
+                .expect("gamete wgy should have a history");
             if !index_map.contains_key(&y.genotype) {
                 index_map.insert(y.genotype.clone(), n_cells);
                 n_cells += 1;
@@ -290,19 +288,15 @@ fn wgens_to_base_sol(
     index_map.drain();
     index_map.insert(x_star.genotype.clone(), 0);
 
-    if x_star.history.is_none() {
-        q_leaf.push_back(&x_star);
-    } else {
-        q_node.push_back(&x_star);
-    }
+    q_node.push_back(&x_star);
     let mut i_node = 0;
     let mut i_leaf = n_cross;
 
-    print!("initialised and now processing the queue");
-
     // using q_node to process all genotypes for the counting
     while let Some(z) = q_node.pop_front() {
-        let &i_z = index_map.get(&z.genotype).expect("z.genotype is not in the index_map");
+        let &i_z = index_map
+            .get(&z.genotype)
+            .expect("z.genotype is not in the index_map");
 
         // fill in data
         for (j, a) in z.genotype.upper().alleles().iter().enumerate() {
@@ -321,7 +315,10 @@ fn wgens_to_base_sol(
         if let Some((wgx, wgy)) = z.history.as_ref() {
             tree_type[i_z] = "Node";
 
-            let x = wgx.history.as_ref().expect("wgx should have a history (in the queue)");
+            let x = wgx
+                .history
+                .as_ref()
+                .expect("wgx should have a history (in the queue)");
             if !index_map.contains_key(&x.genotype) {
                 if x.history.is_some() {
                     i_node += 1;
@@ -332,10 +329,15 @@ fn wgens_to_base_sol(
                 }
                 q_node.push_back(x);
             }
-            let &i_x = index_map.get(&x.genotype).expect("x.genotype should be in the index_map");
-            tree_left[i_z] = i_x;
+            let &i_x = index_map
+                .get(&x.genotype)
+                .expect("x.genotype should be in the index_map");
+            tree_left[i_z] = i_x + 1;
 
-            let y = wgy.history.as_ref().expect("wgy should have a history (in the queue)");
+            let y = wgy
+                .history
+                .as_ref()
+                .expect("wgy should have a history (in the queue)");
             if !index_map.contains_key(&y.genotype) {
                 if y.history.is_some() {
                     i_node += 1;
@@ -346,8 +348,10 @@ fn wgens_to_base_sol(
                 }
                 q_node.push_back(y);
             }
-            let &i_y = index_map.get(&y.genotype).expect("y.genotype should be in the index_map");
-            tree_right[i_z] = i_y;
+            let &i_y = index_map
+                .get(&y.genotype)
+                .expect("y.genotype should be in the index_map");
+            tree_right[i_z] = i_y + 1;
         } else {
             tree_type[i_z] = "Leaf";
         }
@@ -400,5 +404,92 @@ fn wgens_to_base_sol(
         tree_left,
         tree_right,
         objective,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::plants::bit_array::*;
+    use std::rc::Rc;
+
+    #[test]
+    fn wgens_to_base_sol_ideotype_test() {
+        let x = SingleChromGenotype::ideotype(4);
+        let wx: WGenS<SingleChromGenotype, SingleChromGamete> = WGenS::new(x);
+        let sol = BaseSolution::min_cross_from_wgens(4, &wx);
+        assert_eq!(0, sol.objective);
+        assert_eq!(vec!["Leaf"], sol.tree_type);
+        assert_eq!(vec![0], sol.tree_left);
+        assert_eq!(vec![0], sol.tree_right);
+    }
+
+    #[test]
+    fn wgens_to_base_sol_pair_test() {
+        let xl = SingleChromGenotype::from_str("10", "10");
+        let xr = SingleChromGenotype::from_str("01", "01");
+
+        let wxl = Rc::new(WGenS::new(xl));
+        let wxr = Rc::new(WGenS::new(xr));
+
+        let gl = SingleChromGamete::from_str("10");
+        let gr = SingleChromGamete::from_str("01");
+
+        let wgl = Rc::new(WGamS {
+            gamete: gl,
+            history: Some(wxl),
+        });
+        let wgr = Rc::new(WGamS {
+            gamete: gr,
+            history: Some(wxr),
+        });
+
+        let wxz = Rc::new(WGenS {
+            genotype: SingleChromGenotype::from_gametes(&wgl.gamete, &wgr.gamete),
+            history: Some((wgl, wgr)),
+        });
+
+        let wgz = Rc::new(WGamS {
+            gamete: SingleChromGamete::from_str("11"),
+            history: Some(wxz)
+        });
+
+        let wx_star = WGenS {
+            genotype: SingleChromGenotype::from_gametes(&wgz.gamete, &wgz.gamete),
+            history: Some((wgz.clone(), wgz)),
+        };
+
+        let sol_c = BaseSolution::min_cross_from_wgens(2, &wx_star);
+        assert_eq!(2, sol_c.objective);
+        assert_eq!(vec!["Node", "Node", "Leaf", "Leaf"], sol_c.tree_type);
+        assert_eq!(vec![2, 3, 0, 0], sol_c.tree_left);
+        assert_eq!(vec![2, 4, 0, 0], sol_c.tree_right);
+
+        let sol_g = BaseSolution::min_gen_from_wgens(2, &wx_star);
+        assert_eq!(2, sol_g.objective);
+        assert_eq!(vec!["Node", "Node", "Leaf", "Leaf"], sol_g.tree_type);
+    }
+
+    #[test]
+    fn wgens_to_base_sol_3loci_test() {
+
+        let x = SingleChromGenotype::from_str("011", "111");
+        let z = SingleChromGenotype::from_str("111", "111");
+        let g = SingleChromGamete::from_str("111");
+        let wx = Rc::new(WGenS::new(x));
+        let wg = Rc::new(WGamS { gamete: g, history: Some(wx) });
+        let wz = Rc::new(WGenS { genotype: z, history: Some((wg.clone(), wg)) });
+
+        let sol_c = BaseSolution::min_cross_from_wgens(3, &wz);
+        assert_eq!(1, sol_c.objective);
+        assert_eq!(vec!["Node", "Leaf"], sol_c.tree_type);
+        assert_eq!(vec![2, 0], sol_c.tree_left);
+        assert_eq!(vec![2, 0], sol_c.tree_right);
+
+        let sol_c = BaseSolution::min_gen_from_wgens(3, &wz);
+        assert_eq!(1, sol_c.objective);
+        assert_eq!(vec!["Node", "Leaf"], sol_c.tree_type);
+        assert_eq!(vec![2, 0], sol_c.tree_left);
+        assert_eq!(vec![2, 0], sol_c.tree_right);
     }
 }

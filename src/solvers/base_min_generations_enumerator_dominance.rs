@@ -318,6 +318,7 @@ mod tests {
         }
     }
 
+    #[derive(Debug, PartialEq, Eq)]
     struct Pair {
         a: i32,
         b: i32,
@@ -341,6 +342,60 @@ mod tests {
 
     #[test]
     fn filter_non_dominating_pair_test() {
+
+        let pairs = vec![
+            Pair::new(2, 3),
+            Pair::new(4, 5),
+            Pair::new(0, 9),
+            Pair::new(5, 1),
+            Pair::new(5, 0),
+            Pair::new(2, 5),
+            Pair::new(9, 7),
+            Pair::new(5, 4),
+            Pair::new(0, 8),
+            Pair::new(5, 5),
+            Pair::new(6, 2),
+            Pair::new(4, 4),
+            Pair::new(4, 3),
+            Pair::new(2, 2),
+            Pair::new(9, 1),
+            Pair::new(8, 8),
+            Pair::new(4, 3),
+            Pair::new(2, 1),
+            Pair::new(0, 4),
+        ];
+        assert_eq!(vec![
+            Pair::new(0, 9),
+            Pair::new(9, 7),
+            Pair::new(8, 8),
+        ], filter_non_dominating::<Pair, Pair>(pairs));
+
+        let pairs = vec![
+            Pair::new(2, 3),
+            Pair::new(4, 5),
+            Pair::new(0, 9),
+            Pair::new(5, 1),
+            Pair::new(5, 0),
+            Pair::new(2, 5),
+            Pair::new(5, 4),
+            Pair::new(0, 8),
+            Pair::new(5, 5),
+            Pair::new(6, 2),
+            Pair::new(4, 4),
+            Pair::new(4, 3),
+            Pair::new(2, 2),
+            Pair::new(9, 1),
+            Pair::new(4, 3),
+            Pair::new(2, 1),
+            Pair::new(0, 4),
+        ];
+        assert_eq!(vec![
+            Pair::new(0, 9),
+            Pair::new(5, 5),
+            Pair::new(6, 2),
+            Pair::new(9, 1),
+        ], filter_non_dominating::<Pair, Pair>(pairs));
+
         for _ in 0..100 {
             let n: usize = random::<usize>() % 100 + 1;
             let v: Vec<Pair> = (0..n).map(|_| Pair::random()).collect();

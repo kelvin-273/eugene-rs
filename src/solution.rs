@@ -410,7 +410,7 @@ fn wgens_to_base_sol(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::plants::bit_array::*;
+    
     use std::rc::Rc;
 
     #[test]

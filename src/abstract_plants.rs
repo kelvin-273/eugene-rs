@@ -46,7 +46,7 @@ pub struct WGen<A, B> {
 }
 
 impl<A: Genotype<B>, B: Gamete<A>> WGen<A, B> {
-    fn from_gametes(gx: Rc<WGam<A, B>>, gy: Rc<WGam<A, B>>) -> WGen<A, B> {
+    pub fn from_gametes(gx: Rc<WGam<A, B>>, gy: Rc<WGam<A, B>>) -> WGen<A, B> {
         WGen {
             genotype: Genotype::from_gametes(&gx.gamete, &gy.gamete),
             history: Some((gx, gy)),

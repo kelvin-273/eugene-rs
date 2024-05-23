@@ -5,6 +5,7 @@
 
 /// Solves by breeding all possible progeny in each generation
 pub mod base_min_generations_enumerator;
+pub mod base_min_generations_enumerator2;
 /// Solves by breeding all non-dominating progeny in each generation
 pub mod base_min_generations_enumerator_dominance;
 /// Finds the min generations for base problem

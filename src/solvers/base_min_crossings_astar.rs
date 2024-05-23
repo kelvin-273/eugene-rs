@@ -1,16 +1,14 @@
 use crate::abstract_plants::*;
 use crate::plants::bit_array::*;
-use crate::solvers::base_min_generations_segment;
 use crate::solution::*;
+use crate::solvers::base_min_generations_segment;
 use pathfinding::directed::astar::astar;
 use pyo3::prelude::*;
-use std::collections::hash_map::DefaultHasher;
-use std::collections::{HashMap, HashSet};
-use std::hash::Hash;
-use std::hash::Hasher;
+use std::collections::HashMap;
 use std::rc::Rc;
 
-type WG = WGen<SingleChromGenotype, SingleChromGamete>;
+type WGe = WGen<SingleChromGenotype, SingleChromGamete>;
+type WGa = WGam<SingleChromGenotype, SingleChromGamete>;
 
 /// Runs a breeding program given `n_loci` and `pop_0` where `pop_0` is a population of single
 /// chromosome diploid genotypes with `n_loci` loci.
@@ -64,22 +62,17 @@ where
 {
     // test for feasibility
     // create new population / lift genotypes
-    let start: Vec<Rc<WG>> = pop_0.iter().map(|x| Rc::new(x.lift_a())).collect();
-    let state_0: State<Rc<WG>> = State::new(start);
+    let start: Vec<Rc<WGe>> = pop_0.iter().map(|x| Rc::new(x.lift_a())).collect();
+    let state_0: State<Rc<WGe>> = State::new(start);
     // Initialise priority queue
 
-    let successors = |state: &State<Rc<WG>>| {
-        println!("calling successors");
-        successors_single_node_extensions(state)
-    };
+    let successors = |state: &State<Rc<WGe>>| successors_single_node_extensions(state);
 
-    let heuristic = |state: &State<Rc<WG>>| heuristic(n_loci, state);
+    let heuristic = |state: &State<Rc<WGe>>| heuristic(n_loci, state);
 
-    let success = |state: &State<Rc<WG>>| {
-        match state.head.as_ref() {
-            StateData::Start(ref v) => v.iter().any(|wx| wx.genotype == ideotype),
-            StateData::Next(x, _tail) => x.genotype == ideotype,
-        }
+    let success = |state: &State<Rc<WGe>>| match state.head.as_ref() {
+        StateData::Start(ref v) => v.iter().any(|wx| wx.genotype == ideotype),
+        StateData::Next(x, _tail) => x.genotype == ideotype,
     };
 
     let (v, _obj) = astar(&state_0, successors, heuristic, success)?;
@@ -88,10 +81,10 @@ where
 }
 
 fn successors_single_node_extensions(
-    state: &State<Rc<WG>>,
-) -> impl IntoIterator<Item = (State<Rc<WG>>, usize)> {
+    state: &State<Rc<WGe>>,
+) -> impl IntoIterator<Item = (State<Rc<WGe>>, usize)> {
     // vector of the genotype indices and rc gametes
-    let gametes: Vec<(usize, Rc<WGam<SingleChromGenotype, SingleChromGamete>>)> = state
+    let gametes: Vec<(usize, Rc<WGa>)> = state
         .iter()
         .enumerate()
         .flat_map(|(i, x)| {
@@ -131,11 +124,11 @@ fn successors_single_node_extensions(
             let new_state = state.push_with_most_recent_parent(Rc::new(wz), idy);
             (new_state, 2)
         })
-        .collect::<Vec<(State<Rc<WG>>, usize)>>();
+        .collect::<Vec<(State<Rc<WGe>>, usize)>>();
     out
 }
 
-fn non_dominated_gametes(x: Rc<WG>) -> Vec<Rc<WGam<SingleChromGenotype, SingleChromGamete>>> {
+fn non_dominated_gametes(x: Rc<WGe>) -> Vec<Rc<WGa>> {
     //let _hashset: HashSet<SingleChromGamete> = HashSet::new();
     let res = segments_from_range_genotype(&x.genotype, 0, x.genotype.get_n_loci(0));
     res.iter()
@@ -200,7 +193,7 @@ impl<A> State<A> {
         }
     }
 
-    pub fn count_nodes(&self) -> usize {
+    pub fn _count_nodes(&self) -> usize {
         let head = &self.head;
         fn aux<A>(head: &Link<A>) -> usize {
             match head.as_ref() {
@@ -209,25 +202,6 @@ impl<A> State<A> {
             }
         }
         aux(head)
-    }
-
-    pub fn hash(&self) -> u64
-    where
-        A: Hash,
-    {
-        let mut hasher1: DefaultHasher = Default::default();
-        let mut intermediat_v: Vec<u64> = self
-            .iter()
-            .map(|x| {
-                x.hash(&mut hasher1);
-                hasher1.finish()
-            })
-            .collect();
-        intermediat_v.sort();
-
-        let mut hasher2: DefaultHasher = Default::default();
-        intermediat_v.hash(&mut hasher2);
-        hasher2.finish()
     }
 }
 
@@ -238,10 +212,10 @@ impl<A> std::hash::Hash for State<A> {
     }
 }
 
-impl PartialEq for State<Rc<WG>> {
+impl PartialEq for State<Rc<WGe>> {
     fn eq(&self, other: &Self) -> bool {
         //match (self.head.as_ref(), other.head.as_ref()) {
-        //    (StateData::Start(ref v1), StateData::Start(ref v2)) => todo!(),
+        //    (StateData::Start(ref v1), StateData::Start(ref v2)) => true, // Assumes v1 == v2
         //    (StateData::Start(_), StateData::Next(_, _)) => false,
         //    (StateData::Next(_, _), StateData::Start(_)) => false,
         //    (StateData::Next(x1, _), StateData::Next(x2, _)) => x1.genotype == x2.genotype,
@@ -256,7 +230,7 @@ impl PartialEq for State<Rc<WG>> {
 
 //impl<A: PartialEq> Eq for State<A> {}
 
-impl Eq for State<Rc<WG>> {}
+impl Eq for State<Rc<WGe>> {}
 
 struct StateIter<'a, A: 'a> {
     current: &'a StateData<A>,
@@ -344,9 +318,7 @@ fn heuristic(
         &state.iter().map(|wgx| wgx.genotype.clone()).collect(),
     )
     .len();
-    let res = (n_segments + 1) >> 1;
-    println!("res: {:#?}", res);
-    res
+    (n_segments + 1) >> 1
 }
 
 fn clone_last_from_state<A: Clone, B>(state: State<Rc<WGen<A, B>>>) -> Option<WGen<A, B>> {
@@ -615,7 +587,7 @@ fn _zigzag_switch_points(x: &SingleChromGenotype) -> Vec<bool> {
     out
 }
 
-fn _consodiate_zigzag(_state: &State<Rc<WG>>, x: Rc<WG>, i: usize, j: usize) -> State<WG> {
+fn _consodiate_zigzag(_state: &State<Rc<WGe>>, x: Rc<WGe>, i: usize, j: usize) -> State<WGe> {
     // assert that i..j is a zigzag
     let dp = _zigzag_costs_r(&x.genotype);
     assert!((i..j).all(|k| dp[k] > 0));
@@ -679,7 +651,6 @@ fn _consodiate_zigzag(_state: &State<Rc<WG>>, x: Rc<WG>, i: usize, j: usize) -> 
     unimplemented!()
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -699,25 +670,6 @@ mod tests {
     }
 
     #[test]
-    fn zigzag_cost_test() {
-        assert_eq!(
-            _zigzag_costs_r(&SingleChromGenotype::from_str(
-                "0010110010001110010",
-                "0101011100110011010"
-            )),
-            vec![0, 1, 1, 2, 2, 2, 3, 3, 3, 0, 1, 1, 1, 1, 1, 2, 0, 1, 0]
-        );
-    }
-
-    #[test]
-    fn segments_basic_test() {
-        let x = SingleChromGenotype::from_str("010", "101");
-        let res = segments_from_range_genotype(&x, 0, 3);
-        dbg!(&res);
-        assert_eq!(res.len(), 2)
-    }
-
-    #[test]
     fn segment_gametes_test() {
         let gx = SingleChromGamete::from_str("000111011001110");
         let res = segment_from_range_gamete(&gx, 0, gx.get_n_loci(0));
@@ -728,5 +680,63 @@ mod tests {
                 .collect::<Vec<(usize, usize)>>()
         );
         assert!(res.iter().all(|c| c.g == gx));
+    }
+
+    #[test]
+    fn segments_basic_test() {
+        let x = SingleChromGenotype::from_str("010", "101");
+        let res = segments_from_range_genotype(&x, 0, 3);
+        dbg!(&res);
+        assert_eq!(res.len(), 2);
+    }
+
+    #[test]
+    fn breeding_program_zigzag_test() {
+        let res = breeding_program(
+            4,
+            vec![
+                SingleChromGenotype::from_str("1010", "1010"),
+                SingleChromGenotype::from_str("0101", "0101"),
+            ],
+            SingleChromGenotype::ideotype(4),
+        );
+        assert_ne!(None, res);
+        let sol =
+            BaseSolution::min_gen_from_wgen(4, &res.expect("feasible instance returned None"));
+        assert_eq!(3, sol.objective);
+    }
+
+    #[test]
+    fn successors_zigzag_test() {
+        let pop_0 = vec![
+            Rc::new(WGen::new(SingleChromGenotype::from_str("1010", "1010"))),
+            Rc::new(WGen::new(SingleChromGenotype::from_str("0101", "0101"))),
+        ];
+        let state = State::new(pop_0);
+        let new_states: Vec<(
+            State<Rc<WGen<SingleChromGenotype, SingleChromGamete>>>,
+            usize,
+        )> = successors_single_node_extensions(&state)
+            .into_iter()
+            .collect();
+        assert_eq!(
+            vec![&SingleChromGenotype::from_str("1010", "0101")],
+            new_states
+                .iter()
+                .map(|wx| &wx.0.iter().next().unwrap().genotype)
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(1, new_states.len());
+    }
+
+    #[test]
+    fn zigzag_cost_test() {
+        assert_eq!(
+            _zigzag_costs_r(&SingleChromGenotype::from_str(
+                "0010110010001110010",
+                "0101011100110011010"
+            )),
+            vec![0, 1, 1, 2, 2, 2, 3, 3, 3, 0, 1, 1, 1, 1, 1, 2, 0, 1, 0]
+        );
     }
 }

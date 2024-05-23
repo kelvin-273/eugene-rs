@@ -1,6 +1,6 @@
 use crate::plants::bit_array;
 
-fn array_to_homo(v: &Vec<usize>) -> Vec<bit_array::SingleChromGenotype> {
+fn distarray_to_homo(v: &Vec<usize>) -> Vec<bit_array::SingleChromGenotype> {
     dbg!(v);
     let n_loci = v.len();
     let n_pop0 = v.iter().max().map(|&length| length + 1).unwrap_or(0);
@@ -30,5 +30,5 @@ pub fn parse_homozygous(s: &str) -> (usize, Vec<bit_array::SingleChromGenotype>)
         let x: usize = w.parse().unwrap();
         v.push(x);
     }
-    (v.len(), array_to_homo(&v))
+    (v.len(), distarray_to_homo(&v))
 }

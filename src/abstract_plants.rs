@@ -68,6 +68,10 @@ impl<A, B> WGam<A, B> {
         }
     }
 
+    pub fn gamete(&self) -> &B {
+        &self.gamete
+    }
+
     pub fn extract_first_from_ref(self: &Self) -> WGamS<A, B>
     where
         A: Clone,
@@ -122,6 +126,10 @@ impl<A, B> WGen<A, B> {
         }
     }
 
+    pub fn genotype(&self) -> &A {
+        &self.genotype
+    }
+
     pub fn extract_first(self: Rc<Self>) -> Rc<WGenS<A, B>>
     where
         A: Clone,
@@ -143,6 +151,20 @@ impl<A, B> WGenS<A, B> {
             genotype,
             history: None,
         }
+    }
+
+    pub fn genotype(&self) -> &A {
+        &self.genotype
+    }
+}
+
+impl<A, B> WGamS<A, B> {
+    pub fn new(gamete: B) -> Self {
+        Self { gamete, history: None }
+    }
+
+    pub fn gamete(&self) -> &B {
+        &self.gamete
     }
 }
 

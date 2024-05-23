@@ -41,7 +41,7 @@ pub fn breeding_program_python(
     match res {
         None => Ok(None),
         Some(x_star) => {
-            let sol = BaseSolution::min_cross_from_wgen(n_loci, &x_star);
+            let sol = BaseSolution::min_cross_from_wgens(n_loci, &x_star);
             Ok(Some((
                 sol.tree_data,
                 sol.tree_type,
@@ -57,7 +57,7 @@ pub fn breeding_program(
     n_loci: usize,
     pop_0: Vec<SingleChromGenotype>,
     ideotype: SingleChromGenotype,
-) -> Option<WGen<SingleChromGenotype, SingleChromGamete>>
+) -> Option<WGenS<SingleChromGenotype, SingleChromGamete>>
 where
 {
     // test for feasibility

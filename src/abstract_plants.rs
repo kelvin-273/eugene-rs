@@ -278,11 +278,11 @@ pub trait Feasible<Data>: Sized {
 ///////////////////////////////
 
 #[derive(Clone)]
-struct WGenS2<A, B> {
+pub struct WGenS2<A, B> {
     head: Rc<WGenSCell<A, B>>,
 }
 
-struct WGamS2<A, B> {
+pub struct WGamS2<A, B> {
     head: Rc<WGamSCell<A, B>>,
 }
 

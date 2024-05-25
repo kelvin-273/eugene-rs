@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+use std::hash::Hash;
 use std::rc::Rc;
 
 pub trait BioSize {
@@ -79,10 +81,7 @@ impl<A, B> WGam<A, B> {
     {
         WGamS {
             gamete: self.gamete.clone(),
-            history: self
-                .history
-                .first()
-                .map(|x| x.clone().extract_first())
+            history: self.history.first().map(|x| x.clone().extract_first()),
         }
     }
 
@@ -98,10 +97,7 @@ impl<A, B> WGam<A, B> {
     {
         Rc::new(WGamS {
             gamete: self.gamete.clone(),
-            history: self
-                .history
-                .first()
-                .map(|x| x.clone().extract_first())
+            history: self.history.first().map(|x| x.clone().extract_first()),
         })
     }
 }
@@ -147,7 +143,7 @@ impl<A, B> WGen<A, B> {
 
 impl<A, B> WGenS<A, B> {
     pub fn new(genotype: A) -> Self {
-        Self { 
+        Self {
             genotype,
             history: None,
         }
@@ -160,7 +156,10 @@ impl<A, B> WGenS<A, B> {
 
 impl<A, B> WGamS<A, B> {
     pub fn new(gamete: B) -> Self {
-        Self { gamete, history: None }
+        Self {
+            gamete,
+            history: None,
+        }
     }
 
     pub fn gamete(&self) -> &B {
@@ -272,4 +271,120 @@ pub trait Traverse<A, B, S> {
 
 pub trait Feasible<Data>: Sized {
     fn is_feasible(data: &Data, pop: &Vec<Self>) -> bool;
+}
+
+///////////////////////////////
+//  New version of WGen API  //
+///////////////////////////////
+
+#[derive(Clone)]
+struct WGenS2<A, B> {
+    head: Rc<WGenSCell<A, B>>,
+}
+
+struct WGamS2<A, B> {
+    head: Rc<WGamSCell<A, B>>,
+}
+
+struct WGenSCell<A, B> {
+    genotype: A,
+    history: Option<(Rc<WGamSCell<A, B>>, Rc<WGamSCell<A, B>>)>,
+}
+
+struct WGamSCell<A, B> {
+    gamete: B,
+    history: Option<Rc<WGenSCell<A, B>>>,
+}
+
+impl<A, B> WGenS2<A, B> {
+    pub fn new(x: A) -> Self {
+        Self {
+            head: Rc::new(WGenSCell {
+                genotype: x,
+                history: None,
+            }),
+        }
+    }
+
+    pub fn genotype(&self) -> &A {
+        &self.head.genotype
+    }
+
+    pub fn history(&self) -> Option<(WGamS2<A, B>, WGamS2<A, B>)> {
+        self.head
+            .history
+            .as_ref()
+            .map(|(wgl, wgr)| (WGamS2 { head: wgl.clone() }, WGamS2 { head: wgr.clone() }))
+    }
+
+    pub fn from_gametes(wgl: &WGamS2<A, B>, wgr: &WGamS2<A, B>) -> Self
+    where
+        A: Genotype<B>,
+        B: Gamete<A>,
+    {
+        Self {
+            head: Rc::new(WGenSCell {
+                genotype: A::from_gametes(wgl.gamete(), wgr.gamete()),
+                history: Some((wgl.head.clone(), wgr.head.clone())),
+            }),
+        }
+    }
+
+    pub fn cross(&self, k: &dyn Fn(&A) -> B) -> WGamS2<A, B> {
+        WGamS2 {
+            head: Rc::new(WGamSCell {
+                gamete: k(self.genotype()),
+                history: Some(self.head.clone()),
+            }),
+        }
+    }
+
+    pub fn cross_with_store(
+        &self,
+        h: &mut HashMap<B, WGamS2<A, B>>,
+        k: &dyn Fn(&A) -> B,
+    ) -> WGamS2<A, B>
+    where
+        B: Sized + PartialEq + Eq + Hash + Clone,
+    {
+        let g = k(self.genotype());
+        h.entry(g.clone())
+            .or_insert_with(|| WGamS2 {
+                head: Rc::new(WGamSCell {
+                    gamete: g,
+                    history: Some(self.head.clone()),
+                }),
+            })
+            .clone()
+    }
+}
+
+impl<A, B> WGamS2<A, B> {
+    pub fn new(gx: B) -> Self {
+        Self {
+            head: Rc::new(WGamSCell {
+                gamete: gx,
+                history: None,
+            }),
+        }
+    }
+
+    pub fn gamete(&self) -> &B {
+        &self.head.gamete
+    }
+
+    pub fn history(&self) -> Option<WGenS2<A, B>> {
+        self.head
+            .history
+            .as_ref()
+            .map(|wx| WGenS2 { head: wx.clone() })
+    }
+}
+
+impl<A, B> Clone for WGamS2<A, B> {
+    fn clone(&self) -> Self {
+        Self {
+            head: self.head.clone(),
+        }
+    }
 }

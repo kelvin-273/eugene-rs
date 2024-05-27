@@ -45,6 +45,7 @@ fn eugene_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     let mg_naive1 = PyModule::new_bound(m.py(), "naive1")?;
     let mg_naive12 = PyModule::new_bound(m.py(), "naive12")?;
     let mg_naive2 = PyModule::new_bound(m.py(), "naive2")?;
+    let mg_naive22 = PyModule::new_bound(m.py(), "naive22")?;
     let mg_segment = PyModule::new_bound(m.py(), "segment")?;
 
     mg_naive1.add_function(wrap_pyfunction!(
@@ -62,6 +63,11 @@ fn eugene_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
         &mg_naive2
     )?)?;
 
+    mg_naive22.add_function(wrap_pyfunction!(
+        solvers::base_min_generations_enumerator_dominance2::breeding_program_python,
+        &mg_naive22
+    )?)?;
+
     mg_segment.add_function(wrap_pyfunction!(
         solvers::base_min_generations_segment::breeding_program_python,
         &mg_segment
@@ -70,6 +76,7 @@ fn eugene_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     min_gen.add_submodule(&mg_naive1)?;
     min_gen.add_submodule(&mg_naive12)?;
     min_gen.add_submodule(&mg_naive2)?;
+    min_gen.add_submodule(&mg_naive22)?;
     min_gen.add_submodule(&mg_segment)?;
 
     let mc_astar = PyModule::new_bound(m.py(), "astar")?;

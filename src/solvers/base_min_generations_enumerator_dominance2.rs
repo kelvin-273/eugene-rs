@@ -1,8 +1,9 @@
-use crate::abstract_plants::{Crosspoint, WGamS2, WGenS2};
+use crate::abstract_plants::{Crosspoint, Dominance, WGamS2, WGenS2};
 use crate::plants::bit_array::*;
 use crate::solution::{BaseSolution, Objective};
+use crate::solvers::base_min_generations_enumerator_dominance as bed;
 use pyo3::prelude::*;
-use std::collections::HashMap;
+use std::collections::HashSet;
 
 /// Runs a breeding program given `n_loci` and `pop_0` where `pop_0` is a population of single
 /// chromosome diploid genotypes with `n_loci` loci.
@@ -50,35 +51,42 @@ pub fn breeding_program(n_loci: usize, pop_0: &Vec<SingleChromGenotype>) -> Opti
     }
     let pop_0: Vec<WGenS2<SingleChromGenotype, _>> =
         pop_0.iter().map(|x| WGenS2::new(x.clone())).collect();
-    let mut h: HashMap<SingleChromGamete, WGamS2<SingleChromGenotype, SingleChromGamete>> =
-        HashMap::new();
+    let mut h: HashSet<SingleChromGamete> = HashSet::new();
+    let mut contained_gametes: Vec<WGamS2<SingleChromGenotype, SingleChromGamete>> = vec![];
     for wx in pop_0 {
         for gx in CrosspointBitVec::crosspoints(&n_loci).map(|k| k.cross(wx.genotype())) {
-            if !h.contains_key(&gx) {
+            if !h.contains(&gx) {
                 let wgx = WGamS2::new_from_genotype(gx.clone(), wx.clone());
-                h.insert(gx, wgx);
+                h.insert(gx);
+                contained_gametes.push(wgx);
             }
         }
     }
+    contained_gametes = bed::filter_non_dominating_fn(contained_gametes, |wgx, wgy| {
+        DomGamete::dom(wgx.gamete(), wgy.gamete())
+    });
     let ideotype_gamete = SingleChromGamete::ideotype(n_loci);
-    while !h.contains_key(&ideotype_gamete) {
-        let contained_gametes: Vec<SingleChromGamete> = h.keys().map(|k| k.clone()).collect();
+    while !h.contains(&ideotype_gamete) {
+        let mut v = vec![];
         for i in 0..contained_gametes.len() {
             for j in i + 1..contained_gametes.len() {
-                let wgx = h.get(&contained_gametes[i])?;
-                let wgy = h.get(&contained_gametes[j])?;
+                let wgx = &contained_gametes[i];
+                let wgy = &contained_gametes[j];
                 let wz = WGenS2::from_gametes(wgx, wgy);
                 for k in CrosspointBitVec::crosspoints(&n_loci) {
                     let gz = k.cross(wz.genotype());
-                    if !h.contains_key(&gz) {
+                    if !h.contains(&gz) {
                         let wgz = WGamS2::new_from_genotype(gz.clone(), wz.clone());
-                        h.insert(gz, wgz.clone());
+                        h.insert(gz);
+                        v.push(wgz);
                     }
                 }
             }
         }
+        contained_gametes =
+            bed::filter_non_dominating_fn(v, |wgx, wgy| DomGamete::dom(wgx.gamete(), wgy.gamete()));
     }
-    let wg_star = h.get(&ideotype_gamete).expect("hash map doesn't have g*");
+    let wg_star = contained_gametes.first().expect("hash map doesn't have g*");
     let wx_star = WGenS2::from_gametes(wg_star, wg_star);
     Some(wx_star.to_base_sol(n_loci, Objective::Generations))
 }

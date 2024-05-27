@@ -74,7 +74,7 @@ impl<A, B> WGam<A, B> {
         &self.gamete
     }
 
-    pub fn extract_first_from_ref(self: &Self) -> WGamS<A, B>
+    pub fn extract_first_from_ref(&self) -> WGamS<A, B>
     where
         A: Clone,
         B: Clone,

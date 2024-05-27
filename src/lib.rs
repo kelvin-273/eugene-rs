@@ -117,14 +117,9 @@ mod tests {
             dbg!(&n_loci);
             dbg!(&pop0);
             let ideo = SingleChromGenotype::ideotype(n_loci);
-            let t = base_min_crossings_astar::breeding_program(
-                n_loci,
-                pop0.clone(),
-                ideo,
-            )
-            .unwrap();
-            let n_seg = base_min_generations_segment::min_covering_segments::<_, _, SegmentBitVec>(n_loci, &pop0).len();
-            let n_crs = analysis::crossings(&Rc::new(t.clone()).extract_first());
+            let t = base_min_crossings_astar::breeding_program(n_loci, pop0.clone(), ideo).unwrap();
+            let n_seg = base_min_generations_segment::min_covering_segments(n_loci, &pop0).len();
+            let n_crs = t.crossings();
             dbg!(&t);
             println!("Segments: {}\tCrossings: {}", n_seg, n_crs);
         }
@@ -139,16 +134,10 @@ mod tests {
         for _ in 0..1 {
             let pop0 = SingleChromGenotype::init_pop_random(&mut rng, n_loci, n_pop);
             dbg!(&pop0);
-            let ideo = SingleChromGenotype::ideotype(n_loci);
-            let t = base_min_generations_segment::breeding_program::<_, _, CrosspointBitVec, SegmentBitVec>(
-                n_loci,
-                pop0.clone(),
-                ideo,
-            )
-            .unwrap();
-            let n_seg = base_min_generations_segment::min_covering_segments::<_, _, SegmentBitVec>(n_loci, &pop0).len();
-            let n_crs = analysis::crossings(&Rc::new(t.clone()).extract_first());
-            dbg!(&t);
+            let wt = base_min_generations_segment::breeding_program(n_loci, pop0.clone()).unwrap();
+            let n_seg = base_min_generations_segment::min_covering_segments(n_loci, &pop0).len();
+            let n_crs = wt.crossings();
+            dbg!(&wt);
             println!("Segments: {}\tCrossings: {}", n_seg, n_crs);
         }
         Ok(())
@@ -170,15 +159,9 @@ mod tests {
         use crate::plants::bit_array::*;
         let n_loci = 20;
         let n_pop = 1024;
-        let _res = base_min_generations_segment::breeding_program::<
-            SingleChromGenotype,
-            SingleChromGamete,
-            CrosspointBitVec,
-            SegmentBitVec,
-        >(
+        let _res = base_min_generations_segment::breeding_program(
             n_loci,
             SingleChromGenotype::init_pop_random(&mut thread_rng(), n_loci, n_pop),
-            SingleChromGenotype::ideotype(n_loci),
         );
         Ok(())
     }

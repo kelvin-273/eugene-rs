@@ -10,7 +10,7 @@ pub struct BaseSolution {
     pub objective: usize,
 }
 
-enum Objective {
+pub enum Objective {
     Generations,
     Crossings,
 }

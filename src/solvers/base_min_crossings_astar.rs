@@ -2,13 +2,14 @@ use crate::abstract_plants::*;
 use crate::plants::bit_array::*;
 use crate::solution::*;
 use crate::solvers::base_min_generations_segment;
+use crate::solvers::base_min_generations_segment::Segment;
 use pathfinding::directed::astar::astar;
 use pyo3::prelude::*;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-type WGe = WGen<SingleChromGenotype, SingleChromGamete>;
-type WGa = WGam<SingleChromGenotype, SingleChromGamete>;
+type WGe = WGenS2<SingleChromGenotype, SingleChromGamete>;
+type WGa = WGamS2<SingleChromGenotype, SingleChromGamete>;
 
 /// Runs a breeding program given `n_loci` and `pop_0` where `pop_0` is a population of single
 /// chromosome diploid genotypes with `n_loci` loci.
@@ -41,7 +42,7 @@ pub fn breeding_program_python(
     match res {
         None => Ok(None),
         Some(x_star) => {
-            let sol = BaseSolution::min_cross_from_wgens(n_loci, &x_star);
+            let sol = x_star.to_base_sol(n_loci, Objective::Crossings);
             Ok(Some((
                 sol.tree_data,
                 sol.tree_type,
@@ -57,41 +58,41 @@ pub fn breeding_program(
     n_loci: usize,
     pop_0: Vec<SingleChromGenotype>,
     ideotype: SingleChromGenotype,
-) -> Option<WGenS<SingleChromGenotype, SingleChromGamete>>
+) -> Option<WGe>
 where
 {
     // test for feasibility
     // create new population / lift genotypes
-    let start: Vec<Rc<WGe>> = pop_0.iter().map(|x| Rc::new(x.lift_a())).collect();
-    let state_0: State<Rc<WGe>> = State::new(start);
+    let start: Vec<WGe> = pop_0.iter().map(|x| WGenS2::new(x.clone())).collect();
+    let state_0: State<WGe> = State::new(start);
     // Initialise priority queue
 
-    let successors = |state: &State<Rc<WGe>>| successors_single_node_extensions(state);
+    let successors = |state: &State<WGe>| successors_single_node_extensions(state);
 
-    let heuristic = |state: &State<Rc<WGe>>| heuristic(n_loci, state);
+    let heuristic = |state: &State<WGe>| heuristic(n_loci, state);
 
-    let success = |state: &State<Rc<WGe>>| match state.head.as_ref() {
-        StateData::Start(ref v) => v.iter().any(|wx| wx.genotype == ideotype),
-        StateData::Next(x, _tail) => x.genotype == ideotype,
+    let success = |state: &State<WGe>| match state.head.as_ref() {
+        StateData::Start(ref v) => v.iter().any(|wx| wx.genotype() == &ideotype),
+        StateData::Next(x, _tail) => x.genotype() == &ideotype,
     };
 
     let (v, _obj) = astar(&state_0, successors, heuristic, success)?;
     let x = v.last()?;
-    clone_last_from_state(x.to_owned())
+    clone_last_from_state::<SingleChromGenotype, SingleChromGenotype>(x)
+    //match x.head.as_ref() {
+    //StateData::Next(wx, _) => None,
+    //StateData::Start(v) => None,
+    //}
 }
 
 fn successors_single_node_extensions(
-    state: &State<Rc<WGe>>,
-) -> impl IntoIterator<Item = (State<Rc<WGe>>, usize)> {
+    state: &State<WGe>,
+) -> impl IntoIterator<Item = (State<WGe>, usize)> {
     // vector of the genotype indices and rc gametes
-    let gametes: Vec<(usize, Rc<WGa>)> = state
+    let gametes: Vec<(usize, WGa)> = state
         .iter()
         .enumerate()
-        .flat_map(|(i, x)| {
-            non_dominated_gametes(x.clone())
-                .into_iter()
-                .map(move |gx| (i, gx))
-        })
+        .flat_map(|(i, x)| non_dominated_gametes(x).into_iter().map(move |gx| (i, gx)))
         .collect();
     let first_j = gametes
         .iter()
@@ -99,15 +100,13 @@ fn successors_single_node_extensions(
         .find(|(_i_gamete, (i, _gx))| i >= &state.most_recent_parent)
         .map_or(0, |(i, _igx)| i);
 
-    let g_star = gametes
+    let wg_star = gametes
         .iter()
-        .filter(|(_i, wg)| wg.gamete.alleles().iter().all(|a| *a == Allele::O))
+        .filter(|(_i, wg)| wg.gamete().alleles().iter().all(|a| *a == Allele::O))
         .next();
-    if let Some((_, wg)) = g_star {
-        let x_star = SingleChromGenotype::from_gametes(&wg.gamete, &wg.gamete);
-        let mut wz = WGen::new(x_star);
-        wz.history = Some((wg.clone(), wg.clone()));
-        let new_state = state.push(Rc::new(wz));
+    if let Some((_, wg)) = wg_star {
+        let wx_star = WGenS2::from_gametes(wg, wg);
+        let new_state = state.push(wx_star);
         // TODO: halt the astar when this is found <11-06-23> //
         return vec![(new_state, 2)];
     }
@@ -116,41 +115,21 @@ fn successors_single_node_extensions(
     let out = (0..gametes.len())
         .flat_map(|i| ((i + 1).max(first_j)..n_gametes).map(move |j| (i, j)))
         .map(|(i, j)| {
-            let (_idx, wg1) = (&gametes[i]).clone();
-            let (idy, wg2) = (&gametes[j]).clone();
-            let z = SingleChromGenotype::from_gametes(&wg1.gamete, &wg2.gamete);
-            let mut wz = WGen::new(z);
-            wz.history = Some((wg1, wg2));
-            let new_state = state.push_with_most_recent_parent(Rc::new(wz), idy);
+            let (_idx, wg1) = &gametes[i];
+            let (idy, wg2) = &gametes[j];
+            let wz = WGenS2::from_gametes(&wg1, &wg2);
+            let new_state = state.push_with_most_recent_parent(wz, *idy);
             (new_state, 2)
         })
-        .collect::<Vec<(State<Rc<WGe>>, usize)>>();
+        .collect::<Vec<(State<WGe>, usize)>>();
     out
 }
 
-fn non_dominated_gametes(x: Rc<WGe>) -> Vec<Rc<WGa>> {
-    //let _hashset: HashSet<SingleChromGamete> = HashSet::new();
-    let res = segments_from_range_genotype(&x.genotype, 0, x.genotype.get_n_loci(0));
+fn non_dominated_gametes(x: &WGe) -> Vec<WGa> {
+    let res = segments_from_range_genotype(x.genotype(), 0, x.genotype().get_n_loci(0));
     res.iter()
-        .map(|c| c.g.clone())
-        //.collect::<HashSet<SingleChromGamete>>()
-        //.iter()
-        .map(|g| {
-            Rc::new({
-                let mut wg = WGam::new(g.clone());
-                wg.history.push(x.clone());
-                wg
-            })
-        })
+        .map(|c| WGamS2::new_from_genotype(c.g.clone(), x.clone()))
         .collect()
-}
-impl<A: Clone, B> Clone for WGen<A, B> {
-    fn clone(&self) -> Self {
-        WGen {
-            genotype: self.genotype.clone(),
-            history: self.history.clone(),
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -212,7 +191,7 @@ impl<A> std::hash::Hash for State<A> {
     }
 }
 
-impl PartialEq for State<Rc<WGe>> {
+impl PartialEq for State<WGe> {
     fn eq(&self, other: &Self) -> bool {
         //match (self.head.as_ref(), other.head.as_ref()) {
         //    (StateData::Start(ref v1), StateData::Start(ref v2)) => true, // Assumes v1 == v2
@@ -220,8 +199,8 @@ impl PartialEq for State<Rc<WGe>> {
         //    (StateData::Next(_, _), StateData::Start(_)) => false,
         //    (StateData::Next(x1, _), StateData::Next(x2, _)) => x1.genotype == x2.genotype,
         //}
-        let mut v1: Vec<_> = self.iter().map(|x| x.genotype.clone()).collect();
-        let mut v2: Vec<_> = other.iter().map(|x| x.genotype.clone()).collect();
+        let mut v1: Vec<_> = self.iter().map(|x| x.genotype()).collect();
+        let mut v2: Vec<_> = other.iter().map(|x| x.genotype()).collect();
         v1.sort();
         v2.sort();
         v1 == v2
@@ -230,7 +209,7 @@ impl PartialEq for State<Rc<WGe>> {
 
 //impl<A: PartialEq> Eq for State<A> {}
 
-impl Eq for State<Rc<WGe>> {}
+impl Eq for State<WGe> {}
 
 struct StateIter<'a, A: 'a> {
     current: &'a StateData<A>,
@@ -305,100 +284,19 @@ pub fn non_dominated_crossings<A, B, K>(_x: &WGen<A, B>, _y: &WGen<A, B>) -> Vec
     unimplemented!()
 }
 
-fn heuristic(
-    n_loci: usize,
-    state: &State<Rc<WGen<SingleChromGenotype, SingleChromGamete>>>,
-) -> usize {
-    let n_segments = base_min_generations_segment::min_covering_segments::<
-        SingleChromGenotype,
-        SingleChromGamete,
-        SegmentMC<Rc<WGam<SingleChromGenotype, SingleChromGamete>>>,
-    >(
+fn heuristic(n_loci: usize, state: &State<WGe>) -> usize {
+    let n_segments = base_min_generations_segment::min_covering_segments(
         n_loci,
-        &state.iter().map(|wgx| wgx.genotype.clone()).collect(),
+        &state.iter().map(|wgx| wgx.genotype().clone()).collect(),
     )
     .len();
     (n_segments + 1) >> 1
 }
 
-fn clone_last_from_state<A: Clone, B>(state: State<Rc<WGen<A, B>>>) -> Option<WGen<A, B>> {
+fn clone_last_from_state<A, B>(state: &State<WGe>) -> Option<WGe> {
     match state.head.as_ref() {
-        StateData::Start(v) => v.last().map(|x| x.as_ref().clone()),
-        StateData::Next(x, _n) => Some(x.as_ref().clone()),
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-struct SegmentMC<T> {
-    pub s: usize,
-    pub e: usize,
-    pub g: T,
-}
-
-impl SegmentMC<SingleChromGamete> {
-    fn join(&self, other: &Self) -> Self {
-        SegmentMC {
-            s: self.s,
-            e: other.e,
-            g: {
-                let z = SingleChromGenotype::from_gametes(&self.g, &other.g);
-                let k_z = CrosspointBitVec::new(false, other.s);
-                k_z.cross(&z)
-            },
-        }
-    }
-}
-
-impl SegmentMC<Rc<SingleChromGamete>> {
-    fn join(&self, other: &Self) -> Self {
-        SegmentMC {
-            s: self.s,
-            e: other.e,
-            g: {
-                let z = Rc::new(SingleChromGenotype::from_gametes(&self.g, &other.g));
-                let k_z = CrosspointBitVec::new(false, other.s);
-                Rc::new(k_z.cross(z.as_ref()))
-            },
-        }
-    }
-}
-
-impl Segment<SingleChromGenotype, SingleChromGamete>
-    for SegmentMC<Rc<WGam<SingleChromGenotype, SingleChromGamete>>>
-{
-}
-
-impl HaploidSegment<SingleChromGenotype, SingleChromGamete>
-    for SegmentMC<Rc<WGam<SingleChromGenotype, SingleChromGamete>>>
-{
-    fn start(&self) -> usize {
-        self.s
-    }
-    fn end(&self) -> usize {
-        self.e
-    }
-    fn gamete(&self) -> Rc<WGam<SingleChromGenotype, SingleChromGamete>> {
-        self.g.clone()
-    }
-    fn from_start_end_gamete(
-        s: usize,
-        e: usize,
-        g: Rc<WGam<SingleChromGenotype, SingleChromGamete>>,
-    ) -> Self {
-        Self { s, e, g }
-    }
-    fn join(&self, other: &Self) -> Self {
-        assert!(self.s < other.s && other.s <= self.e + 1 && self.e < other.e);
-        let z = SingleChromGenotype::from_gametes(&self.g.gamete, &other.g.gamete);
-        let mut wz = z.lift_a();
-        wz.history = Some((self.g.clone(), other.g.clone()));
-        let gz = CrosspointBitVec::new(false, other.s).cross(&z);
-        let wgz = WGam::new(gz);
-        SegmentMC {
-            s: self.s,
-            e: other.e,
-            g: Rc::new(wgz),
-        }
+        StateData::Start(v) => v.last().map(|x| x.clone()),
+        StateData::Next(x, _n) => Some(x.clone()),
     }
 }
 
@@ -406,7 +304,7 @@ fn segments_from_range_genotype(
     x: &SingleChromGenotype,
     start: usize,
     end: usize,
-) -> Vec<SegmentMC<SingleChromGamete>> {
+) -> Vec<Segment<SingleChromGamete>> {
     let q1_true = segment_from_range_gamete(&x.upper(), start, end);
     let q2_true = segment_from_range_gamete(&x.lower(), start, end);
     let mut q = (&q1_true, &q2_true);
@@ -418,7 +316,7 @@ fn segments_from_range_genotype(
     let mut i = 0;
     let mut j = 0;
 
-    let mut out: Vec<SegmentMC<SingleChromGamete>> =
+    let mut out: Vec<Segment<SingleChromGamete>> =
         Vec::with_capacity(q1_true.len() + q2_true.len());
 
     // oh dear god, does this even work?
@@ -442,7 +340,7 @@ fn segments_from_range_genotype(
             }
             i += 1;
         } else {
-            out.push(SegmentMC::<SingleChromGamete>::join(&c1, &c2));
+            out.push(c1.join(&c2));
             used1[i] = true;
             used2[j] = true;
             // break early if possible
@@ -464,11 +362,11 @@ fn segment_from_range_gamete(
     gx: &SingleChromGamete,
     i: usize,
     j: usize,
-) -> Vec<SegmentMC<SingleChromGamete>> {
-    let mut out: Vec<SegmentMC<SingleChromGamete>> = Vec::with_capacity(gx.get_n_loci(0));
+) -> Vec<Segment<SingleChromGamete>> {
+    let mut out: Vec<Segment<SingleChromGamete>> = Vec::with_capacity(gx.get_n_loci(0));
     let mut indexes = (i..j).filter(|k| gx.index(*k) == Allele::O);
     if let Some(s) = indexes.next() {
-        let mut current_segment = SegmentMC {
+        let mut current_segment = Segment {
             s,
             e: s,
             g: gx.to_owned(),
@@ -477,7 +375,7 @@ fn segment_from_range_gamete(
         for k in indexes {
             if k > last + 1 {
                 out.push(current_segment.clone());
-                current_segment = SegmentMC {
+                current_segment = Segment {
                     s: k,
                     e: k,
                     g: gx.to_owned(),
@@ -587,31 +485,24 @@ fn _zigzag_switch_points(x: &SingleChromGenotype) -> Vec<bool> {
     out
 }
 
-fn _consodiate_zigzag(_state: &State<Rc<WGe>>, x: Rc<WGe>, i: usize, j: usize) -> State<WGe> {
+fn _consodiate_zigzag(_state: &State<WGe>, x: WGe, i: usize, j: usize) -> State<WGe> {
     // assert that i..j is a zigzag
-    let dp = _zigzag_costs_r(&x.genotype);
+    let dp = _zigzag_costs_r(&x.genotype());
     assert!((i..j).all(|k| dp[k] > 0));
     // assert! zigzag can't be consolidated immediately
 
     // extract segments and assume that segments are minimal
     // all crossings in the first phase have the same start chromosome
-    type Val = Rc<WGam<SingleChromGenotype, SingleChromGamete>>;
-    let mut hash_map: HashMap<SingleChromGamete, Val> = HashMap::new();
+    let mut hash_map: HashMap<SingleChromGamete, WGa> = HashMap::new();
 
-    let segments_s0: Vec<SegmentMC<Val>> = segments_from_range_genotype(&x.genotype, i, j)
+    let segments_s0: Vec<Segment<WGa>> = segments_from_range_genotype(&x.genotype(), i, j)
         .iter()
-        .map(|c| SegmentMC {
+        .map(|c| Segment {
             s: c.s,
             e: c.e,
             g: hash_map
                 .entry(c.g.clone())
-                .or_insert_with(|| {
-                    Rc::new({
-                        let mut wg = WGam::new(c.g.clone());
-                        wg.history.push(x.clone());
-                        wg
-                    })
-                })
+                .or_insert_with(|| WGa::new_from_genotype(c.g.clone(), x.clone()))
                 .clone(),
         })
         .collect();
@@ -620,12 +511,12 @@ fn _consodiate_zigzag(_state: &State<Rc<WGe>>, x: Rc<WGe>, i: usize, j: usize) -
     assert!({
         // all adjacent pairs of segments are joinable
         (0..segments_s0.len() - 1).all(|i| {
-            let SegmentMC {
+            let Segment {
                 s: s_x,
                 e: e_x,
                 g: _,
             } = segments_s0[i];
-            let SegmentMC {
+            let Segment {
                 s: s_y,
                 e: e_y,
                 g: _,
@@ -633,7 +524,7 @@ fn _consodiate_zigzag(_state: &State<Rc<WGe>>, x: Rc<WGe>, i: usize, j: usize) -
             s_x < s_y && s_y <= e_x && e_x < e_y
         })
     });
-    fn join_segments(segments_s0: &Vec<SegmentMC<Val>>, i: usize, j: usize) -> SegmentMC<Val> {
+    fn join_segments(segments_s0: &Vec<Segment<WGa>>, i: usize, j: usize) -> Segment<WGa> {
         // The base case can't return the raw segments as they are owned by the vector.
         // Although, we could clone the base segments.
         assert!(segments_s0.len() > 0);
@@ -644,7 +535,7 @@ fn _consodiate_zigzag(_state: &State<Rc<WGe>>, x: Rc<WGe>, i: usize, j: usize) -
             let mid = (i + j) >> 1;
             let res1 = join_segments(segments_s0, i, mid);
             let res2 = join_segments(segments_s0, mid, j);
-            SegmentMC::<Val>::join(&res1, &res2)
+            res1.join(&res2)
         }
     }
     // extract genotype from the final segment
@@ -654,7 +545,6 @@ fn _consodiate_zigzag(_state: &State<Rc<WGe>>, x: Rc<WGe>, i: usize, j: usize) -
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::extra::analysis;
 
     #[test]
     fn breeding_program_test() {
@@ -664,9 +554,9 @@ mod tests {
             SingleChromGenotype::ideotype(3),
         );
         assert_ne!(None, res);
-        let res_val = Rc::new(res.unwrap()).extract_first();
-        assert_eq!(2, analysis::generations(res_val.as_ref()));
-        assert_eq!(2, analysis::crossings(res_val.as_ref()));
+        let res_val = res.unwrap();
+        assert_eq!(2, res_val.generations());
+        assert_eq!(2, res_val.crossings());
     }
 
     #[test]
@@ -701,29 +591,28 @@ mod tests {
             SingleChromGenotype::ideotype(4),
         );
         assert_ne!(None, res);
-        let sol =
-            BaseSolution::min_gen_from_wgen(4, &res.expect("feasible instance returned None"));
+        let sol = res
+            .expect("feasible instance returned None")
+            .to_base_sol(4, Objective::Crossings);
         assert_eq!(3, sol.objective);
     }
 
     #[test]
     fn successors_zigzag_test() {
         let pop_0 = vec![
-            Rc::new(WGen::new(SingleChromGenotype::from_str("1010", "1010"))),
-            Rc::new(WGen::new(SingleChromGenotype::from_str("0101", "0101"))),
+            WGenS2::new(SingleChromGenotype::from_str("1010", "1010")),
+            WGenS2::new(SingleChromGenotype::from_str("0101", "0101")),
         ];
         let state = State::new(pop_0);
-        let new_states: Vec<(
-            State<Rc<WGen<SingleChromGenotype, SingleChromGamete>>>,
-            usize,
-        )> = successors_single_node_extensions(&state)
-            .into_iter()
-            .collect();
+        let new_states: Vec<(State<WGenS2<SingleChromGenotype, SingleChromGamete>>, usize)> =
+            successors_single_node_extensions(&state)
+                .into_iter()
+                .collect();
         assert_eq!(
             vec![&SingleChromGenotype::from_str("1010", "0101")],
             new_states
                 .iter()
-                .map(|wx| &wx.0.iter().next().unwrap().genotype)
+                .map(|wx| wx.0.iter().next().unwrap().genotype())
                 .collect::<Vec<_>>()
         );
         assert_eq!(1, new_states.len());

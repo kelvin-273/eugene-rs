@@ -68,7 +68,7 @@ impl Gamete<u64> for u32 {
 }
 
 impl Crosspoint<u64, u32, ()> for u32 {
-    fn cross(self, x: &u64) -> u32 {
+    fn cross(&self, x: &u64) -> u32 {
         ((*x as u32) & self) | (((*x >> 32) as u32) & (!self))
     }
 
@@ -83,8 +83,14 @@ pub struct CrosspointSingleU64U32 {
     len_prefix: usize,
 }
 
+impl CrosspointSingleU64U32 {
+    pub fn new(start: bool, len_prefix: usize) -> Self {
+        Self { start, len_prefix }
+    }
+}
+
 impl Crosspoint<u64, u32, usize> for CrosspointSingleU64U32 {
-    fn cross(self, x: &u64) -> u32 {
+    fn cross(&self, x: &u64) -> u32 {
         if self.len_prefix > 31 {
             panic!("consuming too many bits for n_loci = 32")
         };
@@ -111,7 +117,7 @@ impl Crosspoint<u64, u32, usize> for CrosspointSingleU64U32 {
 }
 
 impl Crosspoint<u64, u32, ()> for CrosspointSingleU64U32 {
-    fn cross(self, x: &u64) -> u32 {
+    fn cross(&self, x: &u64) -> u32 {
         if self.len_prefix > 31 {
             panic!("consuming too many bits for n_loci = 32")
         };

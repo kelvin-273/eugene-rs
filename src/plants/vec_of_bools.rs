@@ -162,7 +162,7 @@ impl CrosspointSingleVob {
 }
 
 impl Crosspoint<SingleChromGenotype, SingleChromGamete, usize> for CrosspointSingleVob {
-    fn cross(self, x: &SingleChromGenotype) -> SingleChromGamete {
+    fn cross(&self, x: &SingleChromGenotype) -> SingleChromGamete {
         SingleChromGamete::new(
             (0..x.get_n_loci(0))
                 .map(|i| match (self.start, i < self.len_prefix) {
@@ -199,7 +199,7 @@ impl CrosspointMultiVob {
 }
 
 impl Crosspoint<SingleChromGenotype, SingleChromGamete, (usize, usize)> for CrosspointMultiVob {
-    fn cross(self, x: &SingleChromGenotype) -> SingleChromGamete {
+    fn cross(&self, x: &SingleChromGenotype) -> SingleChromGamete {
         let n_loci = x.array.len();
         let mut j = 0;
         let mut v = Vec::with_capacity(n_loci);

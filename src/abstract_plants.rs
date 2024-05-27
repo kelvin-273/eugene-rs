@@ -36,7 +36,7 @@ pub trait Gamete<A: Genotype<Self>>: Sized + BioSize + std::fmt::Debug {
 }
 
 pub trait Crosspoint<A: Genotype<B>, B: Gamete<A>, Data>: std::fmt::Debug {
-    fn cross(self, x: &A) -> B;
+    fn cross(&self, x: &A) -> B;
 
     fn crosspoints(data: &Data) -> Box<dyn std::iter::Iterator<Item = Self>>;
 }
@@ -191,26 +191,6 @@ impl Into<bool> for Allele {
     }
 }
 
-pub trait Segment<A: Genotype<B>, B: Gamete<A>> {}
-
-pub trait HaploidSegment<A, B>: Segment<A, B>
-where
-    A: Genotype<B> + Diploid<B>,
-    B: Gamete<A> + Haploid,
-{
-    fn from_start_end_gamete(s: usize, e: usize, g: Rc<WGam<A, B>>) -> Self
-    where
-        B: Haploid;
-
-    fn start(&self) -> usize;
-
-    fn end(&self) -> usize;
-
-    fn gamete(&self) -> Rc<WGam<A, B>>;
-
-    fn join(&self, other: &Self) -> Self;
-}
-
 pub trait Haploid: IndexAllele<usize> {
     fn alleles(&self) -> Vec<Allele>;
 }
@@ -277,20 +257,23 @@ pub trait Feasible<Data>: Sized {
 //  New version of WGen API  //
 ///////////////////////////////
 
-#[derive(Clone)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct WGenS2<A, B> {
     head: Rc<WGenSCell<A, B>>,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct WGamS2<A, B> {
     head: Rc<WGamSCell<A, B>>,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 struct WGenSCell<A, B> {
     genotype: A,
     history: Option<(Rc<WGamSCell<A, B>>, Rc<WGamSCell<A, B>>)>,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 struct WGamSCell<A, B> {
     gamete: B,
     history: Option<Rc<WGenSCell<A, B>>>,
@@ -330,7 +313,27 @@ impl<A, B> WGenS2<A, B> {
         }
     }
 
-    pub fn cross(&self, k: &dyn Fn(&A) -> B) -> WGamS2<A, B> {
+    pub fn from_gametes_with_store(
+        h: &mut HashMap<A, WGenS2<A, B>>,
+        wgl: &WGamS2<A, B>,
+        wgr: &WGamS2<A, B>,
+    ) -> Self
+    where
+        A: Genotype<B> + Sized + PartialEq + Eq + Hash + Clone,
+        B: Gamete<A> + Clone,
+    {
+        let x = A::from_gametes(wgl.gamete(), wgr.gamete());
+        h.entry(x.clone())
+            .or_insert_with(|| Self {
+                head: Rc::new(WGenSCell {
+                    genotype: x,
+                    history: Some((wgl.head.clone(), wgr.head.clone())),
+                }),
+            })
+            .clone()
+    }
+
+    pub fn cross<K: Fn(&A) -> B>(&self, k: K) -> WGamS2<A, B> {
         WGamS2 {
             head: Rc::new(WGamSCell {
                 gamete: k(self.genotype()),
@@ -357,6 +360,14 @@ impl<A, B> WGenS2<A, B> {
             })
             .clone()
     }
+
+    pub fn generations(&self) -> usize {
+        unimplemented!()
+    }
+
+    pub fn crossings(&self) -> usize {
+        unimplemented!()
+    }
 }
 
 impl<A, B> WGamS2<A, B> {
@@ -378,6 +389,31 @@ impl<A, B> WGamS2<A, B> {
             .history
             .as_ref()
             .map(|wx| WGenS2 { head: wx.clone() })
+    }
+
+    pub fn new_from_genotype(gx: B, wx: WGenS2<A, B>) -> Self {
+        Self {
+            head: Rc::new(WGamSCell {
+                gamete: gx,
+                history: Some(wx.head.clone()),
+            }),
+        }
+    }
+
+    pub fn generations(&self) -> usize {
+        unimplemented!()
+    }
+
+    pub fn crossings(&self) -> usize {
+        unimplemented!()
+    }
+}
+
+impl<A, B> Clone for WGenS2<A, B> {
+    fn clone(&self) -> Self {
+        Self {
+            head: self.head.clone(),
+        }
     }
 }
 

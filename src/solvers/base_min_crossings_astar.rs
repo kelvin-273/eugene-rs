@@ -260,7 +260,7 @@ impl<'a, A> Iterator for StateIter<'a, A> {
     }
 }
 
-fn naive_successors<A, B, K>(state: &State<WGen<A, B>>) -> Vec<(State<WGen<A, B>>, usize)> {
+fn _naive_successors<A, B, K>(state: &State<WGen<A, B>>) -> Vec<(State<WGen<A, B>>, usize)> {
     let mut out = vec![];
     let xs = state.iter().map(|x| x).collect::<Vec<&WGen<A, B>>>();
     for i in 0..xs.len() {

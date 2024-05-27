@@ -1,10 +1,10 @@
 use crate::abstract_plants::*;
-use crate::solution::BaseSolution;
 use crate::plants::bit_array::*;
+use crate::solution::BaseSolution;
+use pyo3::prelude::*;
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use std::rc::Rc;
-use pyo3::prelude::*;
 
 /// Runs a breeding program given `n_loci` and `pop_0` where `pop_0` is a population of single
 /// chromosome diploid genotypes with `n_loci` loci.
@@ -39,7 +39,7 @@ pub fn breeding_program_python(
         CrosspointBitVec,
         DomGamete,
         usize,
-        >(pop_0, ideotype, n_loci);
+    >(pop_0, ideotype, n_loci);
     match res {
         None => Ok(None),
         Some(x_star) => {
@@ -54,7 +54,6 @@ pub fn breeding_program_python(
         }
     }
 }
-
 
 /// Runs the enumeration with dominance pruning from the pop_0 to the ideotype.
 /// Dominance pruning is performed on gametes
@@ -220,7 +219,7 @@ where
         let x = &v[i];
         for j in i + 1..v.len() {
             let y = &v[j];
-            if D::dom(&x, &y) {
+            if D::dom(x, y) {
                 keeps[j] = false;
             } else if D::dom(y, x) {
                 keeps[i] = false;
@@ -342,7 +341,6 @@ mod tests {
 
     #[test]
     fn filter_non_dominating_pair_test() {
-
         let pairs = vec![
             Pair::new(2, 3),
             Pair::new(4, 5),
@@ -364,11 +362,10 @@ mod tests {
             Pair::new(2, 1),
             Pair::new(0, 4),
         ];
-        assert_eq!(vec![
-            Pair::new(0, 9),
-            Pair::new(9, 7),
-            Pair::new(8, 8),
-        ], filter_non_dominating::<Pair, Pair>(pairs));
+        assert_eq!(
+            vec![Pair::new(0, 9), Pair::new(9, 7), Pair::new(8, 8),],
+            filter_non_dominating::<Pair, Pair>(pairs)
+        );
 
         let pairs = vec![
             Pair::new(2, 3),
@@ -389,12 +386,15 @@ mod tests {
             Pair::new(2, 1),
             Pair::new(0, 4),
         ];
-        assert_eq!(vec![
-            Pair::new(0, 9),
-            Pair::new(5, 5),
-            Pair::new(6, 2),
-            Pair::new(9, 1),
-        ], filter_non_dominating::<Pair, Pair>(pairs));
+        assert_eq!(
+            vec![
+                Pair::new(0, 9),
+                Pair::new(5, 5),
+                Pair::new(6, 2),
+                Pair::new(9, 1),
+            ],
+            filter_non_dominating::<Pair, Pair>(pairs)
+        );
 
         for _ in 0..100 {
             let n: usize = random::<usize>() % 100 + 1;

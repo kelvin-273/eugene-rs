@@ -30,7 +30,7 @@ pub fn breeding_program_python(
                     .collect(),
             )
         })
-        .collect();
+        .collect::<Vec<_>>();
     let res = breeding_program(n_loci, &pop_0);
     match res {
         None => Ok(None),
@@ -44,7 +44,7 @@ pub fn breeding_program_python(
     }
 }
 
-pub fn breeding_program(n_loci: usize, pop_0: &Vec<SingleChromGenotype>) -> Option<BaseSolution> {
+pub fn breeding_program(n_loci: usize, pop_0: &[SingleChromGenotype]) -> Option<BaseSolution> {
     let ideotype = SingleChromGenotype::ideotype(n_loci);
     if pop_0.contains(&ideotype) {
         return Some(WGenS2::new(ideotype).to_base_sol(n_loci, Objective::Generations));

@@ -13,8 +13,6 @@ pub mod base_min_crossings_distribute_astar;
 pub mod base_min_crossings_lns;
 /// Finds the min crossings for base problem using MIP
 //pub mod base_min_crossings_mip;
-/// Finds the min crossings for base problem using zigzag decomposition
-pub mod base_min_crossings_zigzag;
 /// Solves by breeding all possible progeny in each generation
 pub mod base_min_generations_enumerator;
 pub mod base_min_generations_enumerator2;

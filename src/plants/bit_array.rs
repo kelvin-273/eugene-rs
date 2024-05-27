@@ -434,8 +434,6 @@ impl WGenS2<SingleChromGenotype, SingleChromGamete> {
     }
 }
 
-fn test_bitvec() {}
-
 #[cfg(test)]
 mod tests {
     use super::*;

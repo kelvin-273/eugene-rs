@@ -90,3 +90,24 @@ pub fn breeding_program(n_loci: usize, pop_0: &Vec<SingleChromGenotype>) -> Opti
     let wx_star = WGenS2::from_gametes(wg_star, wg_star);
     Some(wx_star.to_base_sol(n_loci, Objective::Generations))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn enumerator_dominance_test() {
+        use rand::prelude::*;
+        let n_loci = 10;
+        let n_pop = 5;
+        let mut rng = thread_rng();
+        for _ in 0..100 {
+            let pop_0 = SingleChromGenotype::init_pop_random(&mut rng, n_loci, n_pop);
+            let sol1 = breeding_program(n_loci, &pop_0);
+            let sol2 = breeding_program(n_loci, &pop_0);
+            assert!(sol1.is_some());
+            assert!(sol2.is_some());
+            assert_eq!(sol1.unwrap().objective, sol2.unwrap().objective);
+        }
+    }
+}

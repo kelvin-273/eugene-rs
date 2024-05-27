@@ -1,9 +1,9 @@
-use crate::abstract_plants::{Crosspoint, Genotype, WGamS, WGenS};
+use crate::abstract_plants::{Crosspoint, Genotype, WGamS2, WGenS2};
 use crate::plants::bit_array::*;
-use crate::solution::BaseSolution;
+use crate::solution::{BaseSolution, Objective};
+use pyo3::prelude::*;
 use std::collections::HashMap;
 use std::rc::Rc;
-use pyo3::prelude::*;
 
 /// Runs a breeding program given `n_loci` and `pop_0` where `pop_0` is a population of single
 /// chromosome diploid genotypes with `n_loci` loci.
@@ -34,38 +34,29 @@ pub fn breeding_program_python(
     let res = breeding_program(n_loci, &pop_0);
     match res {
         None => Ok(None),
-        Some(sol) => {
-            Ok(Some((
-                sol.tree_data,
-                sol.tree_type,
-                sol.tree_left,
-                sol.tree_right,
-                sol.objective,
-            )))
-        }
+        Some(sol) => Ok(Some((
+            sol.tree_data,
+            sol.tree_type,
+            sol.tree_left,
+            sol.tree_right,
+            sol.objective,
+        ))),
     }
 }
 
 pub fn breeding_program(n_loci: usize, pop_0: &Vec<SingleChromGenotype>) -> Option<BaseSolution> {
     let ideotype = SingleChromGenotype::ideotype(n_loci);
     if pop_0.contains(&ideotype) {
-        return Some(BaseSolution::min_gen_from_wgens(n_loci, &WGenS::new(ideotype)));
+        return Some(WGenS2::new(ideotype).to_base_sol(n_loci, Objective::Generations));
     }
-    let pop_0: Vec<Rc<WGenS<SingleChromGenotype, _>>> = pop_0
-        .iter()
-        .map(|x| Rc::new(WGenS::new(x.clone())))
-        .collect();
-    let mut h: HashMap<
-        SingleChromGamete,
-        Rc<WGamS<SingleChromGenotype, SingleChromGamete>>,
-    > = HashMap::new();
+    let pop_0: Vec<WGenS2<SingleChromGenotype, _>> =
+        pop_0.iter().map(|x| WGenS2::new(x.clone())).collect();
+    let mut h: HashMap<SingleChromGamete, WGamS2<SingleChromGenotype, SingleChromGamete>> =
+        HashMap::new();
     for wx in pop_0 {
-        for gx in CrosspointBitVec::crosspoints(&n_loci).map(|k| k.cross(&wx.genotype)) {
+        for gx in CrosspointBitVec::crosspoints(&n_loci).map(|k| k.cross(wx.genotype())) {
             if !h.contains_key(&gx) {
-                let wgx = Rc::new(WGamS {
-                    gamete: gx.clone(),
-                    history: Some(wx.clone()),
-                });
+                let wgx = WGamS2::new_from_genotype(gx.clone(), wx.clone());
                 h.insert(gx, wgx);
             }
         }
@@ -74,26 +65,21 @@ pub fn breeding_program(n_loci: usize, pop_0: &Vec<SingleChromGenotype>) -> Opti
     while !h.contains_key(&ideotype_gamete) {
         let contained_gametes: Vec<SingleChromGamete> = h.keys().map(|k| k.clone()).collect();
         for i in 0..contained_gametes.len() {
-            for j in i+1..contained_gametes.len() {
-                let wgx = h.get(&contained_gametes[i])?.clone();
-                let wgy = h.get(&contained_gametes[j])?.clone();
-                let z = SingleChromGenotype::from_gametes(&wgx.gamete, &wgy.gamete);
-                let wz = Rc::new(WGenS { genotype: z, history: Some((wgx, wgy)) });
+            for j in i + 1..contained_gametes.len() {
+                let wgx = h.get(&contained_gametes[i])?;
+                let wgy = h.get(&contained_gametes[j])?;
+                let wz = WGenS2::from_gametes(wgx, wgy);
                 for k in CrosspointBitVec::crosspoints(&n_loci) {
-                    let gz = k.cross(&wz.genotype);
+                    let gz = k.cross(wz.genotype());
                     if !h.contains_key(&gz) {
-                        let wgz = Rc::new(WGamS {
-                            gamete: gz.clone(),
-                            history: Some(wz.clone()),
-                        });
-                        h.insert(gz, wgz);
+                        let wgz = WGamS2::new_from_genotype(gz.clone(), wz.clone());
+                        h.insert(gz, wgz.clone());
                     }
                 }
             }
         }
     }
-    let mut wx_star = WGenS::new(ideotype);
-    let wgz = h.get(&ideotype_gamete)?;
-    wx_star.history = Some((wgz.clone(), wgz.clone()));
-    Some(BaseSolution::min_gen_from_wgens(n_loci, &wx_star))
+    let wg_star = h.get(&ideotype_gamete).expect("hash map doesn't have g*");
+    let wx_star = WGenS2::from_gametes(wg_star, wg_star);
+    Some(wx_star.to_base_sol(n_loci, Objective::Generations))
 }

@@ -2,6 +2,7 @@ use crate::abstract_plants::*;
 use crate::plants::bit_array::*;
 use std::collections::{HashMap, VecDeque};
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct BaseSolution {
     pub tree_data: Vec<Vec<Vec<i32>>>,
     pub tree_type: Vec<&'static str>,
@@ -10,6 +11,7 @@ pub struct BaseSolution {
     pub objective: usize,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum Objective {
     Generations,
     Crossings,
@@ -410,7 +412,7 @@ fn wgens_to_base_sol(
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     use std::rc::Rc;
 
     #[test]
@@ -451,7 +453,7 @@ mod tests {
 
         let wgz = Rc::new(WGamS {
             gamete: SingleChromGamete::from_str("11"),
-            history: Some(wxz)
+            history: Some(wxz),
         });
 
         let wx_star = WGenS {
@@ -472,13 +474,18 @@ mod tests {
 
     #[test]
     fn wgens_to_base_sol_3loci_test() {
-
         let x = SingleChromGenotype::from_str("011", "111");
         let z = SingleChromGenotype::from_str("111", "111");
         let g = SingleChromGamete::from_str("111");
         let wx = Rc::new(WGenS::new(x));
-        let wg = Rc::new(WGamS { gamete: g, history: Some(wx) });
-        let wz = Rc::new(WGenS { genotype: z, history: Some((wg.clone(), wg)) });
+        let wg = Rc::new(WGamS {
+            gamete: g,
+            history: Some(wx),
+        });
+        let wz = Rc::new(WGenS {
+            genotype: z,
+            history: Some((wg.clone(), wg)),
+        });
 
         let sol_c = BaseSolution::min_cross_from_wgens(3, &wz);
         assert_eq!(1, sol_c.objective);

@@ -1,14 +1,15 @@
 use crate::plants::bit_array;
 
-fn distarray_to_homo(v: &Vec<usize>) -> Vec<bit_array::SingleChromGenotype> {
+/// Generates a population of `SingleChromGenotype`s from an array
+pub fn distarray_to_homo(v: &[usize]) -> Vec<bit_array::SingleChromGenotype> {
     dbg!(v);
     let n_loci = v.len();
     let n_pop0 = v.iter().max().map(|&length| length + 1).unwrap_or(0);
     let mut xs = vec![vec![(false, false); n_loci]; n_pop0];
-    dbg!(&xs);
     for (i, x) in v.iter().enumerate() {
         xs[*x][i] = (true, true);
     }
+    dbg!(&xs);
     xs.iter()
         .map(|x| bit_array::SingleChromGenotype::new(x.clone()))
         .collect()

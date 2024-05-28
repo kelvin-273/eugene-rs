@@ -141,7 +141,7 @@ mod tests {
         for _ in 0..1 {
             let pop0 = SingleChromGenotype::init_pop_random(&mut rng, n_loci, n_pop);
             dbg!(&pop0);
-            let wt = base_min_generations_segment::breeding_program(n_loci, pop0.clone()).unwrap();
+            let wt = base_min_generations_segment::breeding_program(n_loci, &pop0).unwrap();
             let n_seg = base_min_generations_segment::min_covering_segments(n_loci, &pop0).len();
             let n_crs = wt.crossings();
             dbg!(&wt);
@@ -168,7 +168,7 @@ mod tests {
         let n_pop = 1024;
         let _res = base_min_generations_segment::breeding_program(
             n_loci,
-            SingleChromGenotype::init_pop_random(&mut thread_rng(), n_loci, n_pop),
+            &SingleChromGenotype::init_pop_random(&mut thread_rng(), n_loci, n_pop),
         );
         Ok(())
     }

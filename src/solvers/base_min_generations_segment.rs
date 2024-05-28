@@ -4,13 +4,7 @@ use crate::solution::Objective;
 use pyo3::prelude::*;
 use std::collections::HashMap;
 
-/// Runs a breeding program given `n_loci` and `pop_0` where `pop_0` is a population of single
-/// chromosome diploid genotypes with `n_loci` loci.
-#[pyo3::pyfunction]
-pub fn breeding_program_python(
-    n_loci: usize,
-    pop_0: Vec<Vec<Vec<bool>>>,
-) -> PyResult<
+type PyCS = PyResult<
     Option<(
         Vec<Vec<Vec<i32>>>,
         Vec<&'static str>,
@@ -18,7 +12,12 @@ pub fn breeding_program_python(
         Vec<usize>,
         usize,
     )>,
-> {
+>;
+
+/// Runs a breeding program given `n_loci` and `pop_0` where `pop_0` is a population of single
+/// chromosome diploid genotypes with `n_loci` loci.
+#[pyo3::pyfunction]
+pub fn breeding_program_python(n_loci: usize, pop_0: Vec<Vec<Vec<bool>>>) -> PyCS {
     let pop_0 = pop_0
         .iter()
         .map(|x| {
@@ -30,7 +29,7 @@ pub fn breeding_program_python(
             )
         })
         .collect();
-    let res = breeding_program(n_loci, pop_0);
+    let res = breeding_program(n_loci, &pop_0);
     match res {
         None => Ok(None),
         Some(x_star) => {
@@ -96,7 +95,7 @@ impl SegW {
             g: {
                 let crosspoint_bit_vec = &CrosspointBitVec::new(false, other.s);
                 let wz = WGenS2::from_gametes(&self.g, &other.g);
-                wz.cross(|z| crosspoint_bit_vec.cross(&z))
+                wz.cross(|z| crosspoint_bit_vec.cross(z))
             },
         }
     }
@@ -108,7 +107,7 @@ impl SegW {
             s: self.s,
             e: other.e,
             g: {
-                let z = SingleChromGenotype::from_gametes(&self.g.gamete(), &other.g.gamete());
+                let z = SingleChromGenotype::from_gametes(self.g.gamete(), other.g.gamete());
                 let wz = WGenS2::new(z);
                 let crosspoint_bit_vec = &CrosspointBitVec::new(false, other.s);
                 let gz = crosspoint_bit_vec.cross(wz.genotype());
@@ -125,55 +124,83 @@ impl SegW {
 /// - has to have two genotypes
 pub fn breeding_program(
     n_loci: usize,
-    pop_0: Vec<SingleChromGenotype>,
+    pop_0: &Vec<SingleChromGenotype>,
 ) -> Option<WGenS2<SingleChromGenotype, SingleChromGamete>> {
+    // TODO: Test for feasibility <27-05-24> //
+
     // Generate minimal ordered set of segments
-    let min_segments = min_covering_segments(n_loci, &pop_0);
+    let mut min_segments = min_covering_segments(n_loci, &pop_0);
 
     // Construct crossing tree from segments
-    None
+    while min_segments.len() > 1 {
+        let n_segments = min_segments.len();
+        let mut new_segments = Vec::with_capacity(n_segments.div_ceil(2));
+        for i in 0..n_segments / 2 {
+            let cx = &min_segments[2 * i];
+            let cy = &min_segments[2 * i + 1];
+            let cz = cx.join(cy);
+            new_segments.push(cz);
+        }
+        if n_segments % 2 == 1 {
+            new_segments.push(min_segments[n_segments - 1].clone());
+        }
+        min_segments = new_segments;
+    }
+    Some(WGenS2::from_gametes(&min_segments[0].g, &min_segments[0].g))
 }
 
+/// Given a vector of segments, returns the minimum cardinality subset of segments that covers
+/// {0..n_loci-1}.
 pub fn min_covering_segments(n_loci: usize, pop_0: &Vec<SingleChromGenotype>) -> Vec<SegW> {
     let mut segment_pigeonholes: Vec<Option<SegW>> = vec![None; n_loci];
+
+    // Fill each hole with the largest segment that starts at s
     for x in pop_0 {
-        for c in generate_segments_genotype_diploid(n_loci, x) {
-            let s = c.s;
-            let e = c.e;
-            if segment_pigeonholes[s].is_none() {
-                segment_pigeonholes[s] = Some(c);
-            } else {
-                segment_pigeonholes[s].as_mut().map(|c_old| {
+        for Segment { s, e, g } in generate_segments_genotype_diploid(n_loci, x) {
+            match segment_pigeonholes[s].as_mut() {
+                None => {
+                    segment_pigeonholes[s] = Some(Segment { s, e, g });
+                }
+                Some(c_old) => {
                     if c_old.e < e {
-                        *c_old = c
-                    } else {
+                        *c_old = Segment { s, e, g };
                     }
-                });
+                }
             }
         }
     }
-    segment_pigeonholes
-        .iter()
-        .scan(None, |state, c| {
-            c.as_ref().map(|c| match state {
-                Some((ref mut s, ref mut e)) => {
-                    assert!(*s < c.s);
-                    if *e < c.e {
-                        *s = c.s;
-                        *e = c.e;
-                        Some(c)
-                    } else {
-                        None
+
+    // Filter non-dominated segments
+    let mut i = 1;
+    assert!(segment_pigeonholes[0].is_some());
+    let mut j = 1;
+    let mut e_covered = segment_pigeonholes[0].as_ref().unwrap().e;
+    while i < n_loci && e_covered < n_loci - 1 {
+        // INV: segment_pigeonholes[j-1].e == e_covered.
+        // INV: segment_pigeonholes[..j] is the minimum cardinality subset of segments in
+        //      segment_pigeonholes[..i] that covers {0..e_covered}.
+        if let Some(mut c_next) = segment_pigeonholes[i].clone() {
+            while i < n_loci && i <= e_covered + 1 {
+                // INV: Let c_prev = segment_pigeonholes[j-1].
+                //      c_next is the segment in segment_pigeonholes[..i] with the largest endpoint
+                //      such that c_prev.s < c_next.s <= e_covered + 1
+                // EXC: i == n_loci \/ i > e_covered + 1
+                if let Some(c) = segment_pigeonholes[i].as_ref() {
+                    if c.e > c_next.e {
+                        c_next = c.clone();
                     }
                 }
-                None => {
-                    *state = Some((c.s, c.e));
-                    Some(c)
-                }
-            })
-        })
-        .filter_map(|c| c.map(|c| c.clone()))
-        .collect()
+                i += 1;
+            }
+            e_covered = c_next.e;
+            segment_pigeonholes[j] = Some(c_next);
+            j += 1;
+        } else {
+            i += 1;
+        }
+    }
+
+    segment_pigeonholes.into_iter().take(j).flatten().collect()
 }
 
 fn generate_segments_genotype_diploid(n_loci: usize, x: &SingleChromGenotype) -> Vec<SegW> {
@@ -227,17 +254,14 @@ fn generate_segments_genotype_diploid(n_loci: usize, x: &SingleChromGenotype) ->
     }
 
     out.into_iter()
-        .chain(q.0[i..].iter().map(|c| c.clone()))
-        .chain(q.1[j..].iter().map(|c| c.clone()))
+        .chain(q.0[i..].iter().cloned())
+        .chain(q.1[j..].iter().cloned())
         .map(|c| SegW {
             s: c.s,
             e: c.e,
             g: WGamS2::new_from_genotype(c.g.clone(), wx.clone()),
         })
         .collect()
-    //q.0[i..].iter().for_each(|c| out.push(c.clone()));
-    //q.1[j..].iter().for_each(|c| out.push(c.clone()));
-    //out
 }
 
 fn generate_segments_gamete_haploid<B>(gx: B) -> Vec<Segment<B>>
@@ -304,15 +328,130 @@ mod tests {
     }
 
     #[test]
-    fn bitvec_breeding_program_test() {
+    fn generate_segments_genotype_diploid3_test() {
+        let segments =
+            generate_segments_genotype_diploid(3, &SingleChromGenotype::from_str("010", "010"));
+        assert_eq!(
+            vec![(1, 1)],
+            segments
+                .iter()
+                .map(|c| (c.s, c.e))
+                .collect::<Vec<(usize, usize)>>()
+        );
+        let segments =
+            generate_segments_genotype_diploid(3, &SingleChromGenotype::from_str("101", "101"));
+        assert_eq!(
+            vec![(0, 0), (2, 2)],
+            segments
+                .iter()
+                .map(|c| (c.s, c.e))
+                .collect::<Vec<(usize, usize)>>()
+        );
+    }
+
+    #[test]
+    fn generate_segments_genotype_diploid4_test() {
+        let segments =
+            generate_segments_genotype_diploid(4, &SingleChromGenotype::from_str("0101", "1010"));
+        assert_eq!(
+            vec![(0, 1), (1, 2), (2, 3)],
+            segments
+                .iter()
+                .map(|c| (c.s, c.e))
+                .collect::<Vec<(usize, usize)>>()
+        );
+    }
+
+    #[test]
+    fn min_segments_test() {
+        let segments = min_covering_segments(
+            3,
+            &vec![
+                SingleChromGenotype::from_str("010", "010"),
+                SingleChromGenotype::from_str("101", "101"),
+            ],
+        );
+        assert_eq!(
+            vec![(0, 0), (1, 1), (2, 2)],
+            segments
+                .iter()
+                .map(|c| (c.s, c.e))
+                .collect::<Vec<(usize, usize)>>()
+        );
+
+        let segments =
+            min_covering_segments(4, &vec![SingleChromGenotype::from_str("0101", "1010")]);
+        assert_eq!(
+            vec![(0, 1), (2, 3)],
+            segments
+                .iter()
+                .map(|c| (c.s, c.e))
+                .collect::<Vec<(usize, usize)>>()
+        );
+    }
+
+    #[test]
+    fn bitvec_breeding_program_4_zigzag_test() {
         use crate::plants::bit_array::*;
-        let n_loci = 10;
+        let n_loci = 4;
+        let pop_0 = vec![SingleChromGenotype::from_str("0101", "1010")];
+        assert_eq!(
+            2,
+            breeding_program(n_loci, &pop_0)
+                .expect("infeasible")
+                .to_base_sol(n_loci, Objective::Generations)
+                .objective
+        );
+    }
+
+    #[test]
+    fn bitvec_breeding_program_4_dist_zigzag_test() {
+        use crate::plants::bit_array::*;
+        let n_loci = 4;
+        let pop_0 = vec![
+            SingleChromGenotype::from_str("0101", "0101"),
+            SingleChromGenotype::from_str("1010", "1010"),
+        ];
+        let op_sol = breeding_program(n_loci, &pop_0)
+            .map(|sol| sol.to_base_sol(n_loci, Objective::Generations));
+        dbg!(&op_sol);
+        assert_eq!(3, op_sol.expect("infeasible").objective);
+    }
+
+    #[test]
+    fn bitvec_breeding_program_dist_test() {
+        use crate::extra::instance_generators;
+        fn tester(actual: usize, v: &[usize]) {
+            let pop_0 = instance_generators::distarray_to_homo(v);
+            let n_loci = v.len();
+            let op_sol = breeding_program(n_loci, &pop_0)
+                .map(|sol| sol.to_base_sol(n_loci, Objective::Generations));
+            dbg!(&op_sol);
+            assert_eq!(actual, op_sol.expect("infeasible").objective);
+        }
+        tester(2, &[0, 1]);
+        tester(3, &[0, 1, 0]);
+        tester(3, &[0, 1, 2, 0]);
+        tester(4, &[0, 1, 0, 2, 1]);
+    }
+
+    #[test]
+    fn bitvec_breeding_program_random_test() {
+        use crate::plants::bit_array::*;
+        use crate::solvers::base_min_generations_enumerator_dominance2;
+        let n_loci = 17;
         let n_pop = 6;
         let mut rng = rand::thread_rng();
+        for _ in 0..20 {
+            let pop_0 = SingleChromGenotype::init_pop_random(&mut rng, n_loci, n_pop);
 
-        breeding_program(
-            n_loci,
-            SingleChromGenotype::init_pop_random(&mut rng, n_loci, n_pop),
-        );
+            let sol_seg = breeding_program(n_loci, &pop_0);
+            let sol_dom =
+                base_min_generations_enumerator_dominance2::breeding_program(n_loci, &pop_0);
+            assert_eq!(
+                sol_dom.map(|sol| sol.objective),
+                sol_seg.map(|sol| sol.to_base_sol(n_loci, Objective::Generations).objective)
+            );
+        }
     }
 }

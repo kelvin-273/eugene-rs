@@ -45,6 +45,8 @@ pub fn breeding_program_python(n_loci: usize, pop_0: Vec<Vec<Vec<bool>>>) -> PyC
     }
 }
 
+/// A triple containing a start-point `s`, end-point `e`, and gamete `g` used to represent a
+/// contiguous sequence of favourable alleles on `g` from index `s` to `e` inclusive.
 #[derive(Debug, Clone)]
 pub struct Segment<B> {
     pub s: usize,
@@ -95,7 +97,7 @@ impl SegW {
             g: {
                 let crosspoint_bit_vec = &CrosspointBitVec::new(false, other.s);
                 let wz = WGenS2::from_gametes(&self.g, &other.g);
-                wz.cross(|z| crosspoint_bit_vec.cross(z))
+                wz.cross_fn(|z| crosspoint_bit_vec.cross(z))
             },
         }
     }

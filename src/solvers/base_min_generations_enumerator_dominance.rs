@@ -97,7 +97,7 @@ where
 
     while !pop.iter().any(|x| x.genotype == ideotype) && timeout_check(gen_i) {
         // filter filter_non_dominating genotypes
-        pop = filter_non_dominating_key::<Rc<WGen<A, B>>, A, _, D>(pop, |wx| wx.genotype.clone());
+        pop = filter_non_dominating_key::<Rc<WGen<A, B>>, A, _, D>(pop, |wx| &wx.genotype);
 
         // create all gametes
         let pop_g: Vec<Rc<WGam<A, B>>> = pop
@@ -173,7 +173,7 @@ where
         }
         // remove dominated gametes
         let next_gametes: Vec<Rc<WGam<A, B>>> =
-            filter_non_dominating_key::<_, _, _, D>(h, |(g, _v)| g.clone())
+            filter_non_dominating_key::<_, _, _, D>(h, |(g, _v)| g)
                 .into_iter()
                 .map(|(g, v)| {
                     Rc::new(WGam {
@@ -238,7 +238,7 @@ where
 
 pub fn filter_non_dominating_key<T, U, F, D>(s: impl IntoIterator<Item = T>, key: F) -> Vec<T>
 where
-    F: Fn(&T) -> U,
+    F: Fn(&T) -> &U,
     D: Dominance<U>,
 {
     let v: Vec<T> = s.into_iter().collect();
@@ -249,9 +249,9 @@ where
             let y = &v[j];
             let _x = key(x);
             let _y = key(y);
-            if D::dom(&_x, &_y) {
+            if D::dom(_x, _y) {
                 keeps[j] = false;
-            } else if D::dom(&_y, &_x) {
+            } else if D::dom(_y, _x) {
                 keeps[i] = false;
                 break;
             }

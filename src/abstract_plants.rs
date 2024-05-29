@@ -333,7 +333,21 @@ impl<A, B> WGenS2<A, B> {
             .clone()
     }
 
-    pub fn cross<K: Fn(&A) -> B>(&self, k: K) -> WGamS2<A, B> {
+    pub fn cross<K, Data>(&self, k: K) -> WGamS2<A, B>
+    where
+        K: Crosspoint<A, B, Data>,
+        A: Genotype<B>,
+        B: Gamete<A>,
+    {
+        WGamS2 {
+            head: Rc::new(WGamSCell {
+                gamete: k.cross(self.genotype()),
+                history: Some(self.head.clone()),
+            }),
+        }
+    }
+
+    pub fn cross_fn<K: Fn(&A) -> B>(&self, k: K) -> WGamS2<A, B> {
         WGamS2 {
             head: Rc::new(WGamSCell {
                 gamete: k(self.genotype()),
@@ -342,7 +356,24 @@ impl<A, B> WGenS2<A, B> {
         }
     }
 
-    pub fn cross_with_store(
+    pub fn cross_with_store<K, Data>(&self, h: &mut HashMap<B, WGamS2<A, B>>, k: K) -> WGamS2<A, B>
+    where
+        K: Crosspoint<A, B, Data>,
+        A: Genotype<B>,
+        B: Gamete<A> + Sized + PartialEq + Eq + Hash + Clone,
+    {
+        let g = k.cross(self.genotype());
+        h.entry(g.clone())
+            .or_insert_with(|| WGamS2 {
+                head: Rc::new(WGamSCell {
+                    gamete: g,
+                    history: Some(self.head.clone()),
+                }),
+            })
+            .clone()
+    }
+
+    pub fn cross_with_store_fn(
         &self,
         h: &mut HashMap<B, WGamS2<A, B>>,
         k: &dyn Fn(&A) -> B,

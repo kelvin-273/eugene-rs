@@ -1,6 +1,6 @@
 //! Plant breeding program modelling and solving library.
 //!
-//! Components are of the plant breeding programs are separated modules.
+//! Components of the plant breeding program are separated by module.
 //! Typical use is as follows:
 //! ```
 //! use eugene::plants::bit_array::*;
@@ -116,15 +116,13 @@ mod tests {
     }
 
     fn _main7() -> io::Result<()> {
-        use crate::plants::bit_array::*;
         let mut lines = io::stdin().lines();
         while let Some(Ok(s)) = lines.next() {
             println!("string: {}", &s);
             let (n_loci, pop0) = instance_generators::parse_homozygous(&s);
             dbg!(&n_loci);
             dbg!(&pop0);
-            let ideo = SingleChromGenotype::ideotype(n_loci);
-            let t = base_min_crossings_astar::breeding_program(n_loci, pop0.clone(), ideo).unwrap();
+            let t = base_min_crossings_astar::breeding_program(n_loci, &pop0).unwrap();
             let n_seg = base_min_generations_segment::min_covering_segments(n_loci, &pop0).len();
             let n_crs = t.crossings();
             dbg!(&t);
@@ -156,8 +154,7 @@ mod tests {
         let n_pop = 2;
         let _res = base_min_crossings_astar::breeding_program(
             n_loci,
-            SingleChromGenotype::init_pop_random(&mut thread_rng(), n_loci, n_pop),
-            SingleChromGenotype::ideotype(n_loci),
+            &SingleChromGenotype::init_pop_random(&mut thread_rng(), n_loci, n_pop),
         );
         Ok(())
     }

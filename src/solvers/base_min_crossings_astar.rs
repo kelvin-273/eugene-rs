@@ -4,25 +4,15 @@ use crate::solution::*;
 use crate::solvers::base_min_generations_enumerator_dominance::filter_non_dominating_key;
 use crate::solvers::base_min_generations_segment;
 use pathfinding::directed::astar::astar;
-use pyo3::prelude::*;
 use std::rc::Rc;
 
 type WGe = WGenS2<SingleChromGenotype, SingleChromGamete>;
 type WGa = WGamS2<SingleChromGenotype, SingleChromGamete>;
-type PyCS = PyResult<
-    Option<(
-        Vec<Vec<Vec<i32>>>,
-        Vec<&'static str>,
-        Vec<usize>,
-        Vec<usize>,
-        usize,
-    )>,
->;
 
 /// Runs a breeding program given `n_loci` and `pop_0` where `pop_0` is a population of single
 /// chromosome diploid genotypes with `n_loci` loci.
 #[pyo3::pyfunction]
-pub fn breeding_program_python(n_loci: usize, pop_0: Vec<Vec<Vec<bool>>>) -> PyCS {
+pub fn breeding_program_python(n_loci: usize, pop_0: Vec<Vec<Vec<bool>>>) -> PyBaseSolution {
     let pop_0 = pop_0
         .iter()
         .map(|x| {
@@ -152,14 +142,6 @@ impl<A> State<A> {
         }
     }
 
-    pub fn push_with_most_recent_parent(&self, x: A, most_recent_parent: usize) -> Self {
-        Self {
-            most_recent_parent,
-            head: Rc::new(StateData::Next(x, self.head.clone())),
-            depth: self.depth + 1,
-        }
-    }
-
     pub fn _count_nodes(&self) -> usize {
         let head = &self.head;
         fn aux<A>(head: &Link<A>) -> usize {
@@ -180,15 +162,6 @@ impl<A> std::hash::Hash for State<A> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         state.write_usize(self.most_recent_parent)
         //state.write_u8(0)
-    }
-
-    fn hash_slice<H: std::hash::Hasher>(data: &[Self], state: &mut H)
-    where
-        Self: Sized,
-    {
-        for piece in data {
-            piece.hash(state)
-        }
     }
 }
 

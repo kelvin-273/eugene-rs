@@ -1,25 +1,13 @@
 use crate::abstract_plants::{Crosspoint, Dominance, WGamS2, WGenS2};
 use crate::plants::bit_array::*;
-use crate::solution::{BaseSolution, Objective};
+use crate::solution::{BaseSolution, Objective, PyBaseSolution};
 use crate::solvers::base_min_generations_enumerator_dominance as bed;
-use pyo3::prelude::*;
 use std::collections::HashSet;
 
 /// Runs a breeding program given `n_loci` and `pop_0` where `pop_0` is a population of single
 /// chromosome diploid genotypes with `n_loci` loci.
 #[pyo3::pyfunction]
-pub fn breeding_program_python(
-    n_loci: usize,
-    pop_0: Vec<Vec<Vec<bool>>>,
-) -> PyResult<
-    Option<(
-        Vec<Vec<Vec<i32>>>,
-        Vec<&'static str>,
-        Vec<usize>,
-        Vec<usize>,
-        usize,
-    )>,
-> {
+pub fn breeding_program_python(n_loci: usize, pop_0: Vec<Vec<Vec<bool>>>) -> PyBaseSolution {
     let pop_0 = pop_0
         .iter()
         .map(|x| {

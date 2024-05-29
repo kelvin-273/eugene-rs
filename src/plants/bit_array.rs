@@ -18,7 +18,7 @@ impl IndexAllele<usize> for SingleChromGamete {
 
 impl Haploid for SingleChromGamete {
     fn alleles(&self) -> Vec<Allele> {
-        self.gamete.iter().map(|x| Allele::from(x)).collect()
+        self.gamete.iter().map(Allele::from).collect()
     }
 }
 
@@ -151,8 +151,8 @@ impl Genotype<SingleChromGamete> for SingleChromGenotype {
         assert_eq!(gx.n_loci, gy.n_loci);
         Self {
             n_loci: gx.n_loci,
-            chrom1: gx.gamete.clone().into(),
-            chrom2: gy.gamete.clone().into(),
+            chrom1: gx.gamete.clone(),
+            chrom2: gy.gamete.clone(),
         }
     }
 }
@@ -172,7 +172,7 @@ impl SingleChromGamete {
     pub fn bool_array(v: &Vec<bool>) -> Self {
         Self {
             n_loci: v.len(),
-            gamete: BitVec::from_iter(v.iter().map(|b| *b)),
+            gamete: BitVec::from_iter(v.iter().copied()),
         }
     }
 

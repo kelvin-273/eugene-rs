@@ -1,5 +1,6 @@
 use crate::abstract_plants::*;
 use crate::plants::bit_array::*;
+use pyo3::PyResult;
 use std::collections::{HashMap, VecDeque};
 
 #[derive(Debug, PartialEq, Eq)]
@@ -10,6 +11,16 @@ pub struct BaseSolution {
     pub tree_right: Vec<usize>,
     pub objective: usize,
 }
+
+pub type PyBaseSolution = PyResult<
+    Option<(
+        Vec<Vec<Vec<i32>>>,
+        Vec<&'static str>,
+        Vec<usize>,
+        Vec<usize>,
+        usize,
+    )>,
+>;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Objective {
@@ -23,35 +34,35 @@ impl BaseSolution {
         n_loci: usize,
         x_star: &WGen<SingleChromGenotype, SingleChromGamete>,
     ) -> BaseSolution {
-        wgen_to_base_sol(n_loci, &x_star, Objective::Crossings)
+        wgen_to_base_sol(n_loci, x_star, Objective::Crossings)
     }
 
     pub fn min_gen_from_wgen(
         n_loci: usize,
         x_star: &WGen<SingleChromGenotype, SingleChromGamete>,
     ) -> BaseSolution {
-        wgen_to_base_sol(n_loci, &x_star, Objective::Generations)
+        wgen_to_base_sol(n_loci, x_star, Objective::Generations)
     }
 
     pub fn min_cross_from_wgen(
         n_loci: usize,
         x_star: &WGen<SingleChromGenotype, SingleChromGamete>,
     ) -> BaseSolution {
-        wgen_to_base_sol(n_loci, &x_star, Objective::Crossings)
+        wgen_to_base_sol(n_loci, x_star, Objective::Crossings)
     }
 
     pub fn min_gen_from_wgens(
         n_loci: usize,
         x_star: &WGenS<SingleChromGenotype, SingleChromGamete>,
     ) -> BaseSolution {
-        wgens_to_base_sol(n_loci, &x_star, Objective::Generations)
+        wgens_to_base_sol(n_loci, x_star, Objective::Generations)
     }
 
     pub fn min_cross_from_wgens(
         n_loci: usize,
         x_star: &WGenS<SingleChromGenotype, SingleChromGamete>,
     ) -> BaseSolution {
-        wgens_to_base_sol(n_loci, &x_star, Objective::Crossings)
+        wgens_to_base_sol(n_loci, x_star, Objective::Crossings)
     }
 }
 
@@ -290,7 +301,7 @@ fn wgens_to_base_sol(
     index_map.drain();
     index_map.insert(x_star.genotype.clone(), 0);
 
-    q_node.push_back(&x_star);
+    q_node.push_back(x_star);
     let mut i_node = 0;
     let mut i_leaf = n_cross;
 

@@ -1,23 +1,12 @@
 use crate::abstract_plants::*;
 use crate::plants::bit_array::*;
-use crate::solution::Objective;
-use pyo3::prelude::*;
+use crate::solution::{Objective, PyBaseSolution};
 use std::collections::HashMap;
-
-type PyCS = PyResult<
-    Option<(
-        Vec<Vec<Vec<i32>>>,
-        Vec<&'static str>,
-        Vec<usize>,
-        Vec<usize>,
-        usize,
-    )>,
->;
 
 /// Runs a breeding program given `n_loci` and `pop_0` where `pop_0` is a population of single
 /// chromosome diploid genotypes with `n_loci` loci.
 #[pyo3::pyfunction]
-pub fn breeding_program_python(n_loci: usize, pop_0: Vec<Vec<Vec<bool>>>) -> PyCS {
+pub fn breeding_program_python(n_loci: usize, pop_0: Vec<Vec<Vec<bool>>>) -> PyBaseSolution {
     let pop_0 = pop_0
         .iter()
         .map(|x| {
@@ -131,7 +120,7 @@ pub fn breeding_program(
     // TODO: Test for feasibility <27-05-24> //
 
     // Generate minimal ordered set of segments
-    let mut min_segments = min_covering_segments(n_loci, &pop_0);
+    let mut min_segments = min_covering_segments(n_loci, pop_0);
 
     // Construct crossing tree from segments
     while min_segments.len() > 1 {

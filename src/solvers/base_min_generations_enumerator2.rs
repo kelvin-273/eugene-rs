@@ -1,24 +1,12 @@
 use crate::abstract_plants::{Crosspoint, WGamS2, WGenS2};
 use crate::plants::bit_array::*;
-use crate::solution::{BaseSolution, Objective};
-use pyo3::prelude::*;
+use crate::solution::{BaseSolution, Objective, PyBaseSolution};
 use std::collections::HashMap;
 
 /// Runs a breeding program given `n_loci` and `pop_0` where `pop_0` is a population of single
 /// chromosome diploid genotypes with `n_loci` loci.
 #[pyo3::pyfunction]
-pub fn breeding_program_python(
-    n_loci: usize,
-    pop_0: Vec<Vec<Vec<bool>>>,
-) -> PyResult<
-    Option<(
-        Vec<Vec<Vec<i32>>>,
-        Vec<&'static str>,
-        Vec<usize>,
-        Vec<usize>,
-        usize,
-    )>,
-> {
+pub fn breeding_program_python(n_loci: usize, pop_0: Vec<Vec<Vec<bool>>>) -> PyBaseSolution {
     let pop_0 = pop_0
         .iter()
         .map(|x| {
@@ -29,7 +17,7 @@ pub fn breeding_program_python(
                     .collect(),
             )
         })
-        .collect();
+        .collect::<Vec<_>>();
     let res = breeding_program(n_loci, &pop_0);
     match res {
         None => Ok(None),
@@ -43,7 +31,7 @@ pub fn breeding_program_python(
     }
 }
 
-pub fn breeding_program(n_loci: usize, pop_0: &Vec<SingleChromGenotype>) -> Option<BaseSolution> {
+pub fn breeding_program(n_loci: usize, pop_0: &[SingleChromGenotype]) -> Option<BaseSolution> {
     let ideotype = SingleChromGenotype::ideotype(n_loci);
     if pop_0.contains(&ideotype) {
         return Some(WGenS2::new(ideotype).to_base_sol(n_loci, Objective::Generations));
@@ -62,7 +50,7 @@ pub fn breeding_program(n_loci: usize, pop_0: &Vec<SingleChromGenotype>) -> Opti
     }
     let ideotype_gamete = SingleChromGamete::ideotype(n_loci);
     while !h.contains_key(&ideotype_gamete) {
-        let contained_gametes: Vec<SingleChromGamete> = h.keys().map(|k| k.clone()).collect();
+        let contained_gametes: Vec<SingleChromGamete> = h.keys().cloned().collect();
         for i in 0..contained_gametes.len() {
             for j in i + 1..contained_gametes.len() {
                 let wgx = h.get(&contained_gametes[i])?;

@@ -1,7 +1,6 @@
 use crate::abstract_plants::*;
 use crate::plants::bit_array::*;
-use crate::solution::BaseSolution;
-use pyo3::prelude::*;
+use crate::solution::{BaseSolution, PyBaseSolution};
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use std::rc::Rc;
@@ -9,18 +8,7 @@ use std::rc::Rc;
 /// Runs a breeding program given `n_loci` and `pop_0` where `pop_0` is a population of single
 /// chromosome diploid genotypes with `n_loci` loci.
 #[pyo3::pyfunction]
-pub fn breeding_program_python(
-    n_loci: usize,
-    pop_0: Vec<Vec<Vec<bool>>>,
-) -> PyResult<
-    Option<(
-        Vec<Vec<Vec<i32>>>,
-        Vec<&'static str>,
-        Vec<usize>,
-        Vec<usize>,
-        usize,
-    )>,
-> {
+pub fn breeding_program_python(n_loci: usize, pop_0: Vec<Vec<Vec<bool>>>) -> PyBaseSolution {
     let ideotype = SingleChromGenotype::ideotype(n_loci);
     let pop_0 = pop_0
         .iter()

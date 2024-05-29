@@ -1,25 +1,13 @@
 use crate::abstract_plants::*;
 use crate::plants::bit_array::*;
-use crate::solution::BaseSolution;
-use pyo3::prelude::*;
+use crate::solution::{BaseSolution, PyBaseSolution};
 use std::hash::Hash;
 use std::rc::Rc;
 
 /// Runs a breeding program given `n_loci` and `pop_0` where `pop_0` is a population of single
 /// chromosome diploid genotypes with `n_loci` loci.
 #[pyo3::pyfunction]
-pub fn breeding_program_python(
-    n_loci: usize,
-    pop_0: Vec<Vec<Vec<bool>>>,
-) -> PyResult<
-    Option<(
-        Vec<Vec<Vec<i32>>>,
-        Vec<&'static str>,
-        Vec<usize>,
-        Vec<usize>,
-        usize,
-    )>,
-> {
+pub fn breeding_program_python(n_loci: usize, pop_0: Vec<Vec<Vec<bool>>>) -> PyBaseSolution {
     let ideotype = SingleChromGenotype::ideotype(n_loci);
     let pop_0 = pop_0
         .iter()
@@ -153,12 +141,14 @@ mod tests {
 
     #[test]
     fn function_name_test() {
-        let _res = breeding_program::<u64, u32, u64_and_u32::CrosspointSingleU64U32, usize>(vec![
-            (0b001 << 32) | 0b001,
-            (0b010 << 32) | 0b010,
-            (0b100 << 32) | 0b100,
-        ],
-        (0b111 << 32) | 0b111,
-        3);
+        let _res = breeding_program::<u64, u32, u64_and_u32::CrosspointSingleU64U32, usize>(
+            vec![
+                (0b001 << 32) | 0b001,
+                (0b010 << 32) | 0b010,
+                (0b100 << 32) | 0b100,
+            ],
+            (0b111 << 32) | 0b111,
+            3,
+        );
     }
 }

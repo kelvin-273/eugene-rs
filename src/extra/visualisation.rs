@@ -200,7 +200,7 @@ where
     fn collect_edges<A, B>(
         node: Rc<WGamS<A, B>>,
         h: &HashMap<B, usize>,
-        mut v: &mut Vec<(usize, usize)>,
+        v: &mut Vec<(usize, usize)>,
     ) where
         B: Hash + Eq,
     {
@@ -210,11 +210,11 @@ where
             Some(wx) => wx.history.as_ref().map(|(lg, rg)| {
                 let x = h.get(&lg.gamete).unwrap();
                 v.push((*x, *gz));
-                collect_edges(lg.clone(), h, &mut v);
+                collect_edges(lg.clone(), h, v);
 
                 let y = h.get(&rg.gamete).unwrap();
                 v.push((*y, *gz));
-                collect_edges(rg.clone(), h, &mut v);
+                collect_edges(rg.clone(), h, v);
             }),
         };
     }

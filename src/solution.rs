@@ -127,7 +127,7 @@ fn wgen_to_base_sol(
     index_map.drain();
     index_map.insert(x_star.genotype.clone(), 0);
 
-    q_node.push_back(&x_star);
+    q_node.push_back(x_star);
     let mut i_node = 0;
     let mut i_leaf = n_cross;
 

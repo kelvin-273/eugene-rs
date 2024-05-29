@@ -49,5 +49,5 @@ where
         })().unwrap_or(0)
     }
     let mut s: HashSet<Triple<&A>> = HashSet::new();
-    aux(&mut s, &wz)
+    aux(&mut s, wz)
 }

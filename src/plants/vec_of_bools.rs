@@ -94,7 +94,7 @@ impl SingleChromGenotype {
             array: SingleChromGamete::from_str(s1)
                 .array
                 .into_iter()
-                .zip(SingleChromGamete::from_str(s2).array.into_iter())
+                .zip(SingleChromGamete::from_str(s2).array)
                 .collect(),
         }
     }
@@ -176,12 +176,12 @@ impl Crosspoint<SingleChromGenotype, SingleChromGamete, usize> for CrosspointSin
     }
 
     fn crosspoints(data: &usize) -> Box<dyn std::iter::Iterator<Item = Self>> {
-        let _data = data.clone();
+        let _data = *data;
         Box::new([false, true].iter().flat_map(move |start| {
-            return (0.._data).map(move |len_prefix| CrosspointSingleVob {
+            (0.._data).map(move |len_prefix| CrosspointSingleVob {
                 start: *start,
                 len_prefix,
-            });
+            })
         }))
     }
 }
@@ -204,12 +204,12 @@ impl Crosspoint<SingleChromGenotype, SingleChromGamete, (usize, usize)> for Cros
         let mut j = 0;
         let mut v = Vec::with_capacity(n_loci);
         let mut current_chrom = self.start;
-        for i in 0..n_loci {
+        for (i, vi) in v.iter_mut().enumerate() {
             while j < self.len_prefix.len() && i >= self.len_prefix[j] {
                 current_chrom = !current_chrom;
                 j += 1;
             }
-            v[i] = match current_chrom {
+            *vi = match current_chrom {
                 true => x.array[i].0,
                 false => x.array[i].1,
             }

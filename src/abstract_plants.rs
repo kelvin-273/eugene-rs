@@ -182,9 +182,9 @@ impl From<bool> for Allele {
     }
 }
 
-impl Into<bool> for Allele {
-    fn into(self) -> bool {
-        match self {
+impl From<Allele> for bool {
+    fn from(val: Allele) -> Self {
+        match val {
             Allele::Z => false,
             Allele::O => true,
         }

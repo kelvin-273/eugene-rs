@@ -23,8 +23,8 @@ where
     B: BioSize + Haploid,
 {
     Group::new()
-        .add(draw_gam_base::<B>(&x.upper(), (offset.0 + 0, offset.1 + 0)))
-        .add(draw_gam_base::<B>(&x.lower(), (offset.0 + 0, offset.1 + 10)))
+        .add(draw_gam_base::<B>(&x.upper(), (offset.0, offset.1)))
+        .add(draw_gam_base::<B>(&x.lower(), (offset.0, offset.1 + 10)))
 }
 
 pub fn draw_gam_base<B>(x: &B, offset: (i32, i32)) -> Group
@@ -93,10 +93,14 @@ where
     {
         let n = h.len();
         h.entry(node.genotype.clone()).or_insert(n);
-        node.history.clone().map(|(lg, rg)| {
-            lg.history.clone().map(|g| aux(g, h));
-            rg.history.clone().map(|g| aux(g, h));
-        });
+        if let Some((lg, rg)) = node.history.as_ref() {
+            if let Some(g) = lg.history.clone() {
+                aux(g, h)
+            }
+            if let Some(g) = rg.history.clone() {
+                aux(g, h)
+            }
+        }
     }
     aux(tree.clone(), &mut h);
 
@@ -168,20 +172,17 @@ where
     {
         let n = h.len();
         h.entry(node.gamete.clone()).or_insert(n);
-        node.history.clone().map(|wx| {
-            wx.history.as_ref().map(|(lg, rg)| {
-                aux(lg.clone(), h);
-                aux(rg.clone(), h);
-            });
-        });
-    }
-    match tree.history.as_ref() {
-        None => {}
-        Some((lg, rg)) => {
-            aux(lg.clone(), &mut h);
-            if lg.gamete != rg.gamete {
-                aux(rg.clone(), &mut h);
+        if let Some(wx) = node.history.clone() {
+            if let Some((lg, rg)) = wx.history.clone() {
+                aux(lg, h);
+                aux(rg, h);
             }
+        }
+    }
+    if let Some((lg, rg)) = tree.history.as_ref() {
+        aux(lg.clone(), &mut h);
+        if lg.gamete != rg.gamete {
+            aux(rg.clone(), &mut h);
         }
     };
 
@@ -206,7 +207,7 @@ where
     {
         let gz = h.get(&node.gamete).unwrap();
         match &node.history {
-            None => { None },
+            None => None,
             Some(wx) => wx.history.as_ref().map(|(lg, rg)| {
                 let x = h.get(&lg.gamete).unwrap();
                 v.push((*x, *gz));

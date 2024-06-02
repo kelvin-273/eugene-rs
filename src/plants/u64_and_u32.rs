@@ -2,10 +2,7 @@ use crate::abstract_plants::*;
 
 impl Genotype<u32> for u64 {
     fn lift_a(&self) -> WGen<Self, u32> {
-        WGen {
-            genotype: *self,
-            history: None,
-        }
+        WGen::new(*self)
     }
 
     fn from_gametes(gx: &u32, gy: &u32) -> Self {
@@ -60,10 +57,7 @@ impl Diploid<u32> for u64 {
 
 impl Gamete<u64> for u32 {
     fn lift_b(&self) -> WGam<u64, Self> {
-        WGam {
-            gamete: *self,
-            history: vec![],
-        }
+        WGam::new(*self)
     }
 }
 

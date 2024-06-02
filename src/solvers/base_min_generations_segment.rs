@@ -58,8 +58,8 @@ impl<B> Segment<B> {
 }
 
 type Seg = Segment<SingleChromGamete>;
-type WGa = WGamS2<SingleChromGenotype, SingleChromGamete>;
-type SegW = Segment<WGamS2<SingleChromGenotype, SingleChromGamete>>;
+type WGa = WGam<SingleChromGenotype, SingleChromGamete>;
+type SegW = Segment<WGam<SingleChromGenotype, SingleChromGamete>>;
 
 impl Seg {
     pub fn join(&self, other: &Self) -> Self {
@@ -85,7 +85,7 @@ impl SegW {
             e: other.e,
             g: {
                 let crosspoint_bit_vec = &CrosspointBitVec::new(false, other.s);
-                let wz = WGenS2::from_gametes(&self.g, &other.g);
+                let wz = WGen::from_gametes(&self.g, &other.g);
                 wz.cross_fn(|z| crosspoint_bit_vec.cross(z))
             },
         }
@@ -99,11 +99,11 @@ impl SegW {
             e: other.e,
             g: {
                 let z = SingleChromGenotype::from_gametes(self.g.gamete(), other.g.gamete());
-                let wz = WGenS2::new(z);
+                let wz = WGen::new(z);
                 let crosspoint_bit_vec = &CrosspointBitVec::new(false, other.s);
                 let gz = crosspoint_bit_vec.cross(wz.genotype());
                 h.entry(gz.clone())
-                    .or_insert_with(|| WGamS2::new_from_genotype(gz, wz))
+                    .or_insert_with(|| WGam::new_from_genotype(gz, wz))
                     .clone()
             },
         }
@@ -116,7 +116,7 @@ impl SegW {
 pub fn breeding_program(
     n_loci: usize,
     pop_0: &Vec<SingleChromGenotype>,
-) -> Option<WGenS2<SingleChromGenotype, SingleChromGamete>> {
+) -> Option<WGen<SingleChromGenotype, SingleChromGamete>> {
     // TODO: Test for feasibility <27-05-24> //
 
     // Generate minimal ordered set of segments
@@ -137,7 +137,7 @@ pub fn breeding_program(
         }
         min_segments = new_segments;
     }
-    Some(WGenS2::from_gametes(&min_segments[0].g, &min_segments[0].g))
+    Some(WGen::from_gametes(&min_segments[0].g, &min_segments[0].g))
 }
 
 /// Given a vector of segments, returns the minimum cardinality subset of segments that covers
@@ -195,7 +195,7 @@ pub fn min_covering_segments(n_loci: usize, pop_0: &Vec<SingleChromGenotype>) ->
 }
 
 fn generate_segments_genotype_diploid(n_loci: usize, x: &SingleChromGenotype) -> Vec<SegW> {
-    let wx: WGenS2<SingleChromGenotype, SingleChromGamete> = WGenS2::new(x.clone());
+    let wx: WGen<SingleChromGenotype, SingleChromGamete> = WGen::new(x.clone());
     let q1_true = generate_segments_gamete_haploid::<SingleChromGamete>(x.upper());
     let q2_true = generate_segments_gamete_haploid::<SingleChromGamete>(x.lower());
     let mut q = (&q1_true, &q2_true);
@@ -250,7 +250,7 @@ fn generate_segments_genotype_diploid(n_loci: usize, x: &SingleChromGenotype) ->
         .map(|c| SegW {
             s: c.s,
             e: c.e,
-            g: WGamS2::new_from_genotype(c.g.clone(), wx.clone()),
+            g: WGam::new_from_genotype(c.g.clone(), wx.clone()),
         })
         .collect()
 }
@@ -429,7 +429,7 @@ mod tests {
     #[test]
     fn bitvec_breeding_program_random_test() {
         use crate::plants::bit_array::*;
-        use crate::solvers::base_min_generations_enumerator_dominance2;
+        use crate::solvers::base_min_generations_enumerator_dominance;
         let n_loci = 17;
         let n_pop = 6;
         let mut rng = rand::thread_rng();
@@ -438,7 +438,7 @@ mod tests {
 
             let sol_seg = breeding_program(n_loci, &pop_0);
             let sol_dom =
-                base_min_generations_enumerator_dominance2::breeding_program(n_loci, &pop_0);
+                base_min_generations_enumerator_dominance::breeding_program(n_loci, &pop_0);
             assert_eq!(
                 sol_dom.map(|sol| sol.objective),
                 sol_seg.map(|sol| sol.to_base_sol(n_loci, Objective::Generations).objective)

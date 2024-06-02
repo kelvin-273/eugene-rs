@@ -1,15 +1,12 @@
-use crate::abstract_plants::*;
+use crate::abstract_plants::{Crosspoint, Dominance, WGam, WGen};
 use crate::plants::bit_array::*;
-use crate::solution::{BaseSolution, PyBaseSolution};
-use std::collections::{HashMap, HashSet};
-use std::hash::Hash;
-use std::rc::Rc;
+use crate::solution::{BaseSolution, Objective, PyBaseSolution};
+use std::collections::HashSet;
 
 /// Runs a breeding program given `n_loci` and `pop_0` where `pop_0` is a population of single
 /// chromosome diploid genotypes with `n_loci` loci.
 #[pyo3::pyfunction]
 pub fn breeding_program_python(n_loci: usize, pop_0: Vec<Vec<Vec<bool>>>) -> PyBaseSolution {
-    let ideotype = SingleChromGenotype::ideotype(n_loci);
     let pop_0 = pop_0
         .iter()
         .map(|x| {
@@ -20,181 +17,65 @@ pub fn breeding_program_python(n_loci: usize, pop_0: Vec<Vec<Vec<bool>>>) -> PyB
                     .collect(),
             )
         })
-        .collect();
-    let res = breeding_program::<
-        SingleChromGenotype,
-        SingleChromGamete,
-        CrosspointBitVec,
-        DomGamete,
-        usize,
-    >(pop_0, ideotype, n_loci);
+        .collect::<Vec<_>>();
+    let res = breeding_program(n_loci, &pop_0);
     match res {
         None => Ok(None),
-        Some(x_star) => {
-            let sol = BaseSolution::min_gen_from_wgen(n_loci, &x_star);
-            Ok(Some((
-                sol.tree_data,
-                sol.tree_type,
-                sol.tree_left,
-                sol.tree_right,
-                sol.objective,
-            )))
-        }
+        Some(sol) => Ok(Some((
+            sol.tree_data,
+            sol.tree_type,
+            sol.tree_left,
+            sol.tree_right,
+            sol.objective,
+        ))),
     }
 }
 
-/// Runs the enumeration with dominance pruning from the pop_0 to the ideotype.
-/// Dominance pruning is performed on gametes
-/// Returns the breeding_program rooted at the ideotype
-pub fn breeding_program<A, B, K, D, Data>(
-    pop_0: Vec<A>,
-    ideotype: A,
-    data: Data,
-) -> Option<WGen<A, B>>
-where
-    A: Genotype<B> + PartialEq + Clone + Feasible<Data>,
-    B: Gamete<A> + Hash + Eq + Clone,
-    K: Crosspoint<A, B, Data>,
-    D: Dominance<B>,
-{
-    breeding_program_timeout_gametes::<A, B, K, D, Data>(pop_0, ideotype, None, data)
-}
-
-pub fn breeding_program_timeout_genotypes<A, B, K, D, Data>(
-    pop_0: Vec<A>,
-    ideotype: A,
-    gen_max_opt: Option<usize>,
-    data: Data,
-) -> Option<WGen<A, B>>
-where
-    A: Genotype<B> + PartialEq + Clone + Feasible<Data>,
-    B: Gamete<A> + Hash + Eq + Clone,
-    K: Crosspoint<A, B, Data>,
-    D: Dominance<A>,
-{
-    if !A::is_feasible(&data, &pop_0) {
-        return None;
+pub fn breeding_program(n_loci: usize, pop_0: &[SingleChromGenotype]) -> Option<BaseSolution> {
+    let ideotype = SingleChromGenotype::ideotype(n_loci);
+    if pop_0.contains(&ideotype) {
+        return Some(WGen::new(ideotype).to_base_sol(n_loci, Objective::Generations));
     }
-
-    let mut pop: Vec<Rc<WGen<A, B>>> = filter_non_dominating::<A, D>(pop_0)
-        .iter()
-        .map(|x| Rc::new(x.lift_a()))
-        .collect();
-    let mut gen_i = 0;
-    let timeout_check = |t: usize| gen_max_opt.map_or(true, |t_max| t < t_max);
-
-    while !pop.iter().any(|x| x.genotype == ideotype) && timeout_check(gen_i) {
-        // filter filter_non_dominating genotypes
-        pop = filter_non_dominating_key::<Rc<WGen<A, B>>, A, _, D>(pop, |wx| &wx.genotype);
-
-        // create all gametes
-        let pop_g: Vec<Rc<WGam<A, B>>> = pop
-            .iter()
-            .flat_map(|wx| {
-                K::crosspoints(&data).map(|k| {
-                    Rc::new(WGam {
-                        gamete: k.cross(&wx.genotype),
-                        history: vec![wx.clone()],
-                    })
-                })
-            })
-            .collect();
-
-        // create all genotypes from genotypes
-        pop = (0..pop_g.len())
-            .flat_map(|i| (i..pop_g.len()).map(move |j| (i, j)))
-            //.flat_map(|i| (0..pop_g.len()).map(move |j| (i, j)))
-            .map(|(i, j)| {
-                let wgx = &pop_g[i];
-                let wgy = &pop_g[j];
-                Rc::new(WGen {
-                    genotype: A::from_gametes(&wgx.gamete.clone(), &wgy.gamete.clone()),
-                    history: Some((wgx.clone(), wgy.clone())),
-                })
-            })
-            .collect();
-        gen_i += 1;
-    }
-
-    pop.into_iter()
-        .find(|x| x.genotype == ideotype)
-        .map(|x| WGen {
-            genotype: x.genotype.clone(),
-            history: x.history.to_owned(),
-        })
-}
-
-pub fn breeding_program_timeout_gametes<A, B, K, D, Data>(
-    pop_0: Vec<A>,
-    ideotype: A,
-    gen_max_opt: Option<usize>,
-    data: Data,
-) -> Option<WGen<A, B>>
-where
-    A: Genotype<B> + PartialEq + Clone + Feasible<Data>,
-    B: Gamete<A> + Hash + Eq + Clone,
-    K: Crosspoint<A, B, Data>,
-    D: Dominance<B>,
-{
-    if !A::is_feasible(&data, &pop_0) {
-        return None;
-    }
-
-    let mut pop: Vec<Rc<WGen<A, B>>> = pop_0.iter().map(|x| Rc::new(x.lift_a())).collect();
-    let mut gen_i = 0;
-    let timeout_check = |t: usize| gen_max_opt.map_or(true, |t_max| t < t_max);
-
-    while !pop.iter().any(|x| x.genotype == ideotype) && timeout_check(gen_i) {
-        let mut h: HashMap<B, Vec<Rc<WGen<A, B>>>> = HashMap::new();
-
-        //K::crosspoints(&data).for_each(|kx| println!("k: {:?}", kx));
-        // collect all possible wrapped gametes
-        for x in &pop {
-            let s: HashSet<B> = K::crosspoints(&data)
-                .map(|k| k.cross(&x.genotype))
-                .collect();
-            for g in filter_non_dominating::<B, D>(s) {
-                h.entry(g.clone())
-                    .and_modify(|v| (*v).push(x.clone()))
-                    .or_insert(vec![x.clone()]);
+    let pop_0: Vec<WGen<SingleChromGenotype, _>> =
+        pop_0.iter().map(|x| WGen::new(x.clone())).collect();
+    let mut h: HashSet<SingleChromGamete> = HashSet::new();
+    let mut contained_gametes: Vec<WGam<SingleChromGenotype, SingleChromGamete>> = vec![];
+    for wx in pop_0 {
+        for gx in CrosspointBitVec::crosspoints(&n_loci).map(|k| k.cross(wx.genotype())) {
+            if !h.contains(&gx) {
+                let wgx = WGam::new_from_genotype(gx.clone(), wx.clone());
+                h.insert(gx);
+                contained_gametes.push(wgx);
             }
         }
-        // remove dominated gametes
-        let next_gametes: Vec<Rc<WGam<A, B>>> =
-            filter_non_dominating_key::<_, _, _, D>(h, |(g, _v)| g)
-                .into_iter()
-                .map(|(g, v)| {
-                    Rc::new(WGam {
-                        gamete: g,
-                        history: v,
-                    })
-                })
-                .collect();
-        //println!("{:?}", next_gametes.iter().map(|wgx| &wgx.gamete).collect::<Vec<&B>>());
-        // construct next population from collected gametes
-        pop = {
-            next_gametes
-                .iter()
-                .enumerate()
-                .flat_map(|(i, wg1)| {
-                    next_gametes[i..].iter().enumerate().map(|(_j, wg2)| {
-                        Rc::new(WGen {
-                            genotype: A::from_gametes(&wg1.gamete, &wg2.gamete),
-                            history: Some((wg1.clone(), wg2.clone())),
-                        })
-                    })
-                })
-                .collect()
-        };
-        println!("gen_i: {},\tpop.len: {}", gen_i, pop.len());
-        gen_i += 1;
     }
-    pop.into_iter()
-        .find(|x| x.genotype == ideotype)
-        .map(|x| WGen {
-            genotype: x.genotype.clone(),
-            history: x.history.to_owned(),
-        })
+    contained_gametes = filter_non_dominating_fn(contained_gametes, |wgx, wgy| {
+        DomGamete::dom(wgx.gamete(), wgy.gamete())
+    });
+    let ideotype_gamete = SingleChromGamete::ideotype(n_loci);
+    while !h.contains(&ideotype_gamete) {
+        let mut v = vec![];
+        for i in 0..contained_gametes.len() {
+            for j in i + 1..contained_gametes.len() {
+                let wgx = &contained_gametes[i];
+                let wgy = &contained_gametes[j];
+                let wz = WGen::from_gametes(wgx, wgy);
+                for k in CrosspointBitVec::crosspoints(&n_loci) {
+                    let gz = k.cross(wz.genotype());
+                    if !h.contains(&gz) {
+                        let wgz = WGam::new_from_genotype(gz.clone(), wz.clone());
+                        h.insert(gz);
+                        v.push(wgz);
+                    }
+                }
+            }
+        }
+        contained_gametes =
+            filter_non_dominating_fn(v, |wgx, wgy| DomGamete::dom(wgx.gamete(), wgy.gamete()));
+    }
+    let wg_star = contained_gametes.first().expect("hash map doesn't have g*");
+    let wx_star = WGen::from_gametes(wg_star, wg_star);
+    Some(wx_star.to_base_sol(n_loci, Objective::Generations))
 }
 
 pub fn filter_non_dominating<T, D>(s: impl IntoIterator<Item = T>) -> Vec<T>
@@ -288,8 +169,6 @@ mod tests {
 
     #[test]
     fn filter_non_dominating_test() {
-        use rand::prelude::*;
-
         impl Dominance<i32> for i32 {
             fn dom(x: &i32, y: &i32) -> bool {
                 x >= y
@@ -400,61 +279,61 @@ mod tests {
     }
 
     #[test]
-    fn simplest_test() {
-        let x = SingleChromGenotype::from_str("010", "101");
-        assert_ne!(
-            breeding_program_timeout_gametes::<
-                SingleChromGenotype,
-                SingleChromGamete,
-                CrosspointBitVec,
-                DomGamete,
-                usize,
-            >(vec![x], SingleChromGenotype::ideotype(3), Some(10), 3),
-            None
+    fn bitvec_breeding_program_4_zigzag_test() {
+        use crate::plants::bit_array::*;
+        let n_loci = 4;
+        let pop_0 = vec![SingleChromGenotype::from_str("0101", "1010")];
+        assert_eq!(
+            2,
+            breeding_program(n_loci, &pop_0)
+                .expect("infeasible")
+                .objective
         );
     }
 
     #[test]
-    fn simple_test() {
-        let x = SingleChromGenotype::from_str("01010101", "10101010");
-        assert_ne!(
-            breeding_program_timeout_gametes::<
-                SingleChromGenotype,
-                SingleChromGamete,
-                CrosspointBitVec,
-                DomGamete,
-                usize,
-            >(vec![x], SingleChromGenotype::ideotype(8), Some(10), 8),
-            None
-        );
+    fn bitvec_breeding_program_4_dist_zigzag_test() {
+        use crate::plants::bit_array::*;
+        let n_loci = 4;
+        let pop_0 = vec![
+            SingleChromGenotype::from_str("0101", "0101"),
+            SingleChromGenotype::from_str("1010", "1010"),
+        ];
+        let op_sol = breeding_program(n_loci, &pop_0);
+        dbg!(&op_sol);
+        assert_eq!(3, op_sol.expect("infeasible").objective);
     }
 
     #[test]
-    fn time_test() {
-        let n_loci = 8;
-        let pop_0 = (0..n_loci)
-            .map(|i| {
-                SingleChromGenotype::new(
-                    (0..n_loci)
-                        .map(|j| if i == j { (true, true) } else { (false, false) })
-                        .collect(),
-                )
-            })
-            .collect();
-        assert_ne!(
-            breeding_program_timeout_gametes::<
-                SingleChromGenotype,
-                SingleChromGamete,
-                CrosspointBitVec,
-                DomGamete,
-                usize,
-            >(
-                pop_0,
-                SingleChromGenotype::ideotype(n_loci),
-                Some(4),
-                n_loci
-            ),
-            None
-        );
+    fn bitvec_breeding_program_dist_test() {
+        use crate::extra::instance_generators;
+        fn tester(actual: usize, v: &[usize]) {
+            let pop_0 = instance_generators::distarray_to_homo(v);
+            let n_loci = v.len();
+            let op_sol = breeding_program(n_loci, &pop_0);
+            dbg!(&op_sol);
+            assert_eq!(actual, op_sol.expect("infeasible").objective);
+        }
+        tester(2, &[0, 1]);
+        tester(3, &[0, 1, 0]);
+        tester(3, &[0, 1, 2, 0]);
+        tester(4, &[0, 1, 0, 2, 1]);
+    }
+
+    #[test]
+    fn enumerator_dominance_test() {
+        use rand::prelude::*;
+        let n_loci = 10;
+        let n_pop = 5;
+        let mut rng = thread_rng();
+        for _ in 0..10 {
+            let pop_0 = SingleChromGenotype::init_pop_random(&mut rng, n_loci, n_pop);
+            let sol1 = breeding_program(n_loci, &pop_0);
+            let sol2 =
+                crate::solvers::base_min_generations_enumerator::breeding_program(n_loci, &pop_0);
+            assert!(sol1.is_some());
+            assert!(sol2.is_some());
+            assert_eq!(sol1.unwrap().objective, sol2.unwrap().objective);
+        }
     }
 }

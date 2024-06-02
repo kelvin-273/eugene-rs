@@ -4,7 +4,7 @@
 //! Typical use is as follows:
 //! ```
 //! use eugene::plants::bit_array::*;
-//! use eugene::solvers::greedy_base::*;
+//! use eugene::solvers::base_min_generations_segment::*;
 //!
 //! use rand::prelude::*;
 //! let mut rng = thread_rng();
@@ -12,15 +12,10 @@
 //! let n_loci = 10;
 //! let n_pop = 6;
 //! let pop_0 = SingleChromGenotype::init_pop_random(&mut rng, n_loci, n_pop);
-//! let ideotype = SingleChromGenotype::ideotype(n_loci);
 //!
-//! let result = breeding_program::<
-//!     SingleChromGenotype,
-//!     SingleChromGamete,
-//!     CrosspointBitVec,
-//!     SegmentBitVec
-//!     >(n_loci, pop_0, ideotype);
+//! let result = breeding_program(n_loci, pop_0);
 //! ```
+//#![deny(missing_docs)]
 
 use pyo3::prelude::*;
 
@@ -43,9 +38,7 @@ fn eugene_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     let min_cross = PyModule::new_bound(m.py(), "min_cross")?;
 
     let mg_naive1 = PyModule::new_bound(m.py(), "naive1")?;
-    let mg_naive12 = PyModule::new_bound(m.py(), "naive12")?;
     let mg_naive2 = PyModule::new_bound(m.py(), "naive2")?;
-    let mg_naive22 = PyModule::new_bound(m.py(), "naive22")?;
     let mg_segment = PyModule::new_bound(m.py(), "segment")?;
 
     mg_naive1.add_function(wrap_pyfunction!(
@@ -53,19 +46,9 @@ fn eugene_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
         &mg_naive1
     )?)?;
 
-    mg_naive12.add_function(wrap_pyfunction!(
-        solvers::base_min_generations_enumerator2::breeding_program_python,
-        &mg_naive12
-    )?)?;
-
     mg_naive2.add_function(wrap_pyfunction!(
         solvers::base_min_generations_enumerator_dominance::breeding_program_python,
         &mg_naive2
-    )?)?;
-
-    mg_naive22.add_function(wrap_pyfunction!(
-        solvers::base_min_generations_enumerator_dominance2::breeding_program_python,
-        &mg_naive22
     )?)?;
 
     mg_segment.add_function(wrap_pyfunction!(
@@ -74,9 +57,7 @@ fn eugene_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
 
     min_gen.add_submodule(&mg_naive1)?;
-    min_gen.add_submodule(&mg_naive12)?;
     min_gen.add_submodule(&mg_naive2)?;
-    min_gen.add_submodule(&mg_naive22)?;
     min_gen.add_submodule(&mg_segment)?;
 
     let mc_astar = PyModule::new_bound(m.py(), "astar")?;
@@ -170,64 +151,23 @@ mod tests {
         Ok(())
     }
 
-    fn _main3() -> io::Result<()> {
-        use crate::plants::bit_array::*;
-        let n_loci = 11;
-        let n_pop = 6;
-        let _res = base_min_generations_enumerator::breeding_program::<
-            SingleChromGenotype,
-            SingleChromGamete,
-            CrosspointBitVec,
-            usize,
-        >(
-            SingleChromGenotype::init_pop_random(&mut thread_rng(), n_loci, n_pop),
-            SingleChromGenotype::ideotype(n_loci),
-            n_loci,
-        );
-        Ok(())
-    }
-
-    fn _main2() -> io::Result<()> {
-        use crate::plants::bit_array::*;
-        let n_loci = 16;
-        let n_pop = 6;
-        let _res = base_min_generations_enumerator_dominance::breeding_program_timeout_gametes::<
-            SingleChromGenotype,
-            SingleChromGamete,
-            CrosspointBitVec,
-            DomGamete,
-            usize,
-        >(
-            SingleChromGenotype::init_pop_random(&mut thread_rng(), n_loci, n_pop),
-            SingleChromGenotype::ideotype(n_loci),
-            None,
-            n_loci,
-        );
-        Ok(())
-    }
-
     fn _main1() -> io::Result<()> {
-        use crate::plants::vec_of_bools::*;
+        use crate::plants::bit_array::*;
         let n_loci = 8;
         let pop0: Vec<SingleChromGenotype> =
             vec![SingleChromGenotype::from_str("01010101", "10101010")];
-        if let Some(res) = base_min_generations_enumerator_dominance::breeding_program::<
-            SingleChromGenotype,
-            SingleChromGamete,
-            CrosspointSingleVob,
-            WeakDomSingle,
-            usize,
-        >(pop0, SingleChromGenotype::ideotype(n_loci), n_loci)
+        if let Some(res) =
+            base_min_generations_enumerator_dominance::breeding_program(n_loci, &pop0)
         {
             print!("breeding_program successful");
 
-            visualisation::draw_tree_genotypes(Rc::new(res).extract_first())?;
+            visualisation::draw_tree_genotypes::<SingleChromGenotype, SingleChromGamete>(&res);
         }
         Ok(())
     }
 
     fn _main0() -> io::Result<()> {
-        use crate::plants::vec_of_bools::*;
+        use crate::plants::bit_array::*;
         let n_loci = 10;
         let pop0: Vec<SingleChromGenotype> = vec![
             SingleChromGenotype::from_str("0000011000", "0000000000"),
@@ -237,17 +177,12 @@ mod tests {
             SingleChromGenotype::from_str("0010000000", "0000000000"),
             SingleChromGenotype::from_str("0010100000", "0001000000"),
         ];
-        if let Some(res) = base_min_generations_enumerator_dominance::breeding_program::<
-            SingleChromGenotype,
-            SingleChromGamete,
-            CrosspointSingleVob,
-            WeakDomSingle,
-            usize,
-        >(pop0, SingleChromGenotype::ideotype(n_loci), n_loci)
+        if let Some(res) =
+            base_min_generations_enumerator_dominance::breeding_program(n_loci, &pop0)
         {
             print!("breeding_program successful");
 
-            visualisation::draw_tree_genotypes(Rc::new(res).extract_first())?;
+            visualisation::draw_tree_genotypes::<SingleChromGenotype, SingleChromGamete>(&res);
         }
         Ok(())
     }

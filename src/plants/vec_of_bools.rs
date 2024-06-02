@@ -40,10 +40,7 @@ impl BioSize for SingleChromGamete {
 
 impl Gamete<SingleChromGenotype> for SingleChromGamete {
     fn lift_b(&self) -> WGam<SingleChromGenotype, Self> {
-        WGam {
-            gamete: self.clone(),
-            history: vec![],
-        }
+        WGam::new(self.clone())
     }
 }
 
@@ -107,10 +104,7 @@ impl BioSize for SingleChromGenotype {
 }
 impl Genotype<SingleChromGamete> for SingleChromGenotype {
     fn lift_a(&self) -> WGen<Self, SingleChromGamete> {
-        WGen {
-            genotype: self.clone(),
-            history: None,
-        }
+        WGen::new(self.clone())
     }
 
     fn from_gametes(gx: &SingleChromGamete, gy: &SingleChromGamete) -> Self {

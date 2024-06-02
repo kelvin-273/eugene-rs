@@ -6,8 +6,8 @@ use crate::solvers::base_min_generations_segment;
 use pathfinding::directed::astar::astar;
 use std::rc::Rc;
 
-type WGe = WGenS2<SingleChromGenotype, SingleChromGamete>;
-type WGa = WGamS2<SingleChromGenotype, SingleChromGamete>;
+type WGe = WGen<SingleChromGenotype, SingleChromGamete>;
+type WGa = WGam<SingleChromGenotype, SingleChromGamete>;
 
 /// Runs a breeding program given `n_loci` and `pop_0` where `pop_0` is a population of single
 /// chromosome diploid genotypes with `n_loci` loci.
@@ -45,7 +45,7 @@ where
 {
     // TODO: test for feasibility
 
-    let wrapped_pop_0: Vec<WGe> = pop_0.iter().map(|x| WGenS2::new(x.clone())).collect();
+    let wrapped_pop_0: Vec<WGe> = pop_0.iter().map(|x| WGen::new(x.clone())).collect();
     let state_0: State<WGe> = State::new(wrapped_pop_0);
     let ideotype = SingleChromGenotype::ideotype(n_loci);
     let g_star = SingleChromGamete::ideotype(n_loci);
@@ -91,7 +91,7 @@ fn successors_single_node_extensions(
 
     // Return the ideotype if it can be created
     if let Some(wg) = gametes.iter().find(|wg| wg.gamete() == g_star) {
-        let wx_star = WGenS2::from_gametes(wg, wg);
+        let wx_star = WGen::from_gametes(wg, wg);
         let new_state = state.push(wx_star);
         return vec![(new_state, 2)];
     }
@@ -103,7 +103,7 @@ fn successors_single_node_extensions(
         .flat_map(|i| (i + 1..n_gametes).map(move |j| (i, j)))
         .map(|(i, j)| {
             (
-                state.push(WGenS2::from_gametes(&gametes[i], &gametes[j])),
+                state.push(WGen::from_gametes(&gametes[i], &gametes[j])),
                 current_cost + 1,
             )
         })

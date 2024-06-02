@@ -15,10 +15,8 @@ pub mod base_min_crossings_lns;
 //pub mod base_min_crossings_mip;
 /// Solves by breeding all possible progeny in each generation
 pub mod base_min_generations_enumerator;
-pub mod base_min_generations_enumerator2;
 /// Solves by breeding all non-dominating progeny in each generation
 pub mod base_min_generations_enumerator_dominance;
-pub mod base_min_generations_enumerator_dominance2;
 /// Finds the min generations for base problem
 pub mod base_min_generations_segment;
 /// Finds the min generations for multi-chromosome diploid plants

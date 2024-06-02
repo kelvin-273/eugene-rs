@@ -1,4 +1,5 @@
 use crate::abstract_plants::*;
+use crate::extra::visualisation;
 use crate::solution::{BaseSolution, Objective};
 use bit_vec::BitVec;
 use rand::prelude::*;
@@ -258,7 +259,7 @@ impl SingleChrom for SingleChromGenotype {}
 
 impl SingleChrom for SingleChromGamete {}
 
-impl WGenS2<SingleChromGenotype, SingleChromGamete> {
+impl WGen<SingleChromGenotype, SingleChromGamete> {
     pub fn to_base_sol(&self, n_loci: usize, obj: Objective) -> BaseSolution {
         // get the number of crossings and cells required
         let mut q_node = VecDeque::new();
@@ -431,6 +432,32 @@ impl WGenS2<SingleChromGenotype, SingleChromGamete> {
             tree_right,
             objective,
         }
+    }
+}
+
+impl visualisation::Draw for SingleChromGenotype {
+    fn view_box_size(&self) -> Option<(usize, usize)> {
+        Some((
+            self.get_n_loci(0) * visualisation::BLOCKSIZE + 1,
+            self.get_n_chrom() * visualisation::BLOCKSIZE + 1,
+        ))
+    }
+
+    fn draw(&self) -> svg::node::element::Group {
+        visualisation::draw_gen_base(self, (0, 0))
+    }
+}
+
+impl visualisation::Draw for SingleChromGamete {
+    fn view_box_size(&self) -> Option<(usize, usize)> {
+        Some((
+            self.get_n_loci(0) * visualisation::BLOCKSIZE + 1,
+            self.get_n_chrom() * visualisation::BLOCKSIZE + 1,
+        ))
+    }
+
+    fn draw(&self) -> svg::node::element::Group {
+        visualisation::draw_gam_base(self, (0, 0))
     }
 }
 

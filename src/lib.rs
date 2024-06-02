@@ -83,13 +83,11 @@ fn eugene_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
 #[cfg(test)]
 mod tests {
-    //use super::*;
     use crate::extra::*;
     use crate::solvers::*;
     use rand::prelude::*;
     use std::env;
     use std::io;
-    use std::rc::Rc;
 
     fn _main() -> io::Result<()> {
         env::set_var("RUST_BACKTRACE", "1");

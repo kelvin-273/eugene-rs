@@ -38,16 +38,31 @@ pub fn breeding_program_python(n_loci: usize, pop_0: Vec<Vec<Vec<bool>>>) -> PyB
 /// contiguous sequence of favourable alleles on `g` from index `s` to `e` inclusive.
 #[derive(Debug, Clone)]
 pub struct Segment<B> {
-    pub s: usize,
-    pub e: usize,
-    pub g: B,
+    /// Start point
+    s: usize,
+    /// End point
+    e: usize,
+    /// Gamete
+    g: B,
 }
 
 impl<B> Segment<B> {
+    /// Returns the start point of the segment.
+    ///
+    /// ```
+    /// let seg = Segment { s: 2, e, 4, g: SingleChromGamete::from_str("00111000110") };
+    /// assert_eq!(2, seg.start())
+    /// ```
     pub fn start(&self) -> usize {
         self.s
     }
 
+    /// Returns the end point of the segment.
+    ///
+    /// ```
+    /// let seg = Segment { s: 2, e, 4, g: SingleChromGamete::from_str("00111000110") };
+    /// assert_eq!(4, seg.start())
+    /// ```
     pub fn end(&self) -> usize {
         self.e
     }

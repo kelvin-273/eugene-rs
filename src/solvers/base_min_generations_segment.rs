@@ -2,11 +2,18 @@ use crate::abstract_plants::*;
 use crate::plants::bit_array::*;
 use crate::solution::{Objective, PyBaseSolution};
 use std::collections::HashMap;
+use std::sync::mpsc;
+use std::thread;
+use std::time::Duration;
 
 /// Runs a breeding program given `n_loci` and `pop_0` where `pop_0` is a population of single
 /// chromosome diploid genotypes with `n_loci` loci.
 #[pyo3::pyfunction]
-pub fn breeding_program_python(n_loci: usize, pop_0: Vec<Vec<Vec<bool>>>) -> PyBaseSolution {
+pub fn breeding_program_python(
+    n_loci: usize,
+    pop_0: Vec<Vec<Vec<bool>>>,
+    timeout: Option<u64>,
+) -> PyBaseSolution {
     let pop_0 = pop_0
         .iter()
         .map(|x| {
@@ -18,19 +25,25 @@ pub fn breeding_program_python(n_loci: usize, pop_0: Vec<Vec<Vec<bool>>>) -> PyB
             )
         })
         .collect();
-    let res = breeding_program(n_loci, &pop_0);
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || {
+        let res = breeding_program(n_loci, &pop_0)
+            .map(|x_star| x_star.to_base_sol(n_loci, Objective::Generations));
+        tx.send(res)
+    });
+    let res = rx
+        .recv_timeout(Duration::new(timeout.unwrap_or(u64::MAX), 0))
+        .ok()
+        .flatten();
     match res {
         None => Ok(None),
-        Some(x_star) => {
-            let sol = x_star.to_base_sol(n_loci, Objective::Generations);
-            Ok(Some((
-                sol.tree_data,
-                sol.tree_type,
-                sol.tree_left,
-                sol.tree_right,
-                sol.objective,
-            )))
-        }
+        Some(sol) => Ok(Some((
+            sol.tree_data,
+            sol.tree_type,
+            sol.tree_left,
+            sol.tree_right,
+            sol.objective,
+        ))),
     }
 }
 

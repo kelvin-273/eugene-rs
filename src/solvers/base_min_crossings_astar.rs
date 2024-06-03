@@ -5,6 +5,9 @@ use crate::solvers::base_min_generations_enumerator_dominance::filter_non_domina
 use crate::solvers::base_min_generations_segment;
 use pathfinding::directed::astar::astar;
 use std::rc::Rc;
+use std::sync::mpsc;
+use std::thread;
+use std::time::Duration;
 
 type WGe = WGen<SingleChromGenotype, SingleChromGamete>;
 type WGa = WGam<SingleChromGenotype, SingleChromGamete>;
@@ -12,7 +15,11 @@ type WGa = WGam<SingleChromGenotype, SingleChromGamete>;
 /// Runs a breeding program given `n_loci` and `pop_0` where `pop_0` is a population of single
 /// chromosome diploid genotypes with `n_loci` loci.
 #[pyo3::pyfunction]
-pub fn breeding_program_python(n_loci: usize, pop_0: Vec<Vec<Vec<bool>>>) -> PyBaseSolution {
+pub fn breeding_program_python(
+    n_loci: usize,
+    pop_0: Vec<Vec<Vec<bool>>>,
+    timeout: Option<u64>,
+) -> PyBaseSolution {
     let pop_0 = pop_0
         .iter()
         .map(|x| {
@@ -24,19 +31,25 @@ pub fn breeding_program_python(n_loci: usize, pop_0: Vec<Vec<Vec<bool>>>) -> PyB
             )
         })
         .collect();
-    let res = breeding_program(n_loci, &pop_0);
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || {
+        let res = breeding_program(n_loci, &pop_0)
+            .map(|x_star| x_star.to_base_sol(n_loci, Objective::Generations));
+        tx.send(res)
+    });
+    let res = rx
+        .recv_timeout(Duration::new(timeout.unwrap_or(u64::MAX), 0))
+        .ok()
+        .flatten();
     match res {
         None => Ok(None),
-        Some(x_star) => {
-            let sol = x_star.to_base_sol(n_loci, Objective::Crossings);
-            Ok(Some((
-                sol.tree_data,
-                sol.tree_type,
-                sol.tree_left,
-                sol.tree_right,
-                sol.objective,
-            )))
-        }
+        Some(sol) => Ok(Some((
+            sol.tree_data,
+            sol.tree_type,
+            sol.tree_left,
+            sol.tree_right,
+            sol.objective,
+        ))),
     }
 }
 

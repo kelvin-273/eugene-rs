@@ -145,6 +145,12 @@ pub fn breeding_program(
     n_loci: usize,
     pop_0: &Vec<SingleChromGenotype>,
 ) -> Option<WGen<SingleChromGenotype, SingleChromGamete>> {
+    // Return solution if trivial
+    let ideotype = SingleChromGenotype::ideotype(n_loci);
+    if pop_0.contains(&ideotype) {
+        return Some(WGen::new(ideotype));
+    }
+
     // TODO: Test for feasibility <27-05-24> //
 
     // Generate minimal ordered set of segments

@@ -127,6 +127,12 @@ pub trait Feasible<Data>: Sized {
     fn is_feasible(data: &Data, pop: &Vec<Self>) -> bool;
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub enum Chrom {
+    Upper,
+    Lower,
+}
+
 ///////////////////////////////
 //  New version of WGen API  //
 ///////////////////////////////
@@ -273,6 +279,10 @@ impl<A, B> WGen<A, B> {
     pub fn crossings(&self) -> usize {
         unimplemented!()
     }
+
+    pub fn ptr_eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.head, &other.head)
+    }
 }
 
 impl<A, B> WGam<A, B> {
@@ -311,6 +321,10 @@ impl<A, B> WGam<A, B> {
 
     pub fn crossings(&self) -> usize {
         unimplemented!()
+    }
+
+    pub fn ptr_eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.head, &other.head)
     }
 }
 

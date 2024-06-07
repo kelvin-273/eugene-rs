@@ -114,11 +114,6 @@ impl SingleChromGenotype {
             false => self.chrom2.get(locus),
         }
     }
-
-    pub fn produces_target_gamete(&self) -> bool {
-        let _swaps = 0;
-        false
-    }
 }
 
 impl BioSize for SingleChromGenotype {
@@ -139,6 +134,15 @@ impl Diploid<SingleChromGamete> for SingleChromGenotype {
         SingleChromGamete {
             n_loci: self.n_loci,
             gamete: self.chrom2.clone(),
+        }
+    }
+}
+
+impl IndexAllele<(Chrom, usize)> for SingleChromGenotype {
+    fn index(&self, idx: (Chrom, usize)) -> Allele {
+        match idx.0 {
+            Chrom::Upper => self.get(true, idx.1).expect("Index out of bounds").into(),
+            Chrom::Lower => self.get(false, idx.1).expect("Index out of bounds").into(),
         }
     }
 }
@@ -208,7 +212,7 @@ impl Dominance<SingleChromGamete> for DomGamete {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CrosspointBitVec {
     start: bool,
     head: usize,

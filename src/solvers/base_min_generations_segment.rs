@@ -2,7 +2,6 @@ use crate::abstract_plants::*;
 use crate::plants::bit_array::*;
 use crate::solution::{Objective, PyBaseSolution};
 use std::collections::HashMap;
-use std::rc::Rc;
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
@@ -99,7 +98,7 @@ impl Seg {
             s: self.s,
             e: other.e,
             g: {
-                CrosspointBitVec::new(false, other.s)
+                CrosspointBitVec::new(Chrom::Upper, other.s)
                     .cross(&SingleChromGenotype::from_gametes(&self.g, &other.g))
             },
         }
@@ -114,7 +113,7 @@ impl SegW {
             s: self.s,
             e: other.e,
             g: {
-                let crosspoint_bit_vec = &CrosspointBitVec::new(false, other.s);
+                let crosspoint_bit_vec = &CrosspointBitVec::new(Chrom::Upper, other.s);
                 let wz = WGen::from_gametes(&self.g, &other.g);
                 wz.cross_fn(|z| crosspoint_bit_vec.cross(z))
             },
@@ -130,7 +129,7 @@ impl SegW {
             g: {
                 let z = SingleChromGenotype::from_gametes(self.g.gamete(), other.g.gamete());
                 let wz = WGen::new(z);
-                let crosspoint_bit_vec = &CrosspointBitVec::new(false, other.s);
+                let crosspoint_bit_vec = &CrosspointBitVec::new(Chrom::Upper, other.s);
                 let gz = crosspoint_bit_vec.cross(wz.genotype());
                 h.entry(gz.clone())
                     .or_insert_with(|| WGam::new_from_genotype(gz, wz))
@@ -431,19 +430,31 @@ impl SegL {
         if let (LazyWGam::NoRecomb(chrom_x, wx), LazyWGam::NoRecomb(chrom_y, wy)) =
             (&self.g, &other.g)
         {
-            if wx.ptr_eq(&wy) && chrom_x == chrom_y {
-                self.clone()
-            } else if wx.ptr_eq(&wy) && chrom_x != chrom_y {
-                Self {
-                    s: self.s,
-                    e: other.e,
-                    g: LazyWGam::Recomb(CrosspointBitVec::new(false, other.s), wx.clone()),
+            if wx.ptr_eq(&wy) {
+                match (chrom_x, chrom_y) {
+                    (Chrom::Upper, Chrom::Lower) => Self {
+                        s: self.s,
+                        e: other.e,
+                        g: LazyWGam::Recomb(
+                            CrosspointBitVec::new(Chrom::Upper, other.s),
+                            wx.clone(),
+                        ),
+                    },
+                    (Chrom::Lower, Chrom::Upper) => Self {
+                        s: self.s,
+                        e: other.e,
+                        g: LazyWGam::Recomb(
+                            CrosspointBitVec::new(Chrom::Lower, other.s),
+                            wx.clone(),
+                        ),
+                    },
+                    _ => self.clone(),
                 }
             } else {
-                panic!("Not supposed to be used this far")
+                panic!("Not supposed to be used on NoRecomb's from different parents")
             }
         } else {
-            panic!()
+            panic!("Not supposed to be used on LazyWGam's from different parents")
         }
     }
 }

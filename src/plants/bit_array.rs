@@ -214,12 +214,12 @@ impl Dominance<SingleChromGamete> for DomGamete {
 
 #[derive(Debug, Clone)]
 pub struct CrosspointBitVec {
-    start: bool,
+    start: Chrom,
     head: usize,
 }
 
 impl CrosspointBitVec {
-    pub fn new(start: bool, head: usize) -> Self {
+    pub fn new(start: Chrom, head: usize) -> Self {
         Self { start, head }
     }
 }
@@ -228,7 +228,7 @@ impl Crosspoint<SingleChromGenotype, SingleChromGamete, usize> for CrosspointBit
     fn cross(&self, x: &SingleChromGenotype) -> SingleChromGamete {
         let mut c1 = &x.chrom1;
         let mut c2 = &x.chrom2;
-        if self.start {
+        if self.start == Chrom::Lower {
             (c1, c2) = (c2, c1);
         }
         SingleChromGamete {
@@ -250,12 +250,13 @@ impl Crosspoint<SingleChromGenotype, SingleChromGamete, usize> for CrosspointBit
 
     fn crosspoints(n_loci: &usize) -> Box<dyn std::iter::Iterator<Item = Self>> {
         let n_loci = *n_loci;
-        Box::new([false, true].iter().flat_map(move |start| {
-            (0..n_loci).map(|head| CrosspointBitVec {
-                start: *start,
-                head,
-            })
-        }))
+        Box::new(
+            [Chrom::Upper, Chrom::Lower]
+                .into_iter()
+                .flat_map(move |start| {
+                    (0..n_loci).map(move |head| CrosspointBitVec { start, head })
+                }),
+        )
     }
 }
 
@@ -480,18 +481,18 @@ mod tests {
                 )
             };
         }
-        f!(false, 0, "010010", "101001", "101001");
-        f!(false, 1, "010010", "101001", "001001");
-        f!(false, 2, "010010", "101001", "011001");
-        f!(false, 3, "010010", "101001", "010001");
-        f!(false, 4, "010010", "101001", "010001");
-        f!(false, 5, "010010", "101001", "010011");
-        f!(true, 0, "010010", "101001", "010010");
-        f!(true, 1, "010010", "101001", "110010");
-        f!(true, 2, "010010", "101001", "100010");
-        f!(true, 3, "010010", "101001", "101010");
-        f!(true, 4, "010010", "101001", "101010");
-        f!(true, 5, "010010", "101001", "101000");
+        f!(Chrom::Upper, 0, "010010", "101001", "101001");
+        f!(Chrom::Upper, 1, "010010", "101001", "001001");
+        f!(Chrom::Upper, 2, "010010", "101001", "011001");
+        f!(Chrom::Upper, 3, "010010", "101001", "010001");
+        f!(Chrom::Upper, 4, "010010", "101001", "010001");
+        f!(Chrom::Upper, 5, "010010", "101001", "010011");
+        f!(Chrom::Lower, 0, "010010", "101001", "010010");
+        f!(Chrom::Lower, 1, "010010", "101001", "110010");
+        f!(Chrom::Lower, 2, "010010", "101001", "100010");
+        f!(Chrom::Lower, 3, "010010", "101001", "101010");
+        f!(Chrom::Lower, 4, "010010", "101001", "101010");
+        f!(Chrom::Lower, 5, "010010", "101001", "101000");
     }
 
     #[test]

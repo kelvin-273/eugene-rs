@@ -78,11 +78,10 @@ where
 }
 
 fn heuristic(n_loci: usize, state: &State<WGe>) -> usize {
-    let n_segments = base_min_generations_segment::min_covering_segments(
+    let n_segments = base_min_generations_segment::n_min_covering_segments(
         n_loci,
         &state.iter().map(|wgx| wgx.genotype()).cloned().collect(),
-    )
-    .len();
+    );
     (n_segments + 1) >> 1
 }
 

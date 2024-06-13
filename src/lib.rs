@@ -46,13 +46,28 @@ fn eugene_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
         &mg_naive1
     )?)?;
 
+    mg_naive1.add_function(wrap_pyfunction!(
+        solvers::base_min_generations_enumerator::mingen_answer_enumerator,
+        &mg_naive1
+    )?)?;
+
     mg_naive2.add_function(wrap_pyfunction!(
         solvers::base_min_generations_enumerator_dominance::breeding_program_python,
         &mg_naive2
     )?)?;
 
+    mg_naive2.add_function(wrap_pyfunction!(
+        solvers::base_min_generations_enumerator_dominance::mingen_answer_dominance,
+        &mg_naive2
+    )?)?;
+
     mg_segment.add_function(wrap_pyfunction!(
         solvers::base_min_generations_segment::breeding_program_python,
+        &mg_segment
+    )?)?;
+
+    mg_segment.add_function(wrap_pyfunction!(
+        solvers::base_min_generations_segment::mingen_answer_segment,
         &mg_segment
     )?)?;
 

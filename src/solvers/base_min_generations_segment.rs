@@ -1,6 +1,7 @@
 use crate::abstract_plants::*;
 use crate::plants::bit_array::*;
 use crate::solution::{Objective, PyBaseSolution};
+use pyo3::PyResult;
 use std::collections::HashMap;
 use std::sync::mpsc;
 use std::thread;
@@ -47,6 +48,34 @@ pub fn breeding_program_python(
     }
 }
 
+#[pyo3::pyfunction]
+#[pyo3(name = "mingen_answer")]
+pub fn mingen_answer_segment(
+    n_loci: usize,
+    pop_0: Vec<Vec<Vec<bool>>>,
+    timeout: Option<u64>,
+) -> PyResult<Option<usize>> {
+    let instant = std::time::Instant::now();
+    let pop_0 = pop_0
+        .iter()
+        .map(|x| {
+            SingleChromGenotype::new(
+                x[0].iter()
+                    .zip(x[1].iter())
+                    .map(|(a, b)| (*a, *b))
+                    .collect(),
+            )
+        })
+        .collect();
+    println!("Rust's half of the serialisation: {:#?}", instant.elapsed());
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || {
+        let res = min_generations(n_loci, &pop_0);
+        tx.send(res)
+    });
+    let n_gen = rx.recv_timeout(Duration::new(timeout.unwrap_or(u64::MAX), 0));
+    Ok(n_gen.ok())
+}
 /// A triple containing a start-point `s`, end-point `e`, and gamete `g` used to represent a
 /// contiguous sequence of favourable alleles on `g` from index `s` to `e` inclusive.
 #[derive(Debug, Clone)]
@@ -183,8 +212,11 @@ pub fn min_generations(n_loci: usize, pop_0: &Vec<SingleChromGenotype>) -> usize
 }
 
 pub fn n_min_covering_segments(n_loci: usize, pop_0: &Vec<SingleChromGenotype>) -> usize {
+    let instant_vector_init = std::time::Instant::now();
     let mut segment_pigeonholes: Vec<Option<SegL>> = vec![None; n_loci];
+    println!("Vector Init Time: {:#?}", instant_vector_init.elapsed());
 
+    let instant_seg_gen = std::time::Instant::now();
     // Fill each hole with the largest segment that starts at s
     for x in pop_0 {
         for Segment { s, e, g } in generate_segments_genotype_diploid(n_loci, x) {
@@ -200,7 +232,9 @@ pub fn n_min_covering_segments(n_loci: usize, pop_0: &Vec<SingleChromGenotype>) 
             }
         }
     }
+    println!("Segment Generation Time: {:#?}", instant_seg_gen.elapsed());
 
+    let instant_filtering = std::time::Instant::now();
     // Filter non-dominated segments
     let mut i = 1;
     assert!(segment_pigeonholes[0].is_some());
@@ -230,6 +264,7 @@ pub fn n_min_covering_segments(n_loci: usize, pop_0: &Vec<SingleChromGenotype>) 
             i += 1;
         }
     }
+    println!("Filtering Time: {:#?}", instant_filtering.elapsed());
     j
 }
 
@@ -430,7 +465,7 @@ impl SegL {
         if let (LazyWGam::NoRecomb(chrom_x, wx), LazyWGam::NoRecomb(chrom_y, wy)) =
             (&self.g, &other.g)
         {
-            if wx.ptr_eq(&wy) {
+            if wx.ptr_eq(wy) {
                 match (chrom_x, chrom_y) {
                     (Chrom::Upper, Chrom::Lower) => Self {
                         s: self.s,

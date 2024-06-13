@@ -5,6 +5,7 @@ use std::collections::HashSet;
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
+use pyo3::PyResult;
 
 /// Runs a breeding program given `n_loci` and `pop_0` where `pop_0` is a population of single
 /// chromosome diploid genotypes with `n_loci` loci.
@@ -44,6 +45,35 @@ pub fn breeding_program_python(
             sol.objective,
         ))),
     }
+}
+
+#[pyo3::pyfunction]
+#[pyo3(name = "mingen_answer")]
+pub fn mingen_answer_dominance(
+    n_loci: usize,
+    pop_0: Vec<Vec<Vec<bool>>>,
+    timeout: Option<u64>,
+) -> PyResult<Option<usize>> {
+    let pop_0 = pop_0
+        .iter()
+        .map(|x| {
+            SingleChromGenotype::new(
+                x[0].iter()
+                    .zip(x[1].iter())
+                    .map(|(a, b)| (*a, *b))
+                    .collect(),
+            )
+        })
+        .collect::<Vec<_>>();
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || {
+        let res = min_generations_dominator(n_loci, &pop_0);
+        tx.send(res)
+    });
+    let res = rx
+        .recv_timeout(Duration::new(timeout.unwrap_or(u64::MAX), 0))
+        .ok();
+    Ok(res)
 }
 
 pub fn breeding_program(n_loci: usize, pop_0: &[SingleChromGenotype]) -> Option<BaseSolution> {
@@ -91,6 +121,53 @@ pub fn breeding_program(n_loci: usize, pop_0: &[SingleChromGenotype]) -> Option<
     let wg_star = contained_gametes.first().expect("hash map doesn't have g*");
     let wx_star = WGen::from_gametes(wg_star, wg_star);
     Some(wx_star.to_base_sol(n_loci, Objective::Generations))
+}
+
+pub fn min_generations_dominator(n_loci: usize, pop_0: &[SingleChromGenotype]) -> usize {
+    let ideotype = SingleChromGenotype::ideotype(n_loci);
+    if pop_0.contains(&ideotype) {
+        return 0;
+    }
+    let pop_0: Vec<WGen<SingleChromGenotype, _>> =
+        pop_0.iter().map(|x| WGen::new(x.clone())).collect();
+    let mut h: HashSet<SingleChromGamete> = HashSet::new();
+    let mut contained_gametes: Vec<WGam<SingleChromGenotype, SingleChromGamete>> = vec![];
+    for wx in pop_0 {
+        for gx in CrosspointBitVec::crosspoints(&n_loci).map(|k| k.cross(wx.genotype())) {
+            if !h.contains(&gx) {
+                let wgx = WGam::new_from_genotype(gx.clone(), wx.clone());
+                h.insert(gx);
+                contained_gametes.push(wgx);
+            }
+        }
+    }
+    let mut gen = 0;
+    contained_gametes = filter_non_dominating_fn(contained_gametes, |wgx, wgy| {
+        DomGamete::dom(wgx.gamete(), wgy.gamete())
+    });
+    let ideotype_gamete = SingleChromGamete::ideotype(n_loci);
+    while !h.contains(&ideotype_gamete) {
+        gen += 1;
+        let mut v = vec![];
+        for i in 0..contained_gametes.len() {
+            for j in i + 1..contained_gametes.len() {
+                let wgx = &contained_gametes[i];
+                let wgy = &contained_gametes[j];
+                let wz = WGen::from_gametes(wgx, wgy);
+                for k in CrosspointBitVec::crosspoints(&n_loci) {
+                    let gz = k.cross(wz.genotype());
+                    if !h.contains(&gz) {
+                        let wgz = WGam::new_from_genotype(gz.clone(), wz.clone());
+                        h.insert(gz);
+                        v.push(wgz);
+                    }
+                }
+            }
+        }
+        contained_gametes =
+            filter_non_dominating_fn(v, |wgx, wgy| DomGamete::dom(wgx.gamete(), wgy.gamete()));
+    }
+    gen + 1
 }
 
 pub fn filter_non_dominating<T, D>(s: impl IntoIterator<Item = T>) -> Vec<T>

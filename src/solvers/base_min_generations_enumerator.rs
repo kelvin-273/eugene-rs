@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
+use pyo3::PyResult;
 
 /// Runs a breeding program given `n_loci` and `pop_0` where `pop_0` is a population of single
 /// chromosome diploid genotypes with `n_loci` loci.
@@ -46,6 +47,35 @@ pub fn breeding_program_python(
     }
 }
 
+#[pyo3::pyfunction]
+#[pyo3(name = "mingen_answer")]
+pub fn mingen_answer_enumerator(
+    n_loci: usize,
+    pop_0: Vec<Vec<Vec<bool>>>,
+    timeout: Option<u64>,
+) -> PyResult<Option<usize>> {
+    let pop_0 = pop_0
+        .iter()
+        .map(|x| {
+            SingleChromGenotype::new(
+                x[0].iter()
+                    .zip(x[1].iter())
+                    .map(|(a, b)| (*a, *b))
+                    .collect(),
+            )
+        })
+        .collect::<Vec<_>>();
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || {
+        let res = min_generations_enumerator(n_loci, &pop_0);
+        tx.send(res)
+    });
+    let res = rx
+        .recv_timeout(Duration::new(timeout.unwrap_or(u64::MAX), 0))
+        .ok();
+    Ok(res)
+}
+
 pub fn breeding_program(n_loci: usize, pop_0: &[SingleChromGenotype]) -> Option<BaseSolution> {
     let ideotype = SingleChromGenotype::ideotype(n_loci);
     if pop_0.contains(&ideotype) {
@@ -84,6 +114,46 @@ pub fn breeding_program(n_loci: usize, pop_0: &[SingleChromGenotype]) -> Option<
     let wg_star = h.get(&ideotype_gamete).expect("hash map doesn't have g*");
     let wx_star = WGen::from_gametes(wg_star, wg_star);
     Some(wx_star.to_base_sol(n_loci, Objective::Generations))
+}
+
+pub fn min_generations_enumerator(n_loci: usize, pop_0: &[SingleChromGenotype]) -> usize {
+    let ideotype = SingleChromGenotype::ideotype(n_loci);
+    if pop_0.contains(&ideotype) {
+        return 0;
+    }
+    let pop_0: Vec<WGen<SingleChromGenotype, _>> =
+        pop_0.iter().map(|x| WGen::new(x.clone())).collect();
+    let mut h: HashMap<SingleChromGamete, WGam<SingleChromGenotype, SingleChromGamete>> =
+        HashMap::new();
+    for wx in pop_0 {
+        for gx in CrosspointBitVec::crosspoints(&n_loci).map(|k| k.cross(wx.genotype())) {
+            if !h.contains_key(&gx) {
+                let wgx = WGam::new_from_genotype(gx.clone(), wx.clone());
+                h.insert(gx, wgx);
+            }
+        }
+    }
+    let mut gen = 0;
+    let ideotype_gamete = SingleChromGamete::ideotype(n_loci);
+    while !h.contains_key(&ideotype_gamete) {
+        gen += 1;
+        let contained_gametes: Vec<SingleChromGamete> = h.keys().cloned().collect();
+        for i in 0..contained_gametes.len() {
+            for j in i + 1..contained_gametes.len() {
+                let wgx = h.get(&contained_gametes[i]).expect("gamete not found in hash map");
+                let wgy = h.get(&contained_gametes[j]).expect("gamete not found in hash map");
+                let wz = WGen::from_gametes(wgx, wgy);
+                for k in CrosspointBitVec::crosspoints(&n_loci) {
+                    let gz = k.cross(wz.genotype());
+                    if !h.contains_key(&gz) {
+                        let wgz = WGam::new_from_genotype(gz.clone(), wz.clone());
+                        h.insert(gz, wgz.clone());
+                    }
+                }
+            }
+        }
+    }
+    gen + 1
 }
 
 #[cfg(test)]

@@ -55,7 +55,7 @@ pub fn mingen_answer_segment(
     pop_0: Vec<Vec<Vec<bool>>>,
     timeout: Option<u64>,
 ) -> PyResult<Option<usize>> {
-    let instant = std::time::Instant::now();
+    //let instant = std::time::Instant::now();
     let pop_0 = pop_0
         .iter()
         .map(|x| {
@@ -67,7 +67,7 @@ pub fn mingen_answer_segment(
             )
         })
         .collect();
-    println!("Rust's half of the serialisation: {:#?}", instant.elapsed());
+    //println!("Rust's half of the serialisation: {:#?}", instant.elapsed());
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || {
         let res = min_generations(n_loci, &pop_0);
@@ -212,11 +212,11 @@ pub fn min_generations(n_loci: usize, pop_0: &Vec<SingleChromGenotype>) -> usize
 }
 
 pub fn n_min_covering_segments(n_loci: usize, pop_0: &Vec<SingleChromGenotype>) -> usize {
-    let instant_vector_init = std::time::Instant::now();
+    //let instant_vector_init = std::time::Instant::now();
     let mut segment_pigeonholes: Vec<Option<SegL>> = vec![None; n_loci];
-    println!("Vector Init Time: {:#?}", instant_vector_init.elapsed());
+    //println!("Vector Init Time: {:#?}", instant_vector_init.elapsed());
 
-    let instant_seg_gen = std::time::Instant::now();
+    //let instant_seg_gen = std::time::Instant::now();
     // Fill each hole with the largest segment that starts at s
     for x in pop_0 {
         for Segment { s, e, g } in generate_segments_genotype_diploid(n_loci, x) {
@@ -232,12 +232,12 @@ pub fn n_min_covering_segments(n_loci: usize, pop_0: &Vec<SingleChromGenotype>) 
             }
         }
     }
-    println!("Segment Generation Time: {:#?}", instant_seg_gen.elapsed());
+    //println!("Segment Generation Time: {:#?}", instant_seg_gen.elapsed());
 
-    let instant_filtering = std::time::Instant::now();
+    //let instant_filtering = std::time::Instant::now();
     // Filter non-dominated segments
     let mut i = 1;
-    assert!(segment_pigeonholes[0].is_some());
+    //assert!(segment_pigeonholes[0].is_some());
     let mut j = 1;
     let mut e_covered = segment_pigeonholes[0].as_ref().unwrap().e;
     while i < n_loci && e_covered < n_loci - 1 {
@@ -264,7 +264,7 @@ pub fn n_min_covering_segments(n_loci: usize, pop_0: &Vec<SingleChromGenotype>) 
             i += 1;
         }
     }
-    println!("Filtering Time: {:#?}", instant_filtering.elapsed());
+    //println!("Filtering Time: {:#?}", instant_filtering.elapsed());
     j
 }
 

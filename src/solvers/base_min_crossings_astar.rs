@@ -64,7 +64,8 @@ where
     let g_star = SingleChromGamete::ideotype(n_loci);
 
     let successors = |state: &State<WGe>| successors_single_node_extensions(n_loci, &g_star, state);
-    let heuristic = |state: &State<WGe>| heuristic(n_loci, state);
+    //let heuristic = |state: &State<WGe>| heuristic(n_loci, state);
+    let heuristic = |state: &State<WGe>| heuristic_baseline(n_loci, state);
     let success = |state: &State<WGe>| match state.head.as_ref() {
         StateData::Start(v) => v.iter().any(|wx| wx.genotype() == &ideotype),
         StateData::Next(x, _tail) => x.genotype() == &ideotype,
@@ -83,6 +84,10 @@ fn heuristic(n_loci: usize, state: &State<WGe>) -> usize {
         &state.iter().map(|wgx| wgx.genotype()).cloned().collect(),
     );
     (n_segments + 1) >> 1
+}
+
+fn heuristic_baseline(_n_loci: usize, _state: &State<WGe>) -> usize {
+    0
 }
 
 fn successors_single_node_extensions(

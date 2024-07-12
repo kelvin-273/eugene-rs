@@ -185,21 +185,20 @@ pub fn breeding_program(
 
     // Generate minimal ordered set of segments
     let mut min_segments = min_covering_segments(n_loci, pop_0);
+    let mut n_segments = min_segments.len();
 
     // Construct crossing tree from segments
-    while min_segments.len() > 1 {
-        let n_segments = min_segments.len();
-        let mut new_segments = Vec::with_capacity(n_segments.div_ceil(2));
+    while n_segments > 1 {
         for i in 0..n_segments / 2 {
             let cx = &min_segments[2 * i];
             let cy = &min_segments[2 * i + 1];
             let cz = cx.join(cy);
-            new_segments.push(cz);
+            min_segments[i] = cz;
         }
         if n_segments % 2 == 1 {
-            new_segments.push(min_segments[n_segments - 1].clone());
+            min_segments[n_segments.div_ceil(2) - 1] = min_segments[n_segments - 1].clone();
         }
-        min_segments = new_segments;
+        n_segments = n_segments.div_ceil(2);
     }
     Some(WGen::from_gametes(&min_segments[0].g, &min_segments[0].g))
 }

@@ -222,6 +222,29 @@ impl CrosspointBitVec {
     pub fn new(start: Chrom, head: usize) -> Self {
         Self { start, head }
     }
+
+    pub fn random_crosspoint_uniform(rng: &mut impl Rng, n_loci: &usize) -> Self {
+        Self { start: rng.gen::<bool>().into(), head: rng.gen_range(0..*n_loci) }
+    }
+
+    /// Generates a crosspoint with a uniform randomly starting chromosome and a head that is
+    /// chosen with respect to a vector of recombination rates. The recombination rates are
+    /// marginalised so that the crosspoints are single-point recombinations.
+    pub fn random_crosspoint(rng: &mut impl Rng, n_loci: &usize, recomb_rates: &[f64]) -> Self {
+        let start = rng.gen::<bool>().into();
+        if *n_loci <= 1 {
+            return Self { start, head: 0 }
+        }
+        let total: f64 = recomb_rates.iter().sum();
+        let pinpoint: f64 = rng.gen();
+        let mut j = 0;
+        let mut running_sum = 0.0;
+        while j < n_loci - 1 &&  running_sum / total < pinpoint {
+            running_sum += recomb_rates[j];
+            j += 1;
+        }
+        Self { start, head: j }
+    }
 }
 
 impl Crosspoint<SingleChromGenotype, SingleChromGamete, usize> for CrosspointBitVec {

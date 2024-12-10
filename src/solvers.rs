@@ -21,3 +21,10 @@ pub mod base_min_generations_enumerator_dominance;
 pub mod base_min_generations_segment;
 /// Finds the min generations for multi-chromosome diploid plants
 pub mod greedy_multichrom_ti;
+
+/// ## Heuristic methods
+
+/// Find a crossing schedule by repeated performing random crossings until the ideotype is created
+pub mod base_heuristic_random_selection;
+/// Find a crossing schedule using reviewed heuristics
+pub mod base_heuristic_reviewed;

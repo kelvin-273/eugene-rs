@@ -133,6 +133,15 @@ pub enum Chrom {
     Lower,
 }
 
+impl From<bool> for Chrom {
+    fn from(value: bool) -> Self {
+        match value {
+            false => Self::Upper,
+            true => Self::Lower,
+        }
+    }
+}
+
 ///////////////////////////////
 //  New version of WGen API  //
 ///////////////////////////////

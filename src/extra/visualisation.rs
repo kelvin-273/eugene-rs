@@ -168,7 +168,7 @@ pub fn create_random_selection_py(
     filename: Option<&str>,
     k_cross: Option<usize>,
 ) {
-    create_random_selection_py(n_loci, pop_0.iter());
+    todo!();
 }
 
 mod bezier {

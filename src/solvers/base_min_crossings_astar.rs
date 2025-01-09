@@ -34,7 +34,7 @@ pub fn breeding_program_python(
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || {
         let res = breeding_program(n_loci, &pop_0)
-            .map(|x_star| x_star.to_base_sol(n_loci, Objective::Generations));
+            .map(|x_star| x_star.to_base_sol(n_loci, Objective::Crossings));
         tx.send(res)
     });
     let res = rx
@@ -280,7 +280,7 @@ mod tests {
                 let pop_0 = instance_generators::distarray_to_homo($right);
                 let n_loci = $right.len();
                 let op_sol = breeding_program(n_loci, &pop_0)
-                    .map(|sol| sol.to_base_sol(n_loci, Objective::Generations));
+                    .map(|sol| sol.to_base_sol(n_loci, Objective::Crossings));
                 dbg!(&op_sol);
                 assert_eq!($left, op_sol.expect("infeasible").objective);
             };
@@ -299,6 +299,7 @@ mod tests {
         tester!(5, &[0, 1, 0, 2, 0]);
         //tester!(5, &[0, 1, 0, 2, 0, 2]);
         //tester!(6, &[0, 1, 2, 3, 4, 5]);
+        tester!(5, &[0, 1, 2, 3, 2, 1]);
     }
 
     #[test]

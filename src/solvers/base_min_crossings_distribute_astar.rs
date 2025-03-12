@@ -78,14 +78,27 @@ impl AstarNode {
         })
     }
 
+    #[inline]
     fn g(&self) -> usize {
         self.head.g
     }
 
+    #[inline]
+    fn h(&self) -> usize {
+        self.n_segments() + self.n_pop()
+    }
+
+    #[inline]
+    fn f(&self) -> f32 {
+        self.g() as f32 + self.h() as f32 * 1.1
+    }
+
+    #[inline]
     fn n_segments(&self) -> usize {
         self.head.n_segments
     }
 
+    #[inline]
     fn n_pop(&self) -> usize {
         self.head.n_pop
     }
@@ -128,8 +141,7 @@ impl PartialOrd for AstarNode {
 
 impl Ord for AstarNode {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        (self.g() + self.n_pop() + self.n_segments())
-            .cmp(&(other.g() + other.n_pop() + other.n_segments()))
+        self.f().partial_cmp(&(other.f())).unwrap_or(std::cmp::Ordering::Equal)
     }
 }
 

@@ -272,34 +272,38 @@ mod tests {
         );
     }
 
+    use crate::extra::instance_generators;
+    macro_rules! distribute_tester {
+        ($left:expr, $right:expr) => {
+            let pop_0 = instance_generators::distarray_to_homo($right);
+            let n_loci = $right.len();
+            let op_sol = breeding_program(n_loci, &pop_0)
+                .map(|sol| sol.to_base_sol(n_loci, Objective::Crossings));
+            dbg!(&op_sol);
+            assert_eq!($left, op_sol.expect("infeasible").objective);
+        };
+    }
     #[test]
     fn breeding_program_dist_test() {
-        use crate::extra::instance_generators;
-        macro_rules! tester {
-            ($left:expr, $right:expr) => {
-                let pop_0 = instance_generators::distarray_to_homo($right);
-                let n_loci = $right.len();
-                let op_sol = breeding_program(n_loci, &pop_0)
-                    .map(|sol| sol.to_base_sol(n_loci, Objective::Crossings));
-                dbg!(&op_sol);
-                assert_eq!($left, op_sol.expect("infeasible").objective);
-            };
-        }
-        tester!(2, &[0, 1]);
-        tester!(3, &[0, 1, 0]);
-        tester!(3, &[0, 1, 2]);
-        tester!(3, &[0, 1, 0, 1]);
-        tester!(4, &[0, 1, 0, 2]);
-        tester!(4, &[0, 1, 2, 0]);
-        tester!(4, &[0, 1, 2, 1]);
-        tester!(4, &[0, 1, 2, 3]);
-        tester!(4, &[0, 1, 0, 1, 0]);
-        tester!(4, &[0, 1, 0, 1, 2]);
-        tester!(4, &[0, 1, 0, 2, 1]);
-        tester!(5, &[0, 1, 0, 2, 0]);
-        //tester!(5, &[0, 1, 0, 2, 0, 2]);
-        //tester!(6, &[0, 1, 2, 3, 4, 5]);
-        tester!(5, &[0, 1, 2, 3, 2, 1]);
+        distribute_tester!(2, &[0, 1]);
+        distribute_tester!(3, &[0, 1, 0]);
+        distribute_tester!(3, &[0, 1, 2]);
+        distribute_tester!(3, &[0, 1, 0, 1]);
+        distribute_tester!(4, &[0, 1, 0, 2]);
+        distribute_tester!(4, &[0, 1, 2, 0]);
+        distribute_tester!(4, &[0, 1, 2, 1]);
+        distribute_tester!(4, &[0, 1, 2, 3]);
+        distribute_tester!(4, &[0, 1, 0, 1, 0]);
+        distribute_tester!(4, &[0, 1, 0, 1, 2]);
+        distribute_tester!(4, &[0, 1, 0, 2, 1]);
+        distribute_tester!(5, &[0, 1, 0, 2, 0]);
+    }
+    #[test]
+    #[ignore]
+    fn breeding_program_dist_long_test() {
+        distribute_tester!(5, &[0, 1, 0, 2, 0, 2]);
+        distribute_tester!(6, &[0, 1, 2, 3, 4, 5]);
+        distribute_tester!(5, &[0, 1, 2, 3, 2, 1]);
     }
 
     #[test]

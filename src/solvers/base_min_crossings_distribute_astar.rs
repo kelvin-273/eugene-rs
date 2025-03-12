@@ -8,8 +8,9 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 
-/// Runs a breeding program given `n_loci` and `pop_0` where `pop_0` is a population of single
-/// chromosome diploid genotypes with `n_loci` loci.
+/// Computes an optimal crossing schedule given a distribute array `xs`.
+///
+/// For now, only the objective is computed.
 #[pyo3::pyfunction]
 pub fn breeding_program_distribute_python(xs: DistArray, timeout: Option<u64>) -> PyBaseSolution {
     let (tx, rx) = mpsc::channel();

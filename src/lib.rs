@@ -77,10 +77,16 @@ fn eugene_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     let mc_astar = PyModule::new_bound(m.py(), "astar")?;
     //let mc_mip = PyModule::new_bound(m.py(), "mip")?;
+    let mc_distribute_astar = PyModule::new_bound(m.py(), "distribute_astar")?;
 
     mc_astar.add_function(wrap_pyfunction!(
         solvers::base_min_crossings_astar::breeding_program_python,
         &mc_astar
+    )?)?;
+
+    mc_distribute_astar.add_function(wrap_pyfunction!(
+        solvers::base_min_crossings_distribute_astar::breeding_program_distribute_python,
+        &mc_distribute_astar
     )?)?;
 
     //mc_mip.add_function(wrap_pyfunction!(
@@ -90,6 +96,7 @@ fn eugene_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     min_cross.add_submodule(&mc_astar)?;
     //min_cross.add_submodule(&mc_mip)?;
+    min_cross.add_submodule(&mc_distribute_astar)?;
 
     m.add_submodule(&min_gen)?;
     m.add_submodule(&min_cross)?;

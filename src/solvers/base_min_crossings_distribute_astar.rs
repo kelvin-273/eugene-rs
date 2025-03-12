@@ -1,195 +1,499 @@
-use crate::solution::BaseSolution;
+use crate::solution::{BaseSolution, PyBaseSolution};
+use crate::solvers::base_min_generations_enumerator_dominance::filter_non_dominating_fn;
+use core::cmp::Reverse;
 use itertools::Itertools;
-use pathfinding::prelude::*;
-use std::collections::HashSet;
+use std::collections::{BinaryHeap, HashMap, HashSet};
+use std::rc::Rc;
+use std::sync::mpsc;
+use std::thread;
+use std::time::Duration;
 
-pub fn breeding_program(dist_array: Vec<u8>) -> BaseSolution {
-    let _res = astar(&dist_array, successors, heuristic, success);
-    unimplemented!()
-}
-
-fn heuristic(state: &Vec<u8>) -> u8 {
-    get_n_pop(state) + get_n_loci(state)
-}
-
-fn successors(state: &Vec<u8>) -> Vec<(Vec<u8>, u8)> {
-    // first check for full joins and return only the first full join if any are available
-    if let Some((gx, gy)) = detect_fulljoin(state) {
-        let gz = gx.min(gy);
-        return vec![
-            (state
-                .iter()
-                .map(|&g| if g == gx || g == gy { gz } else { g })
-                .collect_vec(), 2)
-        ]
-    }
-
-    let n_pop = get_n_pop(state);
-    let mut out: Vec<(Vec<u8>, u8)> = vec![];
-
-    for gx in 0..n_pop - 1 {
-        for gy in gx + 1..n_pop {
-            // Record where the segment joins are and which direction they're going
-            let segjoins = state
-                .iter()
-                .tuple_windows()
-                .enumerate()
-                .filter(|(_p, (&i, &j))| (i, j) == (gx, gy) || (i, j) == (gy, gx))
-                .map(|(p, (&i, &j))| match (i, j) == (gx, gy) {
-                    true => (p, CrossoverDirection::Forward),
-                    false => (p, CrossoverDirection::Backward),
-                })
-                .collect_vec();
-
-            if segjoins.is_empty() {
-                todo!();
-            } else {
-                todo!();
-            }
-            todo!();
-        }
-    }
-    unimplemented!()
-}
-
-fn successors_given_chosen_segjoins(state: &[u8], (gx, gy): (usize, usize), chosen_segjoins: &Vec<(usize, CrossoverDirection)>) -> Vec<Vec<usize>> {
-    unimplemented!()
-}
-
-fn success(state: &Vec<u8>) -> bool {
-    *state == vec![0]
-}
-
-fn get_n_pop(state: &Vec<u8>) -> u8 {
-    state.iter().max().map(|res| *res + 1).unwrap_or(0)
-}
-
-fn get_n_loci(state: &Vec<u8>) -> u8 {
-    state.len() as u8
-}
-
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-enum CrossoverDirection {
-    Forward,
-    Backward,
-}
-
-type RemainingRange = Option<(usize, usize)>;
-
-fn successors_given_chosen_gametes(
-    state: &[u8],
-    gx: u8,
-    gy: u8,
-    chosen_segjoins: &Vec<(usize, CrossoverDirection)>,
-) -> Vec<(Vec<u8>, u8)> {
-    // Test if sorted
-    assert_eq!(*chosen_segjoins, {
-        let mut temp: Vec<(usize, CrossoverDirection)> = chosen_segjoins.clone();
-        temp.sort();
-        temp
+/// Runs a breeding program given `n_loci` and `pop_0` where `pop_0` is a population of single
+/// chromosome diploid genotypes with `n_loci` loci.
+#[pyo3::pyfunction]
+pub fn breeding_program_distribute_python(xs: DistArray, timeout: Option<u64>) -> PyBaseSolution {
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || {
+        let res = breeding_program_distribute(&xs);
+        tx.send(res)
     });
-
-    let n_loci = state.len();
-
-    let is_gxgy = (0..n_loci)
-        .map(|i| i == gx as usize || i == gy as usize)
-        .collect_vec();
-
-    let is_on_chosen_segjoins = (0..n_loci)
-        .map(|i| is_gxgy[i] && (chosen_segjoins.iter().any(|x| x.0 == i || x.0 + 1 == i)))
-        .collect_vec();
-
-    let assignees = (0..n_loci)
-        .filter(|i| is_gxgy[*i] && !is_on_chosen_segjoins[*i])
-        .collect_vec();
-
-    let mut assignments = todo!();
-
-    vec![]
+    let res = rx
+        .recv_timeout(Duration::new(timeout.unwrap_or(u64::MAX), 0))
+        .ok()
+        .flatten();
+    match res {
+        None => Ok(None),
+        Some(sol) => Ok(Some((
+            sol.tree_data,
+            sol.tree_type,
+            sol.tree_left,
+            sol.tree_right,
+            sol.objective,
+        ))),
+    }
 }
 
-fn remaining_ranges(
-    n_loci: usize,
-    chosen_segjoins: &Vec<(usize, CrossoverDirection)>,
-) -> (RemainingRange, RemainingRange) {
-    chosen_segjoins
-        .iter()
-        .map(|(p, d)| match d {
-            CrossoverDirection::Forward => (Some((*p + 1, n_loci - 1)), Some((0, *p))),
-            CrossoverDirection::Backward => (Some((0, *p)), Some((*p + 1, n_loci - 1))),
-        })
-        .reduce(|x, y| (join(x.0, y.0), join(x.1, y.1)))
-        .unwrap_or((Some((0, n_loci - 1)), Some((0, n_loci - 1))))
-}
+type DistArray = Vec<usize>;
 
 #[inline]
-fn join(x: RemainingRange, y: RemainingRange) -> RemainingRange {
-    match (x, y) {
-        (Some((xs, xe)), Some((ys, ye))) => {
-            let zs = xs.max(ys);
-            let ze = xe.min(ye);
-            if zs > ze {
-                None
-            } else {
-                Some((zs, ze))
-            }
+fn distribute_n_pop(xs: &DistArray) -> usize {
+    *xs.iter().max().expect("xs is empty") + 1
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct AstarNodeBase {
+    xs: DistArray,
+    parent_node: Option<Rc<AstarNodeBase>>,
+    parent_gametes: Option<(usize, usize)>,
+    g: usize,
+    n_pop: usize,
+    n_segments: usize,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+struct AstarNode {
+    head: Rc<AstarNodeBase>,
+}
+
+impl AstarNode {
+    pub fn new(xs: &DistArray) -> Self {
+        Self {
+            head: Rc::new(AstarNodeBase::new(xs)),
         }
-        _ => None,
+    }
+
+    pub fn dist_array(&self) -> &DistArray {
+        &self.head.xs
+    }
+
+    pub fn success(&self) -> bool {
+        let xs = self.dist_array();
+        !xs.is_empty() && xs.iter().all(|x| *x == xs[0])
+    }
+
+    fn parent_node(&self) -> Option<Self> {
+        self.head.parent_node.as_ref().map(|node_base| AstarNode {
+            head: node_base.clone(),
+        })
+    }
+
+    fn g(&self) -> usize {
+        self.head.g
+    }
+
+    fn n_segments(&self) -> usize {
+        self.head.n_segments
+    }
+
+    fn n_pop(&self) -> usize {
+        self.head.n_pop
+    }
+
+    fn create_offspring(&self, zs: DistArray, gx: usize, gy: usize) -> Self {
+        let n_segments = zs.len();
+        let n_pop = distribute_n_pop(&zs);
+        Self {
+            head: Rc::new(AstarNodeBase {
+                xs: zs.clone(),
+                parent_node: Some(self.head.clone()),
+                parent_gametes: Some((gx, gy)),
+                g: self.g() + 2,
+                n_segments,
+                n_pop,
+            }),
+        }
     }
 }
 
-fn detect_fulljoin(state: &[u8]) -> Option<(u8, u8)> {
-    let n = state.len();
-    let mut is_last = vec![false; n];
+impl AstarNodeBase {
+    pub fn new(xs: &DistArray) -> Self {
+        Self {
+            xs: xs.clone(),
+            parent_node: None,
+            parent_gametes: None,
+            g: 0,
+            n_pop: distribute_n_pop(xs),
+            n_segments: xs.len(),
+        }
+    }
+}
 
-    let mut s = HashSet::new();
-    let mut e = HashSet::new();
+impl PartialOrd for AstarNode {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        (self.head.g + self.head.n_pop + self.head.n_segments)
+            .partial_cmp(&(other.head.g + other.head.n_pop + other.head.n_segments))
+    }
+}
 
-    for i in (0..n).rev() {
-        let x = state[i];
-        is_last[i] = !e.contains(&x);
-        e.insert(x);
+impl Ord for AstarNode {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        (self.g() + self.n_pop() + self.n_segments())
+            .cmp(&(other.g() + other.n_pop() + other.n_segments()))
+    }
+}
+
+pub fn breeding_program_distribute(xs: &DistArray) -> Option<BaseSolution> {
+    let path = astar(xs)?;
+    let mut node_ref = path.clone();
+    // TODO: convert path into BaseSolution <10-03-25> //
+    let mut obj = 0;
+    // Add the final selfing to the total
+    if node_ref.parent_node().is_some() {
+        obj += 1;
+    }
+    while node_ref.parent_node().is_some() {
+        node_ref = node_ref.parent_node().unwrap();
+        obj += 1;
+    }
+    Some(BaseSolution {
+        tree_data: vec![],
+        tree_type: vec![],
+        tree_left: vec![],
+        tree_right: vec![],
+        objective: obj,
+    })
+}
+
+struct ClosedList {
+    set: HashMap<String, AstarNode>,
+}
+
+impl ClosedList {
+    pub fn new() -> Self {
+        Self {
+            set: HashMap::new(),
+        }
     }
 
-    s.insert(state[0]);
-    for i in 1..n {
-        let x = state[i];
-        if !s.contains(&x) && is_last[i-1] {
-            return Some((state[i-1], state[i]));
+    pub fn contains(&self, node: &AstarNode) -> bool {
+        self.set.contains_key(&format!("{:?}", node.dist_array()))
+    }
+
+    pub fn insert(&mut self, node: &AstarNode) -> Option<AstarNode> {
+        self.set
+            .insert(format!("{:?}", node.dist_array()), node.clone())
+    }
+}
+
+fn astar(xs: &DistArray) -> Option<AstarNode> {
+    if xs.is_empty() {
+        return None;
+    }
+    //dbg!(xs);
+    let mut open_list = BinaryHeap::from([Reverse(AstarNode::new(xs))]);
+    let mut closed_list = ClosedList::new();
+    //dbg!(&open_list);
+
+    while let Some(Reverse(node)) = open_list.pop() {
+        //dbg!(&node);
+        if closed_list.contains(&node) {
+            continue;
         }
-        s.insert(x);
+        closed_list.insert(&node);
+        if node.success() {
+            return Some(node);
+        }
+        let children = branching(&node, None);
+        for child in children {
+            if !closed_list.contains(&child) {
+                open_list.push(Reverse(child))
+            }
+        }
     }
     None
+}
+
+fn branching(node: &AstarNode, closed_list: Option<&ClosedList>) -> Vec<AstarNode> {
+    if let Some((zs, gx, gy)) = first_full_join(node.dist_array()) {
+        let zs = simplify_dist_array(&zs);
+        return vec![node.create_offspring(zs, gx, gy)];
+    }
+
+    let solution_iter = generate_redistributions(node.dist_array())
+        .into_iter()
+        .filter(|(zs, _, _)| zs != node.dist_array());
+    //let solution_iter = filter_non_dominating_fn(solution_iter, |(zs1, _, _), (zs2, _, _)| {
+    //    dominates_gametewise(zs1, zs2)
+    //});
+    let solution_iter = solution_iter
+        .into_iter()
+        .map(|(zs, gx, gy)| (simplify_dist_array(&zs), gx, gy));
+    //let solution_iter = filter_non_dominating_fn(solution_iter, |(zs1, _, _), (zs2, _, _)| {
+    //    dominates_gametewise(zs1, zs2) || dominates_as_subsequence(zs1, zs2)
+    //});
+    let solution_iter = solution_iter
+        .into_iter()
+        .map(|(zs, gx, gy)| node.create_offspring(zs, gx, gy))
+        .collect();
+    solution_iter
+}
+
+fn first_full_join(xs: &DistArray) -> Option<(DistArray, usize, usize)> {
+    let n_loci = xs.len();
+    let n_pop = distribute_n_pop(xs);
+
+    let mut start_points = vec![n_loci; n_pop];
+    let mut end_points = vec![0; n_pop];
+    for (i, x) in xs.iter().enumerate() {
+        end_points[*x] = i;
+    }
+    for (i, x) in xs.iter().enumerate().rev() {
+        start_points[*x] = i;
+    }
+
+    // find the (gx,gy) with the smallest start_points[gx] such that
+    // a full join occurs between gx and gy
+    for (gy, sy) in start_points.iter().enumerate() {
+        if *sy > 0 && end_points[xs[sy - 1]] == sy - 1 {
+            let gx = xs[sy - 1];
+            let mut out = xs.clone();
+            for i in *sy..end_points[gy] + 1 {
+                if xs[i] == gy {
+                    out[i] = gx;
+                }
+            }
+            return Some((out, gx, gy));
+        }
+    }
+    None
+}
+
+fn simplify_dist_array(xs: &DistArray) -> DistArray {
+    let mut zs = xs.clone();
+    let n_loci = zs.len();
+    let n_pop = distribute_n_pop(&zs);
+    let mut mapping = vec![None; n_pop];
+    mapping[zs[0]] = Some(0);
+    let mut x_max = 0;
+    let mut i = 1;
+    let mut j = 1;
+    while j < n_loci {
+        if zs[j] != xs[j - 1] {
+            if mapping[zs[j]].is_some() {
+                zs[i] = mapping[zs[j]]
+                    .expect("mapping[xs[j]] contains None despite .is_some() reporting otherwise");
+            } else {
+                x_max += 1;
+                mapping[zs[j]] = Some(x_max);
+                zs[i] = x_max;
+            }
+            i += 1;
+        }
+        j += 1;
+    }
+    zs.resize(i, 0);
+    zs
+}
+
+fn requires_multipoint(zs: &DistArray, xs: &DistArray, g: usize, i: usize) -> bool {
+    let mut swaps = -1;
+    let mut prev_value = None;
+    for (&gz, &gx) in zs.iter().take(i + 1).zip(xs.iter()) {
+        if gz == g && Some(gx) != prev_value {
+            prev_value = Some(gx);
+            swaps += 1;
+        }
+        if swaps > 1 {
+            return true;
+        }
+    }
+    false
+}
+
+/// Creates redistributions of Distribute array `xs`.
+/// Currently does not prune dominated redistributions.
+fn generate_redistributions(xs: &DistArray) -> Vec<(DistArray, usize, usize)> {
+    let mut zs = xs.clone();
+    let n_loci = xs.len();
+    let n_pop = distribute_n_pop(xs);
+    if n_pop == 1 {
+        return vec![];
+    }
+    let mut available_gz_values = (n_pop - 2..n_loci).collect::<Vec<_>>();
+    let mut out = Vec::new();
+    // Backtracking for raw redistributions
+    // Assumes that gx and gy are already fixed
+    fn bt(
+        xs: &DistArray,
+        out: &mut Vec<(DistArray, usize, usize)>,
+        gx: usize,
+        gy: usize,
+        zs: &mut DistArray,
+        i: usize,
+        available_gz_values: &Vec<usize>,
+        j_max: usize,
+    ) {
+        if i >= xs.len() {
+            out.push((zs.clone(), gx, gy));
+        } else if xs[i] != gx && xs[i] != gy {
+            bt(xs, out, gx, gy, zs, i + 1, available_gz_values, j_max);
+        } else {
+            for (j, &gz) in available_gz_values.iter().take(j_max + 1).enumerate() {
+                // set value
+                zs[i] = gz;
+                // check if set value would require more than 1 crossover
+                if requires_multipoint(zs, xs, gz, i) {
+                    continue;
+                }
+                // TODO: check if set value would create a dominated gamete
+                // Backtrack
+                if j == j_max {
+                    bt(xs, out, gx, gy, zs, i + 1, available_gz_values, j_max + 1);
+                } else {
+                    bt(xs, out, gx, gy, zs, i + 1, available_gz_values, j_max);
+                }
+            }
+        }
+    }
+    for gx in 0..n_pop - 1 {
+        for gy in gx + 1..n_pop {
+            for i in 0..n_loci {
+                zs[i] = xs[i];
+            }
+            available_gz_values[0] = gx;
+            available_gz_values[1] = gy;
+            bt(xs, &mut out, gx, gy, &mut zs, 0, &available_gz_values, 0);
+        }
+    }
+    out
+}
+
+/// Returns true if each gamete in `ys` are a subset of some gamete in `xs`
+fn dominates_gametewise(xs: &DistArray, ys: &DistArray) -> bool {
+    if xs.len() != ys.len() {
+        return false;
+    }
+    let n_pop_ys = distribute_n_pop(ys);
+    let mut d = vec![None; n_pop_ys];
+    for (&gx, &gy) in xs.iter().zip(ys.iter()) {
+        if d[gy].is_none() {
+            d[gy] = Some(gx);
+        } else if d[gy] != Some(gx) {
+            return false;
+        }
+    }
+    true
+}
+
+/// Returns true if and only if `ys` is a subsequence of `zs`
+fn dominates_as_subsequence(zs: &DistArray, ys: &DistArray) -> bool {
+    return false;
+    let nz = zs.len();
+    let ny = ys.len();
+    if nz > ny {
+        return false;
+    }
+    let mut dp = vec![vec![0; ny + 1]; nz + 1];
+    for iz in 0..nz {
+        for iy in 0..ny {
+            dp[1 + iz][1 + iy] = (((zs[iz] == ys[iy]) as usize) + dp[iz][iy])
+                .max(dp[iz + 1][iy])
+                .max(dp[iz][iy + 1])
+        }
+    }
+    dp[nz][ny] == nz
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn join_test() {
-        assert_eq!(None, join(None, None));
-        assert_eq!(None, join(None, Some((2, 6))));
-        assert_eq!(None, join(Some((1, 7)), None));
-        assert_eq!(None, join(Some((1, 3)), Some((4, 6))));
-        assert_eq!(None, join(Some((4, 6)), Some((1, 3))));
-        assert_eq!(Some((3, 3)), join(Some((1, 3)), Some((3, 6))));
-        assert_eq!(Some((3, 5)), join(Some((1, 5)), Some((3, 6))));
-        assert_eq!(Some((3, 7)), join(Some((3, 8)), Some((1, 7))));
+    macro_rules! pretty_print {
+        ($xs: expr) => {
+            format!(
+                "[\n{}\n]",
+                $xs.iter().map(|zs| format!("\t{:?}", zs)).join("\n")
+            )
+        }
     }
 
     #[test]
-    fn remaining_ranges_test() {
-        let n_loci = 10;
-        let mut v = vec![];
-        assert_eq!((Some((0, 9)), Some((0, 9))), remaining_ranges(n_loci, &v));
-        v.push((4, CrossoverDirection::Forward));
-        assert_eq!((Some((5, 9)), Some((0, 4))), remaining_ranges(n_loci, &v));
-        v.push((3, CrossoverDirection::Forward));
-        assert_eq!((Some((5, 9)), Some((0, 3))), remaining_ranges(n_loci, &v));
-        v.push((7, CrossoverDirection::Backward));
-        assert_eq!((Some((5, 7)), None), remaining_ranges(n_loci, &v));
-        v.push((8, CrossoverDirection::Forward));
-        assert_eq!((None, None), remaining_ranges(n_loci, &v));
+    fn branching_failed_test() {
+        macro_rules! f {
+            ($xs: expr, $zs: expr) => {
+                let node = AstarNode::new(&Vec::from($xs));
+                let output: Vec<DistArray> = branching(&node, None)
+                    .iter()
+                    .map(|x| x.dist_array())
+                    .cloned()
+                    .collect();
+                assert!(
+                    output.contains(&Vec::from($zs)),
+                    "{:?} not in {}",
+                    $zs,
+                    pretty_print!(output)
+                );
+            };
+        }
+        f!([0, 1, 0], [0, 1]);
+        f!([0, 1, 0, 2, 1, 0, 2], [0, 1, 0, 1, 2]);
+    }
+
+    #[test]
+    fn breeding_program_distribute_test() {
+        macro_rules! f {
+            ($xs: expr, $obj_check: expr) => {
+                assert_eq!(
+                    breeding_program_distribute(&Vec::from($xs)).map(|sol| sol.objective),
+                    Some($obj_check)
+                )
+            };
+        }
+        f!([0], 0);
+        f!([0, 1], 2);
+        f!([0, 1, 0], 3);
+        f!([0, 1, 2], 3);
+        f!([0, 1, 0, 1], 3);
+        f!([0, 1, 0, 2], 4);
+        f!([0, 1, 2, 0], 4);
+        f!([0, 1, 2, 1], 4);
+        f!([0, 1, 0, 1, 0], 4);
+        f!([0, 1, 2, 0, 1], 4);
+        f!([0, 1, 2, 1, 0], 4);
+        f!([0, 1, 0, 2, 0], 5);
+        f!([0, 1, 0, 2, 0, 1, 0], 5);
+        f!([0, 1, 0, 2, 1, 0, 2], 5);
+    }
+
+    #[test]
+    fn simplify_dist_array_test() {
+        assert_eq!(simplify_dist_array(&vec![0, 1, 0, 0, 1, 2, 2]), vec![0, 1, 0, 1, 2])
+    }
+
+    #[test]
+    fn generate_redistributions_test() {
+        macro_rules! f {
+            ($xs: expr, $zs: expr) => {
+                let output = generate_redistributions(&Vec::from($xs));
+                assert!(
+                    output.contains(&(Vec::from($zs.0), $zs.1, $zs.2)),
+                    "{:?} not in {}",
+                    $zs,
+                    pretty_print!(output)
+                )
+            };
+        }
+        f!([0, 1, 0, 2, 1, 0, 2], ([0, 1, 0, 0, 1, 2, 2], 0, 2));
+    }
+
+    #[test]
+    fn dominates_gametewise_test() {
+        macro_rules! f {
+            ($xs: expr, $ys: expr) => {
+                assert!(
+                    dominates_gametewise(&Vec::from($xs), &Vec::from($ys)),
+                    "dominates_gametewise({:?}, {:?}) == false",
+                    $xs,
+                    $ys
+                )
+            };
+        }
+        f!([0, 0, 1], [0, 1, 2]);
+        f!([0, 1, 1], [0, 1, 2]);
+    }
+
+    #[test]
+    fn branching_full_joins_test() {
+        unimplemented!()
     }
 }

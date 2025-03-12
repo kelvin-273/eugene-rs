@@ -227,6 +227,9 @@ where
         .collect()
 }
 
+/// Returns a non-dominating subset of `s` where `x` dominates `y` if `func(x, y)` holds.
+///
+/// Requires that `func` is transitive, i.e. `f(x, y)` and `func(y, z)` implies `func(x, z)`.
 pub fn filter_non_dominating_fn<T>(
     s: impl IntoIterator<Item = T>,
     func: impl Fn(&T, &T) -> bool,
@@ -234,6 +237,9 @@ pub fn filter_non_dominating_fn<T>(
     let v: Vec<T> = s.into_iter().collect();
     let mut keeps: Vec<bool> = vec![true; v.len()];
     for i in 0..v.len() {
+        if !keeps[i] {
+            continue;
+        }
         let x = &v[i];
         for j in i + 1..v.len() {
             let y = &v[j];

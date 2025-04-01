@@ -3,6 +3,8 @@ use crate::solvers::base_min_generations_enumerator_dominance::filter_non_domina
 use core::cmp::Reverse;
 use itertools::Itertools;
 use std::collections::{BinaryHeap, HashMap, HashSet};
+use std::fs;
+use std::io::Write;
 use std::rc::Rc;
 use std::sync::mpsc;
 use std::thread;
@@ -16,6 +18,29 @@ pub fn breeding_program_distribute_python(xs: DistArray, timeout: Option<u64>) -
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || {
         let res = breeding_program_distribute(&xs);
+        tx.send(res)
+    });
+    let res = rx
+        .recv_timeout(Duration::new(timeout.unwrap_or(u64::MAX), 0))
+        .ok()
+        .flatten();
+    match res {
+        None => Ok(None),
+        Some(sol) => Ok(Some((
+            sol.tree_data,
+            sol.tree_type,
+            sol.tree_left,
+            sol.tree_right,
+            sol.objective,
+        ))),
+    }
+}
+
+#[pyo3::pyfunction]
+pub fn breeding_program_distribute_diving_python(xs: DistArray, timeout: Option<u64>) -> PyBaseSolution {
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || {
+        let res = breeding_program_distribute_diving(&xs);
         tx.send(res)
     });
     let res = rx
@@ -63,6 +88,7 @@ impl AstarNode {
         }
     }
 
+    #[inline]
     pub fn dist_array(&self) -> &DistArray {
         &self.head.xs
     }
@@ -72,10 +98,16 @@ impl AstarNode {
         !xs.is_empty() && xs.iter().all(|x| *x == xs[0])
     }
 
+    #[inline]
     fn parent_node(&self) -> Option<Self> {
         self.head.parent_node.as_ref().map(|node_base| AstarNode {
             head: node_base.clone(),
         })
+    }
+
+    #[inline]
+    fn parent_gametes(&self) -> Option<(usize, usize)> {
+        self.head.parent_gametes
     }
 
     #[inline]
@@ -141,7 +173,9 @@ impl PartialOrd for AstarNode {
 
 impl Ord for AstarNode {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.f().partial_cmp(&(other.f())).unwrap_or(std::cmp::Ordering::Equal)
+        self.f()
+            .partial_cmp(&(other.f()))
+            .unwrap_or(std::cmp::Ordering::Equal)
     }
 }
 
@@ -167,24 +201,50 @@ pub fn breeding_program_distribute(xs: &DistArray) -> Option<BaseSolution> {
     })
 }
 
+pub fn breeding_program_distribute_diving(xs: &DistArray) -> Option<BaseSolution> {
+    let path = diving(xs)?;
+    let mut node_ref = path.clone();
+    // TODO: convert path into BaseSolution <10-03-25> //
+    let mut obj = 0;
+    // Add the final selfing to the total
+    if node_ref.parent_node().is_some() {
+        obj += 1;
+    }
+    while node_ref.parent_node().is_some() {
+        node_ref = node_ref.parent_node().unwrap();
+        obj += 1;
+    }
+    Some(BaseSolution {
+        tree_data: vec![],
+        tree_type: vec![],
+        tree_left: vec![],
+        tree_right: vec![],
+        objective: obj,
+    })
+}
+
 struct ClosedList {
-    set: HashMap<String, AstarNode>,
+    //set: HashMap<String, AstarNode>,
+    set: HashSet<String>,
 }
 
 impl ClosedList {
     pub fn new() -> Self {
         Self {
-            set: HashMap::new(),
+            //set: HashMap::new(),
+            set: HashSet::new(),
         }
     }
 
     pub fn contains(&self, node: &AstarNode) -> bool {
-        self.set.contains_key(&format!("{:?}", node.dist_array()))
+        //self.set.contains_key(&format!("{:?}", node.dist_array()))
+        self.set.contains(&format!("{:?}", node.dist_array()))
     }
 
-    pub fn insert(&mut self, node: &AstarNode) -> Option<AstarNode> {
-        self.set
-            .insert(format!("{:?}", node.dist_array()), node.clone())
+    pub fn insert(&mut self, node: &AstarNode) -> bool {
+        //self.set
+        //    .insert(format!("{:?}", node.dist_array()), node.clone())
+        self.set.insert(format!("{:?}", node.dist_array()))
     }
 }
 
@@ -192,6 +252,14 @@ fn astar(xs: &DistArray) -> Option<AstarNode> {
     if xs.is_empty() {
         return None;
     }
+    // open file to write posthoc-trace
+    let mut file = fs::File::create(format!(
+        "posthoc-trace/posthoc-{}.trace.yml",
+        xs.iter().map(|x| x.to_string()).join("")
+    ))
+    .ok()
+    .expect("couldn't create file");
+    file.write(b"version: 1.4.0\n");
     //dbg!(xs);
     let mut open_list = BinaryHeap::from([Reverse(AstarNode::new(xs))]);
     let mut closed_list = ClosedList::new();
@@ -202,18 +270,64 @@ fn astar(xs: &DistArray) -> Option<AstarNode> {
         if closed_list.contains(&node) {
             continue;
         }
+
+        // write node
+        write_node(&mut file, &node).expect("failed to write node");
+
         closed_list.insert(&node);
         if node.success() {
             return Some(node);
         }
         let children = branching(&node, None);
         for child in children {
+            write_expansion(&mut file, &child).expect("failed to write successor");
             if !closed_list.contains(&child) {
                 open_list.push(Reverse(child))
             }
         }
     }
     None
+}
+
+fn diving(xs: &DistArray) -> Option<AstarNode> {
+    if xs.is_empty() {
+        return None;
+    }
+    // TODO: Open file to write posthoc-trace <18-03-25> //
+    let mut node = AstarNode::new(xs);
+    while !node.success() {
+        node = branching(&node, None).iter().min()?.clone();
+    }
+    Some(node)
+}
+
+fn write_node(file: &mut fs::File, node: &AstarNode) -> std::io::Result<usize> {
+    file.write(
+        format!(
+            "- {{ type: node, id: {:?}, pId: {} }}\n",
+            node.dist_array(),
+            node.parent_node()
+                .map_or("null".to_string(), |xs| format!("{:?}", xs.dist_array()))
+        )
+        .as_bytes(),
+    )
+}
+
+fn write_expansion(file: &mut fs::File, child: &AstarNode) -> std::io::Result<usize> {
+    let xs = child.dist_array();
+    let zs = child
+        .parent_node()
+        .map_or(String::from("null"), |x| format!("{:?}", x.dist_array()));
+    let (gx, gy) = child
+        .parent_gametes()
+        .expect("child not equipped with parent gametes");
+    file.write(
+        format!(
+            "- {{ type: successor, id: {}, pId: {:?}, gx: {}, gy: {} }}\n",
+            zs, xs, gx, gy
+        )
+        .as_bytes(),
+    )
 }
 
 fn branching(node: &AstarNode, closed_list: Option<&ClosedList>) -> Vec<AstarNode> {
@@ -239,6 +353,149 @@ fn branching(node: &AstarNode, closed_list: Option<&ClosedList>) -> Vec<AstarNod
         .map(|(zs, gx, gy)| node.create_offspring(zs, gx, gy))
         .collect();
     solution_iter
+}
+
+enum Direction {
+    Down,
+    Up,
+}
+
+fn generate_redistributions_two_delta(xs: &DistArray) -> Vec<DistArray> {
+    let n_loci = xs.len();
+    let n_pop = distribute_n_pop(xs);
+    assert!(n_loci > 1);
+
+    #[inline]
+    fn f(xs: &Vec<usize>, i: usize, gx: usize, gy: usize) -> bool {
+        (xs[i], xs[i + 1]) == (gx, gy) || (xs[i], xs[i + 1]) == (gy, gx)
+    }
+
+    struct TwoDeltaState<'a> {
+        xs: &'a DistArray,
+        gx: usize,
+        gy: usize,
+        available_gz_values: &'a mut Vec<usize>,
+        zs: &'a mut DistArray,
+        out: &'a mut Vec<DistArray>,
+        segjoin_choice: &'a mut Vec<bool>,
+    }
+
+    impl TwoDeltaState<'_> {
+        #[inline]
+        fn is_segjoin_index(&self, i: usize) -> bool {
+            (self.xs[i], self.xs[i + 1]) == (self.gx, self.gy)
+                || (self.xs[i], self.xs[i + 1]) == (self.gy, self.gx)
+        }
+
+        #[inline]
+        fn is_gx_or_gy(&self, i: usize) -> bool {
+            self.xs[i] == self.gx || self.xs[i] == self.gy
+        }
+    }
+
+    fn bt_segjoin_choices(state: &mut TwoDeltaState, i: usize) {
+        if i >= state.xs.len() - 1 {
+            todo!("return redistribution")
+        } else if !state.is_segjoin_index(i) {
+            bt_segjoin_choices(state, i + 1);
+        } else if i < state.xs.len() - 2 && state.is_segjoin_index(i + 1) {
+            state.segjoin_choice[i] = true;
+            bt_segjoin_choices(state, i + 2);
+            state.segjoin_choice[i] = false;
+            state.segjoin_choice[i + 1] = true;
+            bt_segjoin_choices(state, i + 3);
+            state.segjoin_choice[i + 1] = false;
+        } else if i < state.xs.len() - 2 && !state.is_segjoin_index(i + 1) {
+            state.segjoin_choice[i] = true;
+            bt_segjoin_choices(state, i + 2);
+            state.segjoin_choice[i] = false;
+        } else {
+            // i == xs.len()
+            state.segjoin_choice[i] = true;
+            bt_segjoin_choices(state, i + 1);
+            state.segjoin_choice[i] = false;
+        }
+    }
+
+    fn assign_given_segjoins(state: &mut TwoDeltaState) {
+        let n_loci = state.xs.len();
+        let ranges = remaining_ranges(state.xs, state.gx, state.gy, state.segjoin_choice);
+        if (0..n_loci).any(|i| {
+            state.is_gx_or_gy(i)
+                && !state.segjoin_choice[i]
+                && !state.segjoin_choice[i + 1]
+                && ![(ranges[0][0]..ranges[0][1]), (ranges[1][0]..ranges[1][1])]
+                    [(state.xs[i] > state.gx) as usize]
+                    .contains(&i)
+        }) {
+            return;
+        }
+        fn bt_final_gamete_construction(
+            state: &mut TwoDeltaState,
+            i: usize,
+        ) {
+            let mut j = 0;
+        }
+    }
+
+    let mut out = Vec::new();
+    let mut segjoin_choice = vec![false; n_loci - 1];
+    let mut zs = xs.clone();
+    let mut available_gz_values: Vec<usize> = (n_pop - 2..n_loci).collect();
+    for gx in 0..n_pop - 1 {
+        for gy in gx + 1..n_pop {
+            let mut state = TwoDeltaState {
+                xs,
+                gx,
+                gy,
+                available_gz_values: &mut available_gz_values,
+                out: &mut out,
+                segjoin_choice: &mut segjoin_choice,
+                zs: &mut zs,
+            };
+
+            if (0..n_loci - 1).all(|i| !f(xs, i, gx, gy)) {
+                continue;
+            }
+            state.available_gz_values[0] = gx;
+            state.available_gz_values[1] = gy;
+            bt_segjoin_choices(&mut state, 0);
+        }
+    }
+    out
+}
+
+/// Returns ranges of loci on each input gamete that are not covered by any chosen segment join
+/// Ranges are not inclusive of the endpoints.
+///
+/// ```
+/// assert_eq!(remaining_ranges(
+///     &vec![0, 1, 2, 0, 1, 3], 0, 1,
+///     &vec![true, false, false, true, false]
+/// ), [[4, 6], [0, 1]]);
+///
+/// assert_eq!(remaining_ranges(
+///     &vec![0, 1, 2, 1, 0, 3], 0, 1,
+///     &vec![true, false, false, true, false]
+/// ), [[1, 4], [4, 1]]);
+/// ```
+fn remaining_ranges(
+    xs: &Vec<usize>,
+    gx: usize,
+    gy: usize,
+    segjoin_choice: &Vec<bool>,
+) -> [[usize; 2]; 2] {
+    let mut ranges_remaining = [[0, xs.len()], [0, xs.len()]];
+    for i in 0..xs.len() - 1 {
+        if segjoin_choice[i] && ((xs[i], xs[i + 1]) == (gx, gy)) {
+            ranges_remaining[0][1] = ranges_remaining[0][1].min(i + 1);
+            ranges_remaining[1][0] = ranges_remaining[1][0].max(i + 1);
+        } else if segjoin_choice[i] && ((xs[i], xs[i + 1]) == (gy, gx)) {
+            ranges_remaining[0][0] = ranges_remaining[0][0].min(i + 1);
+            ranges_remaining[1][1] = ranges_remaining[1][1].max(i + 1);
+        }
+    }
+    ranges_remaining
 }
 
 fn first_full_join(xs: &DistArray) -> Option<(DistArray, usize, usize)> {
@@ -407,6 +664,36 @@ fn dominates_as_subsequence(zs: &DistArray, ys: &DistArray) -> bool {
     dp[nz][ny] == nz
 }
 
+type PyPath = pyo3::PyResult<Option<(Vec<DistArray>, Vec<Option<(usize, usize)>>)>>;
+
+/// Computes an optimal crossing schedule given a distribute array `xs`.
+///
+/// For now, only the objective is computed.
+#[pyo3::pyfunction]
+pub fn experiment_distribute_over_2delta_python(xs: DistArray, timeout: Option<u64>) -> PyPath {
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || {
+        tx.send(astar(&xs).map(|path| {
+            let mut node_ref = path.clone();
+            let mut out_distarrays = vec![path.dist_array().clone()];
+            let mut out_parents = vec![path.parent_gametes()];
+            while node_ref.parent_node().is_some() {
+                node_ref = node_ref.parent_node().unwrap();
+                out_distarrays.push(node_ref.dist_array().clone());
+                out_parents.push(node_ref.parent_gametes())
+            }
+            out_distarrays.reverse();
+            out_parents.reverse();
+            (out_distarrays, out_parents)
+        }))
+    });
+    let res = rx
+        .recv_timeout(Duration::new(timeout.unwrap_or(u64::MAX), 0))
+        .ok()
+        .flatten();
+    Ok(res)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -417,7 +704,7 @@ mod tests {
                 "[\n{}\n]",
                 $xs.iter().map(|zs| format!("\t{:?}", zs)).join("\n")
             )
-        }
+        };
     }
 
     #[test]
@@ -470,7 +757,10 @@ mod tests {
 
     #[test]
     fn simplify_dist_array_test() {
-        assert_eq!(simplify_dist_array(&vec![0, 1, 0, 0, 1, 2, 2]), vec![0, 1, 0, 1, 2])
+        assert_eq!(
+            simplify_dist_array(&vec![0, 1, 0, 0, 1, 2, 2]),
+            vec![0, 1, 0, 1, 2]
+        )
     }
 
     #[test]
@@ -508,5 +798,28 @@ mod tests {
     #[test]
     fn branching_full_joins_test() {
         unimplemented!()
+    }
+
+    #[test]
+    fn remaining_ranges_test() {
+        assert_eq!(
+            remaining_ranges(
+                &vec![0, 1, 2, 0, 1, 3],
+                0,
+                1,
+                &vec![true, false, false, true, false]
+            ),
+            [[4, 6], [0, 1]]
+        );
+
+        assert_eq!(
+            remaining_ranges(
+                &vec![0, 1, 2, 1, 0, 3],
+                0,
+                1,
+                &vec![true, false, false, true, false]
+            ),
+            [[1, 4], [4, 1]]
+        );
     }
 }

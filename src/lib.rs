@@ -89,6 +89,16 @@ fn eugene_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
         &mc_distribute_astar
     )?)?;
 
+    mc_distribute_astar.add_function(wrap_pyfunction!(
+        solvers::base_min_crossings_distribute_astar::breeding_program_distribute_diving_python,
+        &mc_distribute_astar
+    )?)?;
+
+    mc_distribute_astar.add_function(wrap_pyfunction!(
+        solvers::base_min_crossings_distribute_astar::experiment_distribute_over_2delta_python,
+        &mc_distribute_astar
+    )?)?;
+
     //mc_mip.add_function(wrap_pyfunction!(
     //    solvers::base_min_crossings_mip::breeding_program_python_mip,
     //    &mc_mip

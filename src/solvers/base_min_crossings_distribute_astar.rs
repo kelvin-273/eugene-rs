@@ -376,8 +376,8 @@ fn generate_redistributions_two_delta(xs: &DistArray) -> Vec<DistArray> {
         gy: usize,
         available_gz_values: &'a mut Vec<usize>,
         zs: &'a mut DistArray,
-        out: &'a mut Vec<DistArray>,
         segjoin_choice: &'a mut Vec<bool>,
+        out: &'a mut Vec<DistArray>,
     }
 
     impl TwoDeltaState<'_> {
@@ -423,18 +423,23 @@ fn generate_redistributions_two_delta(xs: &DistArray) -> Vec<DistArray> {
         if (0..n_loci).any(|i| {
             state.is_gx_or_gy(i)
                 && !state.segjoin_choice[i]
-                && !state.segjoin_choice[i + 1]
+                && !state.segjoin_choice[i + 1]  // i.e. we didn't choose the next segjoin given
+                                                 // that we didn't choose the current segjoin
                 && ![(ranges[0][0]..ranges[0][1]), (ranges[1][0]..ranges[1][1])]
                     [(state.xs[i] > state.gx) as usize]
                     .contains(&i)
         }) {
             return;
         }
+        enum Direction { Down, Up }
+
+        /// We've chosen which segment joins we're going to use.
+        /// We know that
         fn bt_final_gamete_construction(
             state: &mut TwoDeltaState,
             i: usize,
         ) {
-            let mut j = 0;
+            let [x_rng, y_rng] = remaining_ranges(state.xs, state.gx, state.gy, state.segjoin_choice);
         }
     }
 
@@ -488,11 +493,11 @@ fn remaining_ranges(
     let mut ranges_remaining = [[0, xs.len()], [0, xs.len()]];
     for i in 0..xs.len() - 1 {
         if segjoin_choice[i] && ((xs[i], xs[i + 1]) == (gx, gy)) {
-            ranges_remaining[0][1] = ranges_remaining[0][1].min(i + 1);
-            ranges_remaining[1][0] = ranges_remaining[1][0].max(i + 1);
+            ranges_remaining[0][0] = ranges_remaining[0][0].max(i + 1);
+            ranges_remaining[1][1] = ranges_remaining[1][1].min(i + 1);
         } else if segjoin_choice[i] && ((xs[i], xs[i + 1]) == (gy, gx)) {
-            ranges_remaining[0][0] = ranges_remaining[0][0].min(i + 1);
-            ranges_remaining[1][1] = ranges_remaining[1][1].max(i + 1);
+            ranges_remaining[1][0] = ranges_remaining[1][0].max(i + 1);
+            ranges_remaining[0][1] = ranges_remaining[0][1].min(i + 1);
         }
     }
     ranges_remaining

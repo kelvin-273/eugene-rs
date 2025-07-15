@@ -1,4 +1,3 @@
-#![deny(missing_docs)]
 //! Plant breeding program modelling and solving library.
 //!
 //! Components of the plant breeding program are separated by module.

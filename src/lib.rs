@@ -1,3 +1,4 @@
+#![deny(missing_docs)]
 //! Plant breeding program modelling and solving library.
 //!
 //! Components of the plant breeding program are separated by module.
@@ -21,25 +22,24 @@ use pyo3::prelude::*;
 
 /// Exports the traits used by the algorithms in `solvers`
 pub mod abstract_plants;
+/// Exports the utility functions for parsing and generating instances
 pub mod extra;
+/// Exports the data structures for plant genotypes and gametes
 pub mod plants;
+/// Exports the type for representing breeding programs
 pub mod solution;
+/// Exports the algorithms for solving the plant breeding program problem
 pub mod solvers;
-
-mod play {
-    #[cfg(test)]
-    mod tests {}
-}
 
 #[pymodule]
 //#[pyo3(name = "eugene_rs")]
 fn eugene_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    let min_gen = PyModule::new_bound(m.py(), "min_gen")?;
-    let min_cross = PyModule::new_bound(m.py(), "min_cross")?;
+    let min_gen = PyModule::new(m.py(), "min_gen")?;
+    let min_cross = PyModule::new(m.py(), "min_cross")?;
 
-    let mg_naive1 = PyModule::new_bound(m.py(), "naive1")?;
-    let mg_naive2 = PyModule::new_bound(m.py(), "naive2")?;
-    let mg_segment = PyModule::new_bound(m.py(), "segment")?;
+    let mg_naive1 = PyModule::new(m.py(), "naive1")?;
+    let mg_naive2 = PyModule::new(m.py(), "naive2")?;
+    let mg_segment = PyModule::new(m.py(), "segment")?;
 
     mg_naive1.add_function(wrap_pyfunction!(
         solvers::base_min_generations_enumerator::breeding_program_python,
@@ -75,13 +75,18 @@ fn eugene_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     min_gen.add_submodule(&mg_naive2)?;
     min_gen.add_submodule(&mg_segment)?;
 
-    let mc_astar = PyModule::new_bound(m.py(), "astar")?;
+    let mc_astar = PyModule::new(m.py(), "astar")?;
     //let mc_mip = PyModule::new_bound(m.py(), "mip")?;
-    let mc_distribute_astar = PyModule::new_bound(m.py(), "distribute_astar")?;
+    let mc_distribute_astar = PyModule::new(m.py(), "distribute_astar")?;
 
     mc_astar.add_function(wrap_pyfunction!(
         solvers::base_min_crossings_astar::breeding_program_python,
         &mc_astar
+    )?)?;
+
+    mc_distribute_astar.add_function(wrap_pyfunction!(
+        solvers::base_min_crossings_distribute_astar::breeding_program_distribute_general_python,
+        &mc_distribute_astar
     )?)?;
 
     mc_distribute_astar.add_function(wrap_pyfunction!(
@@ -96,6 +101,11 @@ fn eugene_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     mc_distribute_astar.add_function(wrap_pyfunction!(
         solvers::base_min_crossings_distribute_astar::experiment_distribute_over_2delta_python,
+        &mc_distribute_astar
+    )?)?;
+
+    mc_distribute_astar.add_function(wrap_pyfunction!(
+        solvers::base_min_crossings_distribute_astar::breeding_program_distribute_no_full_join_python,
         &mc_distribute_astar
     )?)?;
 

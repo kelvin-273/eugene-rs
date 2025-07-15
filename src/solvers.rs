@@ -26,5 +26,3 @@ pub mod greedy_multichrom_ti;
 
 /// Find a crossing schedule by repeated performing random crossings until the ideotype is created
 pub mod base_heuristic_random_selection;
-/// Find a crossing schedule using reviewed heuristics
-pub mod base_heuristic_reviewed;

@@ -1,11 +1,11 @@
 use crate::abstract_plants::{Crosspoint, Dominance, WGam, WGen};
 use crate::plants::bit_array::*;
 use crate::solution::{BaseSolution, Objective, PyBaseSolution};
+use pyo3::PyResult;
 use std::collections::HashSet;
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
-use pyo3::PyResult;
 
 /// Runs a breeding program given `n_loci` and `pop_0` where `pop_0` is a population of single
 /// chromosome diploid genotypes with `n_loci` loci.
@@ -242,6 +242,9 @@ pub fn filter_non_dominating_fn<T>(
         }
         let x = &v[i];
         for j in i + 1..v.len() {
+            if !keeps[j] {
+                continue;
+            }
             let y = &v[j];
             if func(x, y) {
                 keeps[j] = false;
@@ -259,6 +262,74 @@ pub fn filter_non_dominating_fn<T>(
         })
         .collect()
 }
+
+pub struct NonDominating<F, I: Iterator> {
+    dom: F,
+    arr: Vec<I::Item>,
+    choice: Vec<bool>,
+    n_rem: usize,
+}
+
+impl<F, I: Iterator> NonDominating<F, I> {
+    pub fn new(iter: I, dom: F) -> Self {
+        let arr: Vec<I::Item> = iter.collect();
+        let n_rem = arr.len();
+        let choice = vec![true; n_rem];
+         Self { dom, arr, choice, n_rem }
+    }
+}
+
+impl<F, I> Iterator for NonDominating<F, I>
+where
+    I: Iterator,
+    F: FnMut(&I::Item, &I::Item) -> bool,
+{
+    type Item = I::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        while self.n_rem > 0 && !self.choice[self.n_rem - 1] {
+            self.choice.pop();
+            self.n_rem -= 1;
+            self.arr.pop();
+        }
+        while !self.arr.is_empty() {
+            for j in 0..self.n_rem - 1 {
+                if !self.choice[j] {}
+                else if (self.dom)(&self.arr[self.n_rem - 1], &self.arr[j]) {
+                    self.choice[j] = false;
+                } else if (self.dom)(&self.arr[j], &self.arr[self.n_rem - 1]) {
+                    self.choice.pop();
+                    self.n_rem -= 1;
+                    self.arr.pop();
+                    break;
+                }
+            }
+            self.choice.pop();
+            self.n_rem -= 1;
+            return self.arr.pop();
+        }
+        None
+    }
+}
+
+pub trait IteratorNonDominating: IntoIterator + Sized {
+    fn filter_non_dominating_fn<F>(self, dom: F) -> NonDominating<F, Self::IntoIter>
+    where
+        F: FnMut(&<Self as IntoIterator>::Item, &<Self as IntoIterator>::Item) -> bool;
+}
+
+impl<I> IteratorNonDominating for I
+where
+    I: IntoIterator + Iterator
+{
+    fn filter_non_dominating_fn<F>(self, dom: F) -> NonDominating<F, Self::IntoIter> {
+        NonDominating::new(self.into_iter(), dom)
+    }
+}
+
+//pub trait IteratorNonDominating: Iterator + Sized {
+    //fn filter_non_dominating_fn<F>(self, dom: F) -> NonDominating<F, Self>;
+//}
 
 #[cfg(test)]
 mod tests {
@@ -433,5 +504,12 @@ mod tests {
             assert!(sol2.is_some());
             assert_eq!(sol1.unwrap().objective, sol2.unwrap().objective);
         }
+    }
+
+    #[test]
+    fn non_dominating_test() {
+        let u = vec![1, 2, 2, 3, 3];
+        let v: Vec<i32> = u.into_iter().filter_non_dominating_fn(|x, y| x >= y).collect();
+        assert_eq!(v, vec![3])
     }
 }

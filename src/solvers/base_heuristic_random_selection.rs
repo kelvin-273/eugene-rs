@@ -46,11 +46,54 @@ pub fn breeding_program_python(
     }
 }
 
+/// Finds a crossing schedule by repeatedly performing random crossings until the ideotype is
+/// created.
+/// (This function is a shell for `breeding_program_random` with a default number of crossings.)
+///
+/// # Arguments
+/// * `n_loci` - The number of loci in the genotype.
+/// * `pop_0` - The initial population of single chromosome genotypes.
+/// # Returns
+/// An `Option<BaseSolution>` which contains the solution if the ideotype is found, or `None` if
+/// not.
+///
+/// # Panics
+/// Panics if `n_loci` is zero or if `pop_0` is empty.
+/// # Example
+/// ```
+/// use crate::plants::bit_array::*;
+/// use crate::solvers::base_heuristic_random_selection::breeding_program;
+/// let n_loci = 10;
+/// let pop_0 = vec![SingleChromGenotype::from_str("11001100", "00110011")];
+/// let solution = breeding_program(n_loci, &pop_0);
+/// assert!(solution.is_some());
+/// ```
 pub fn breeding_program(n_loci: usize, pop_0: &Vec<SingleChromGenotype>) -> Option<BaseSolution> {
     let mut rng = rand::thread_rng();
     breeding_program_random(n_loci, pop_0, Some(20), &mut rng)
 }
 
+/// Finds a crossing schedule by repeatedly performing random crossings until the ideotype is
+/// created.
+///
+/// # Arguments
+/// * `n_loci` - The number of loci in the genotype.
+/// * `pop_0` - The initial population of single chromosome genotypes.
+/// # Returns
+/// An `Option<BaseSolution>` which contains the solution if the ideotype is found, or `None` if
+/// not.
+///
+/// # Panics
+/// Panics if `n_loci` is zero or if `pop_0` is empty.
+/// # Example
+/// ```
+/// use crate::plants::bit_array::*;
+/// use crate::solvers::base_heuristic_random_selection::breeding_program;
+/// let n_loci = 10;
+/// let pop_0 = vec![SingleChromGenotype::from_str("11001100", "00110011")];
+/// let solution = breeding_program_random(n_loci, &pop_0);
+/// assert!(solution.is_some());
+/// ```
 pub fn breeding_program_random(
     n_loci: usize,
     pop_0: &Vec<SingleChromGenotype>,
@@ -65,6 +108,14 @@ pub fn breeding_program_random(
         .map(|wx| wx.to_base_sol(n_loci, Objective::Crossings))
 }
 
+/// Repeatedly performs random crossings until the ideotype is created.
+/// # Arguments
+/// * `n_loci` - The number of loci in the genotype.
+/// * `pop_0` - The initial population of single chromosome genotypes.
+/// * `k_cross` - An optional maximum number of crossings to perform.
+/// # Returns
+/// A vector of `WGen<SingleChromGenotype, SingleChromGamete>` which contains the population after
+/// the crossings.
 pub fn repeated_breeding_random(
     n_loci: usize,
     pop_0: &[SingleChromGenotype],
@@ -99,6 +150,27 @@ pub fn repeated_breeding_random(
     pop
 }
 
+/// Finds a crossing schedule by repeatedly performing random crossings until the ideotype is
+/// created. Crossings are performed only between non-dominating gametes.
+/// # Arguments
+/// * `n_loci` - The number of loci in the genotype.
+/// * `pop_0` - The initial population of single chromosome genotypes.
+/// * `k_cross` - An optional maximum number of crossings to perform.
+/// # Returns
+/// An `Option<BaseSolution>` which contains the solution if the ideotype is found, or `None` if
+/// not.
+/// # Panics
+/// Panics if `n_loci` is zero or if `pop_0` is empty.
+/// # Example
+/// ```
+/// use crate::plants::bit_array::*;
+/// use crate::solvers::base_heuristic_random_selection::breeding_program_random_dominance;
+/// let n_loci = 10;
+/// let pop_0 = vec![SingleChromGenotype::from_str("11001100", "00110011")];
+/// let solution = breeding_program_random_dominance(n_loci, &pop_0, Some(20), &mut
+/// rand::thread_rng());
+/// assert!(solution.is_some());
+/// ```
 pub fn breeding_program_random_dominance(
     n_loci: usize,
     pop_0: &Vec<SingleChromGenotype>,
@@ -113,6 +185,27 @@ pub fn breeding_program_random_dominance(
         .map(|wx| wx.to_base_sol(n_loci, Objective::Crossings))
 }
 
+/// Repeatedly performs random crossings until the ideotype is created.
+/// Crossings are performed only between non-dominating gametes.
+/// # Arguments
+/// * `n_loci` - The number of loci in the genotype.
+/// * `pop_0` - The initial population of single chromosome genotypes.
+/// * `k_cross` - An optional maximum number of crossings to perform.
+/// # Returns
+/// A vector of `WGen<SingleChromGenotype, SingleChromGamete>` which contains the population after
+/// the crossings.
+/// # Panics
+/// Panics if `n_loci` is zero or if `pop_0` is empty.
+/// # Example
+/// ```
+/// use crate::plants::bit_array::*;
+/// use crate::solvers::base_heuristic_random_selection::repeated_breeding_random_dominance;
+/// let n_loci = 10;
+/// let pop_0 = vec![SingleChromGenotype::from_str("11001100", "00110011")];
+/// let pop = repeated_breeding_random_dominance(n_loci, &pop_0, Some(20), &mut
+/// rand::thread_rng());
+/// assert!(pop.iter().any(|wx| wx.genotype() == &SingleChromGenotype::ideotype(n_loci)));
+/// ```
 pub fn repeated_breeding_random_dominance(
     n_loci: usize,
     pop_0: &Vec<SingleChromGenotype>,

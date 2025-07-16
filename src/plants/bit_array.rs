@@ -1,6 +1,7 @@
 use crate::abstract_plants::*;
 use crate::extra::visualisation;
 use crate::solution::{BaseSolution, Objective};
+use crate::solvers::base_min_crossings_distribute_astar::DistArray;
 use bit_vec::BitVec;
 use rand::prelude::*;
 use std::collections::{HashMap, VecDeque};
@@ -51,6 +52,10 @@ impl SingleChromGenotype {
         }
     }
 
+    /// Returns a genotype from two strings of 0s and 1s.
+    ///
+    /// Note that the strings must be of equal length, and each character must be either '0' or
+    /// '1'.
     pub fn from_str(s1: &str, s2: &str) -> Self {
         assert_eq!(s1.len(), s2.len());
         let f = |c: char| match c {
@@ -65,6 +70,7 @@ impl SingleChromGenotype {
         }
     }
 
+    /// Returns a genotype with all loci set to 1 (ideal genotype).
     pub fn ideotype(n_loci: usize) -> Self {
         Self {
             n_loci,
@@ -73,6 +79,7 @@ impl SingleChromGenotype {
         }
     }
 
+    /// Creates a blank genotype with all loci set to 0.
     pub fn blank(n_loci: usize) -> Self {
         Self {
             n_loci,
@@ -81,6 +88,7 @@ impl SingleChromGenotype {
         }
     }
 
+    /// Returns a genotype whose bits are assigned randomly.
     fn random_genotype<R>(rng: &mut R, n_loci: usize) -> Self
     where
         R: Rng + ?Sized,
@@ -92,6 +100,7 @@ impl SingleChromGenotype {
         }
     }
 
+    /// Initializes a population of single-chromosome genotypes with random genotypes.
     pub fn init_pop_random<R>(rng: &mut R, n_loci: usize, n_pop: usize) -> Vec<SingleChromGenotype>
     where
         R: rand::Rng + ?Sized,
@@ -108,6 +117,29 @@ impl SingleChromGenotype {
         pop_0
     }
 
+    /// Initializes a population of single-chromosome genotypes based on a distribute array.
+    pub fn init_pop_distribute(dist_array: &DistArray) -> Vec<SingleChromGenotype> {
+        let n_loci = dist_array.len();
+        let n_pop = dist_array
+            .iter()
+            .cloned()
+            .max()
+            .map(|x_max| x_max + 1)
+            .unwrap_or(0);
+        (0..n_pop)
+            .map(|gx| {
+                (0..n_loci)
+                    .map(|j| {
+                        let b = dist_array[j] == gx;
+                        (b, b)
+                    })
+                    .collect()
+            })
+            .map(SingleChromGenotype::new)
+            .collect()
+    }
+
+    /// Returns the bit in the specified chromosome and locus.
     pub fn get(&self, chrom: bool, locus: usize) -> Option<bool> {
         match chrom {
             true => self.chrom1.get(locus),
@@ -224,7 +256,10 @@ impl CrosspointBitVec {
     }
 
     pub fn random_crosspoint_uniform(rng: &mut impl Rng, n_loci: &usize) -> Self {
-        Self { start: rng.gen::<bool>().into(), head: rng.gen_range(0..*n_loci) }
+        Self {
+            start: rng.gen::<bool>().into(),
+            head: rng.gen_range(0..*n_loci),
+        }
     }
 
     /// Generates a crosspoint with a uniform randomly starting chromosome and a head that is
@@ -233,13 +268,13 @@ impl CrosspointBitVec {
     pub fn random_crosspoint(rng: &mut impl Rng, n_loci: &usize, recomb_rates: &[f64]) -> Self {
         let start = rng.gen::<bool>().into();
         if *n_loci <= 1 {
-            return Self { start, head: 0 }
+            return Self { start, head: 0 };
         }
         let total: f64 = recomb_rates.iter().sum();
         let pinpoint: f64 = rng.gen();
         let mut j = 0;
         let mut running_sum = 0.0;
-        while j < n_loci - 1 &&  running_sum / total < pinpoint {
+        while j < n_loci - 1 && running_sum / total < pinpoint {
             running_sum += recomb_rates[j];
             j += 1;
         }

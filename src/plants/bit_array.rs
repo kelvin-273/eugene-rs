@@ -52,6 +52,12 @@ impl SingleChromGenotype {
         }
     }
 
+    /// Returns the number of loci in this genotype.
+    #[inline]
+    pub fn n_loci(&self) -> usize {
+        self.n_loci
+    }
+
     /// Returns a genotype from two strings of 0s and 1s.
     ///
     /// Note that the strings must be of equal length, and each character must be either '0' or
@@ -145,6 +151,12 @@ impl SingleChromGenotype {
             true => self.chrom1.get(locus),
             false => self.chrom2.get(locus),
         }
+    }
+
+    pub fn is_complementary(&self, other: &Self) -> bool {
+        assert_eq!(self.n_loci, other.n_loci);
+        self.chrom1.iter().zip(other.chrom1.iter()).all(|(a, b)| a != b)
+            && self.chrom2.iter().zip(other.chrom2.iter()).all(|(a, b)| a != b)
     }
 }
 

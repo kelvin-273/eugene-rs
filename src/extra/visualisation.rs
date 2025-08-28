@@ -1,8 +1,5 @@
-use std::collections::HashMap;
-use std::fs;
 use std::hash::Hash;
 use std::io;
-use std::io::prelude::*;
 use svg::node::element::Group;
 use svg::node::element::Rectangle;
 use svg::Document;
@@ -71,16 +68,12 @@ where
     A: BioSize + Diploid<B>,
     B: BioSize + Haploid,
 {
-    //let doc = Document::new()
-    //    // TODO: replace this a viewBox that covers everything //
-    //    .set("viewBox", (0, 0, size[0].1 * 10 + 1, 2*10 + 1));
     let doc = Document::new();
-
     let out = doc.add(draw_gen_base(x, (0, 0)));
     svg::save(filename, &out)
 }
 
-pub fn draw_tree_genotypes<A, B>(tree: &BaseSolution) -> io::Result<()>
+pub fn draw_tree_genotypes<A, B>(_tree: &BaseSolution) -> io::Result<()>
 where
     A: Draw + Eq + Hash + Clone,
     B: Draw,
@@ -88,7 +81,7 @@ where
     unimplemented!()
 }
 
-pub fn draw_tree_gametes<A, B>(tree: &BaseSolution) -> io::Result<()>
+pub fn draw_tree_gametes<A, B>(_tree: &BaseSolution) -> io::Result<()>
 where
     B: Draw + Eq + Hash + Clone,
 {
@@ -119,7 +112,7 @@ where
                                     .set("width", BLOCKSIZE)
                                     .set("height", BLOCKSIZE)
                                     .set("x", BLOCKSIZE * p as usize)
-                                    .set("y", BLOCKSIZE * (total_rows + i))
+                                    .set("y", BLOCKSIZE * (total_rows + i * 3 + j) as usize)
                                     .set("stroke", "black")
                                     .set("fill", allele_colour(*a)),
                             )
@@ -159,16 +152,6 @@ pub fn create_random_selection_dominance(
     let output_pop = ehue::repeated_breeding_random_dominance(n_loci, &pop_0, k_cross, &mut rng);
     let output_svg = draw_individual_genotypes(&output_pop);
     let _ = svg::save(filename, &output_svg);
-}
-
-#[pyo3::pyfunction]
-pub fn create_random_selection_py(
-    n_loci: usize,
-    pop_0: Vec<Vec<Vec<bool>>>,
-    filename: Option<&str>,
-    k_cross: Option<usize>,
-) {
-    todo!();
 }
 
 mod bezier {

@@ -13,9 +13,21 @@ struct Config {
     full_join: bool,
     dominance: bool,
     diving: bool,
+    debug_trace_file: Option<String>,
 }
 
-#[derive(pyo3::IntoPyObject)]
+impl Config {
+    pub fn new(full_join: bool, dominance: bool, diving: bool, debug_trace_file: Option<String>) -> Self {
+        Self {
+            full_join,
+            dominance,
+            diving,
+            debug_trace_file,
+        }
+    }
+}
+
+#[derive(pyo3::IntoPyObject, Debug, Clone)]
 pub struct Output {
     expansions: usize,
     pushed_nodes: usize,
@@ -37,13 +49,14 @@ impl Output {
 /// Returns the number of crossings required for distribute array `xs` along with several other
 /// runtime statistics.
 #[pyo3::pyfunction]
-#[pyo3(signature = (xs, timeout=None, diving=false, full_join=false, dominance=false))]
+#[pyo3(signature = (xs, timeout=None, diving=false, full_join=false, dominance=false, debug_trace_file=None))]
 pub fn breeding_program_distribute_general_python(
     xs: DistArray,
     timeout: Option<u64>,
     diving: bool,
     full_join: bool,
     dominance: bool,
+    debug_trace_file: Option<String>,
 ) -> pyo3::PyResult<Option<Output>> {
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || {
@@ -53,6 +66,7 @@ pub fn breeding_program_distribute_general_python(
                 diving,
                 full_join,
                 dominance,
+                debug_trace_file,
             },
         );
         tx.send(res)
@@ -349,7 +363,14 @@ fn astar_general(xs: &DistArray, config: &Config, output: &mut Output) -> Option
     let mut open_list = BinaryHeap::from([Reverse(AstarNode::new(xs))]);
     let mut closed_list = ClosedList::new();
 
+    let mut file = config.debug_trace_file.as_ref().map(|s| fs::File::create(s).expect("unable to create debug trace file"));
+    file.as_mut().map(|f| {
+        let _ = f.write(b"version: 1.4.0\n");
+        let _ = f.write(b"events:\n");
+    });
+
     while let Some(Reverse(node)) = open_list.pop() {
+        let _ = file.as_mut().map(|f| write_node(f, &node));
         output.expansions += 1;
         if closed_list.contains(&node) {
             continue;
@@ -359,7 +380,7 @@ fn astar_general(xs: &DistArray, config: &Config, output: &mut Output) -> Option
         if node.success() {
             return Some(node);
         }
-        let children = branching_general(&node, None, config);
+        let children = branching_general(&node, config);
         output.children_created_by_branching += children.len();
         for child in children {
             if !closed_list.contains(&child) {
@@ -371,18 +392,41 @@ fn astar_general(xs: &DistArray, config: &Config, output: &mut Output) -> Option
     None
 }
 
-fn branching_general(
-    node: &AstarNode,
-    closed_list: Option<&ClosedList>,
-    config: &Config,
-) -> Vec<AstarNode> {
+fn branching_general(node: &AstarNode, config: &Config) -> Vec<AstarNode> {
+    //if config.full_join || config.diving {  // Adding config.diving passes the tests,
+    // but why do the tests fail without it? Surely the full join should be in the set of solutions
+    // returned by generate_redistributions
     if config.full_join {
         if let Some((zs, gx, gy)) = first_full_join(node.dist_array()) {
             let zs = simplify_dist_array(&zs);
             return vec![node.create_offspring(zs, gx, gy)];
         }
     }
-    if config.dominance {
+    if config.diving {
+        // TODO: return either the minimum one or the one that meets the lower bound
+        let lower_bound = node.n_segments() + node.n_pop();
+        assert !(lower_bound >= 2);
+
+        let mut min_obj = usize::MAX;
+        let mut min_dist_arr = (node.dist_array().clone(), 0, 0);
+
+        for (zs, gx, gy) in generate_redistributions(node.dist_array()) {
+            if &zs == node.dist_array() {
+                continue;
+            }
+            let zs_simplified = simplify_dist_array(&zs);
+            let n_pop = zs_simplified.iter().max().expect("empty dist_array") + 1;
+            let n_segments = zs_simplified.len();
+            if n_pop + n_segments == lower_bound - 2 {
+                return vec![node.create_offspring(zs_simplified, gx, gy)];
+            } else if n_pop + n_segments < min_obj {
+                min_dist_arr = (zs_simplified, gx, gy);
+                min_obj = n_pop + n_segments;
+            }
+        }
+        let (zs, gx, gy) = min_dist_arr;
+        vec![node.create_offspring(zs, gx, gy)]
+    } else if config.dominance {
         generate_redistributions(node.dist_array())
             .into_iter()
             .filter(|(zs, _, _)| zs != node.dist_array())
@@ -393,28 +437,6 @@ fn branching_general(
             })
             .map(|(zs, gx, gy)| node.create_offspring(zs, gx, gy))
             .collect()
-    } else if config.diving {
-        // TODO: return either the minimum one or the one that meets the lower bound
-        let lower_bound = node.n_segments() + node.n_pop();
-
-        let mut min_obj = usize::MAX;
-        let mut min_dist_arr = (node.dist_array().clone(), 0, 0);
-
-        for (zs, gx, gy) in generate_redistributions(node.dist_array()) {
-            if &zs != node.dist_array() {
-                let zs_simplified = simplify_dist_array(&zs);
-                let n_pop = zs_simplified.iter().max().expect("empty dist_array") + 1;
-                let n_segments = zs_simplified.len();
-                if n_pop + n_segments == lower_bound {
-                    return vec![node.create_offspring(zs_simplified, gx, gy)];
-                } else if n_pop + n_segments < min_obj {
-                    min_dist_arr = (zs_simplified, gx, gy);
-                    min_obj = n_pop + n_segments;
-                }
-            }
-        }
-        let (zs, gx, gy) = min_dist_arr;
-        vec![node.create_offspring(zs, gx, gy)]
     } else {
         generate_redistributions(node.dist_array())
             .into_iter()
@@ -576,7 +598,7 @@ fn astar(xs: &DistArray) -> Option<AstarNode> {
         if node.success() {
             return Some(node);
         }
-        let children = branching(&node, None);
+        let children = branching(&node);
         for child in children {
             if !closed_list.contains(&child) {
                 open_list.push(Reverse(child))
@@ -602,7 +624,7 @@ fn astar_no_full_join(xs: &DistArray) -> Option<AstarNode> {
         if node.success() {
             return Some(node);
         }
-        let children = branching_no_full_join(&node, None);
+        let children = branching_no_full_join(&node);
         for child in children {
             if !closed_list.contains(&child) {
                 open_list.push(Reverse(child))
@@ -628,7 +650,7 @@ fn astar_dominance(xs: &DistArray) -> Option<AstarNode> {
         if node.success() {
             return Some(node);
         }
-        let children = branching_dominance(&node, None);
+        let children = branching_dominance(&node);
         for child in children {
             if !closed_list.contains(&child) {
                 open_list.push(Reverse(child))
@@ -654,7 +676,7 @@ fn astar_dominance_no_full_join(xs: &DistArray) -> Option<AstarNode> {
         if node.success() {
             return Some(node);
         }
-        let children = branching_dominance_no_full_join(&node, None);
+        let children = branching_dominance_no_full_join(&node);
         for child in children {
             if !closed_list.contains(&child) {
                 open_list.push(Reverse(child))
@@ -671,7 +693,7 @@ fn diving(xs: &DistArray) -> Option<AstarNode> {
     // TODO: Open file to write posthoc-trace <18-03-25> //
     let mut node = AstarNode::new(xs);
     while !node.success() {
-        node = branching(&node, None).iter().min()?.clone();
+        node = branching(&node).iter().min()?.clone();
     }
     Some(node)
 }
@@ -705,7 +727,7 @@ fn write_expansion(file: &mut fs::File, child: &AstarNode) -> std::io::Result<us
     )
 }
 
-fn branching_no_full_join(node: &AstarNode, closed_list: Option<&ClosedList>) -> Vec<AstarNode> {
+fn branching_no_full_join(node: &AstarNode) -> Vec<AstarNode> {
     generate_redistributions(node.dist_array())
         .into_iter()
         .filter(|(zs, _, _)| zs != node.dist_array())
@@ -714,10 +736,7 @@ fn branching_no_full_join(node: &AstarNode, closed_list: Option<&ClosedList>) ->
         .collect()
 }
 
-fn branching_dominance_no_full_join(
-    node: &AstarNode,
-    closed_list: Option<&ClosedList>,
-) -> Vec<AstarNode> {
+fn branching_dominance_no_full_join(node: &AstarNode) -> Vec<AstarNode> {
     generate_redistributions(node.dist_array())
         .into_iter()
         .filter(|(zs, _, _)| zs != node.dist_array())
@@ -730,7 +749,7 @@ fn branching_dominance_no_full_join(
         .collect()
 }
 
-fn branching(node: &AstarNode, closed_list: Option<&ClosedList>) -> Vec<AstarNode> {
+fn branching(node: &AstarNode) -> Vec<AstarNode> {
     if let Some((zs, gx, gy)) = first_full_join(node.dist_array()) {
         let zs = simplify_dist_array(&zs);
         return vec![node.create_offspring(zs, gx, gy)];
@@ -743,7 +762,7 @@ fn branching(node: &AstarNode, closed_list: Option<&ClosedList>) -> Vec<AstarNod
         .collect()
 }
 
-fn branching_dominance(node: &AstarNode, closed_list: Option<&ClosedList>) -> Vec<AstarNode> {
+fn branching_dominance(node: &AstarNode) -> Vec<AstarNode> {
     if let Some((zs, gx, gy)) = first_full_join(node.dist_array()) {
         let zs = simplify_dist_array(&zs);
         return vec![node.create_offspring(zs, gx, gy)];
@@ -760,21 +779,7 @@ fn branching_dominance(node: &AstarNode, closed_list: Option<&ClosedList>) -> Ve
         .collect()
 }
 
-fn nondom_test() {
-    let u = vec![1, 2, 3];
-    let v: Vec<i32> = u
-        .into_iter()
-        .filter_non_dominating_fn(|x, y| x > y)
-        .map(|x| x)
-        .collect();
-}
-
-enum Direction {
-    Down,
-    Up,
-}
-
-fn generate_redistributions_two_delta(xs: &DistArray) -> Vec<DistArray> {
+fn _generate_redistributions_two_delta(xs: &DistArray) -> Vec<DistArray> {
     let n_loci = xs.len();
     let n_pop = distribute_n_pop(xs);
     assert!(n_loci > 1);
@@ -852,9 +857,10 @@ fn generate_redistributions_two_delta(xs: &DistArray) -> Vec<DistArray> {
 
         /// We've chosen which segment joins we're going to use.
         /// We know that
-        fn bt_final_gamete_construction(state: &mut TwoDeltaState, i: usize) {
-            let [x_rng, y_rng] =
+        fn bt_final_gamete_construction(state: &mut TwoDeltaState, _i: usize) {
+            let [_x_rng, _y_rng] =
                 remaining_ranges(state.xs, state.gx, state.gy, state.segjoin_choice);
+            todo!("Complete bt_final_gamete_construction");
         }
     }
 
@@ -1045,7 +1051,119 @@ fn generate_redistributions(xs: &DistArray) -> Vec<(DistArray, usize, usize)> {
             bt(xs, &mut out, gx, gy, &mut zs, 0, &available_gz_values, 0);
         }
     }
+    if out.len() == 0 {
+        dbg!("No redistributions found for {:?}", xs);
+    }
     out
+}
+
+/// Generates redistributions of Distribute array `xs` using brute force.
+/// This is a very inefficient method and should only be used for testing purposes.
+///
+/// Returns a vector of tuples containing the redistribution, gx, and gy.
+/// The gx and gy are the gametes that were used to create the redistribution.
+///
+/// # Examples
+/// ```
+/// let xs = vec![0, 1, 0, 2];
+/// let redistributions = generate_redistributions_brute_force(&xs);
+///
+/// // TODO: Add assertions to check the correctness of the redistributions
+/// ```
+#[allow(dead_code)]
+fn generate_redistributions_brute_force(xs: &DistArray) -> Vec<(DistArray, usize, usize)> {
+    let mut zs = xs.clone();
+    let n_pop = distribute_n_pop(xs);
+    if n_pop == 1 {
+        return vec![];
+    }
+    let mut out = Vec::new();
+    // Backtracking for raw redistributions
+    fn bt(xs: &DistArray, out: &mut Vec<(DistArray, usize, usize)>, zs: &mut DistArray, i: usize) {
+        if i >= xs.len() {
+            if let Some((gx, gy)) = find_parent_gametes(xs, zs) {
+                out.push((zs.clone(), gx, gy));
+            }
+        } else {
+            for gz in 0..i + 1 {
+                zs[i] = gz;
+                bt(xs, out, zs, i + 1);
+            }
+        }
+    }
+    bt(xs, &mut out, &mut zs, 0);
+    out
+}
+
+/// Finds the parent gametes of a given redistribution `zs` of `xs`.
+fn find_parent_gametes(xs: &DistArray, zs: &DistArray) -> Option<(usize, usize)> {
+    let n_pop = distribute_n_pop(xs);
+
+    #[inline]
+    fn is_single_point(xs: &DistArray, zs: &DistArray, gx: usize, gy: usize) -> bool {
+        xs.iter().zip(zs.iter()).all(|(&x, &z)| {
+            if x == gx || x == gy {
+                // Check that all of the indices j where zs[j] == z switch between gx and gy at
+                // most once
+                let mut current_value = None;
+                let mut switched = false;
+                for (&gz, &gx) in zs.iter().zip(xs.iter()) {
+                    if gz != z || Some(gx) == current_value {
+                        continue;
+                    } else if current_value.is_none() {
+                        current_value = Some(gx);
+                    } else if current_value != Some(gx) {
+                        if switched {
+                            return false; // More than one switch
+                        }
+                        switched = true;
+                        current_value = Some(gx);
+                    }
+                }
+                true
+            } else {
+                z == x
+            }
+        })
+    }
+
+    #[inline]
+    fn is_semi_canonical(xs: &DistArray, zs: &DistArray, gx: usize, gy: usize) -> bool {
+        let n_pop = distribute_n_pop(xs);
+        assert!(gx < gy);
+        let mut gz_max = gx;
+        for (&_, &z) in xs
+            .iter()
+            .zip(zs.iter())
+            .filter(|(&x, &_)| x == gx || x == gy)
+        {
+            if z != gx && z != gy && z < n_pop {
+                return false;
+            }
+            if z > gz_max {
+                if gz_max == gx && z != gy {
+                    return false;
+                }
+                if gz_max == gy && z != n_pop {
+                    return false;
+                }
+                if gz_max >= n_pop && z != gz_max + 1 {
+                    return false;
+                }
+                gz_max = z;
+            }
+        }
+        true
+    }
+
+    for gx in 0..n_pop {
+        for gy in gx + 1..n_pop {
+            if is_single_point(xs, zs, gx, gy) && is_semi_canonical(xs, zs, gx, gy) {
+                return Some((gx, gy));
+            }
+        }
+    }
+    None
 }
 
 /// Returns true if each gamete in `ys` are a subset of some gamete in `xs`
@@ -1066,22 +1184,26 @@ fn dominates_gametewise(xs: &DistArray, ys: &DistArray) -> bool {
 }
 
 /// Returns true if and only if `ys` is a subsequence of `zs`
-fn dominates_as_subsequence(zs: &DistArray, ys: &DistArray) -> bool {
-    return false;
-    let nz = zs.len();
+fn dominates_as_subsequence(xs: &DistArray, ys: &DistArray) -> bool {
+    let nx = xs.len();
     let ny = ys.len();
-    if nz > ny {
+    if nx > ny {
         return false;
     }
-    let mut dp = vec![vec![0; ny + 1]; nz + 1];
-    for iz in 0..nz {
+    if nx == ny && xs != ys {
+        return false;
+    }
+    // Constructing DP array where dp[ix][iy] stores the length of the longest common subsequence
+    // between xs[..ix] and ys[..iy]
+    let mut dp = vec![vec![0; ny + 1]; nx + 1];
+    for ix in 0..nx {
         for iy in 0..ny {
-            dp[1 + iz][1 + iy] = (((zs[iz] == ys[iy]) as usize) + dp[iz][iy])
-                .max(dp[iz + 1][iy])
-                .max(dp[iz][iy + 1])
+            dp[ix + 1][iy + 1] = (dp[ix][iy] + ((xs[ix] == ys[iy]) as usize))
+                .max(dp[ix + 1][iy])
+                .max(dp[ix][iy + 1])
         }
     }
-    dp[nz][ny] == nz
+    dp[nx][ny] == nx
 }
 
 type PyPath = pyo3::PyResult<Option<(Vec<DistArray>, Vec<Option<(usize, usize)>>)>>;
@@ -1116,10 +1238,11 @@ pub fn experiment_distribute_over_2delta_python(xs: DistArray, timeout: Option<u
 
 #[cfg(test)]
 mod tests {
-    use std::{os::unix::raw::nlink_t, vec};
+    use std::vec;
 
     use crate::{
-        abstract_plants::{Allele, Crosspoint, Haploid, WGen}, extra::instance_generators::distarray_to_homo, plants::bit_array::CrosspointBitVec
+        abstract_plants::{Allele, Haploid},
+        plants::bit_array::CrosspointBitVec,
     };
 
     use super::*;
@@ -1141,7 +1264,7 @@ mod tests {
         macro_rules! f {
             ($xs: expr, $zs: expr) => {
                 let node = AstarNode::new(&Vec::from($xs));
-                let output: Vec<DistArray> = branching(&node, None)
+                let output: Vec<DistArray> = branching(&node)
                     .iter()
                     .map(|x| x.dist_array())
                     .cloned()
@@ -1193,6 +1316,32 @@ mod tests {
     }
 
     #[test]
+    fn generate_redistributions_brute_force_test() {
+        assert_eq!(
+            vec![
+                (vec![0, 0, 1], 0, 1),
+                (vec![0, 1, 0], 0, 1),
+                (vec![0, 1, 1], 0, 1),
+                (vec![0, 1, 2], 0, 1),
+            ],
+            generate_redistributions_brute_force(&vec![0, 1, 0])
+        );
+        assert_eq!(
+            vec![
+                (vec![0, 0, 1, 2], 0, 1),
+                (vec![0, 1, 0, 0], 0, 2),
+                (vec![0, 1, 0, 1], 1, 2),
+                (vec![0, 1, 0, 2], 0, 1),
+                (vec![0, 1, 1, 2], 0, 1),
+                (vec![0, 1, 2, 0], 0, 2),
+                (vec![0, 1, 2, 2], 0, 2),
+                (vec![0, 1, 2, 3], 0, 2),
+            ],
+            generate_redistributions_brute_force(&vec![0, 1, 0, 2])
+        );
+    }
+
+    #[test]
     fn generate_redistributions_test() {
         macro_rules! f {
             ($xs: expr, $zs: expr) => {
@@ -1206,6 +1355,40 @@ mod tests {
             };
         }
         f!([0, 1, 0, 2, 1, 0, 2], ([0, 1, 0, 0, 1, 2, 2], 0, 2));
+
+        use std::collections::HashMap;
+        macro_rules! f2 {
+            ($xs: expr) => {
+                let guess = generate_redistributions(&Vec::from($xs));
+                let deduped_guess: HashMap<_, _> = guess
+                    .into_iter()
+                    .map(|zss| (format!("{:?}", zss.0.clone()), zss.clone()))
+                    .collect();
+                let mut guess: Vec<_> = deduped_guess.into_values().collect();
+                guess.sort();
+
+                let mut check = generate_redistributions_brute_force(&Vec::from($xs));
+                check.sort();
+                assert!(guess.iter().zip(check.iter()).all(|(x, y)| x.0 == y.0), "assertion failed `guess == check` failed for xs = {:?}\n guess: {}\n check: {}\n", 
+                    $xs,
+                    pretty_print!(guess),
+                    pretty_print!(check)
+                );
+            };
+        }
+        f2!([0, 1]);
+        f2!([0, 1, 0]);
+        f2!([0, 1, 2]);
+        f2!([0, 1, 0, 1]);
+        f2!([0, 1, 0, 2]);
+        f2!([0, 1, 2, 0]);
+        f2!([0, 1, 2, 1]);
+        f2!([0, 1, 0, 1, 0]);
+        f2!([0, 1, 2, 0, 1]);
+        f2!([0, 1, 2, 1, 0]);
+        f2!([0, 1, 0, 2, 0]);
+        f2!([0, 1, 0, 2, 0, 1, 0]);
+        f2!([0, 1, 0, 2, 1, 0, 2]);
     }
 
     #[test]
@@ -1255,8 +1438,8 @@ mod tests {
     #[test]
     fn path_to_crossing_schedule_test() {
         use crate::abstract_plants::Chrom;
-        use crate::plants::bit_array::SingleChromGenotype;
         use crate::abstract_plants::WGen;
+        use crate::plants::bit_array::SingleChromGenotype;
         let dist_array = vec![0, 1];
         let n_loci = dist_array.len();
         let pop_0 = SingleChromGenotype::init_pop_distribute(&dist_array);
@@ -1353,19 +1536,97 @@ mod tests {
                 // as well.
 
                 // create a new WGam for the new gamete
-                let wgz = wz.cross(crosspoint); 
+                let wgz = wz.cross(crosspoint);
                 wgametes[new_gamete] = Some(wgz);
             }
         }
         // check that the first index of the wgametes is the target gamete
+        assert!(wgametes[0]
+            .as_ref()
+            .expect("wgametes[0] should be set")
+            .gamete()
+            .alleles()
+            .iter()
+            .all(|&a| a == Allele::O),);
+    }
+
+    #[test]
+    fn breeding_program_distribute_diving_test() {
+        macro_rules! f {
+            ($xs: expr, $obj_check: expr) => {
+                assert_eq!(
+                    breeding_program_distribute_diving(&Vec::from($xs)).map(|sol| sol.objective),
+                    Some($obj_check)
+                )
+            };
+        }
+        f!([0], 0);
+        f!([0, 1], 2);
+        f!([0, 1, 0], 3);
+        f!([0, 1, 2], 3);
+        f!([0, 1, 0, 1], 3);
+        f!([0, 1, 0, 2], 4);
+        f!([0, 1, 2, 0], 4);
+        f!([0, 1, 2, 1], 4);
+        f!([0, 1, 0, 1, 0], 4);
+        f!([0, 1, 2, 0, 1], 4);
+        f!([0, 1, 2, 1, 0], 4);
+        f!([0, 1, 0, 2, 0], 5);
+        f!([0, 1, 0, 2, 0, 1, 0], 5);
+        f!([0, 1, 0, 2, 1, 0, 2], 5);
+    }
+
+    #[test]
+    fn breeding_program_distribute_diving_general_test() {
+        macro_rules! f {
+            ($xs: expr, 0, $ub_check: expr) => {
+                if let Some(res) = breeding_program_distribute_general(&Vec::from($xs), &Config::new(false, false, true, None))
+                    .map(|sol| sol.objective).flatten() {
+                        assert!(res <= $ub_check, "breeding_program_distribute_general({:?}) returned a solution above the upper bound {}", $xs, $ub_check);
+                } else {
+                    panic!("breeding_program_distribute_general({:?}) returned None", $xs);
+                }
+            };
+            ($xs: expr, $lb_check: expr, $ub_check: expr) => {
+                if let Some(res) = breeding_program_distribute_general(&Vec::from($xs), &Config::new(false, false, true, None))
+                    .map(|sol| sol.objective).flatten() {
+                        assert!(res >= $lb_check, "breeding_program_distribute_general({:?}) returned a solution below the lower bound {}", $xs, $lb_check);
+                        assert!(res <= $ub_check, "breeding_program_distribute_general({:?}) returned a solution above the upper bound {}", $xs, $ub_check);
+                } else {
+                    panic!("breeding_program_distribute_general({:?}) returned None", $xs);
+                }
+            };
+        }
+        f!([0], 0, 0);
+        f!([0, 1], 2, 2);
+        f!([0, 1, 0], 3, 3);
+        f!([0, 1, 2], 3, 3);
+        f!([0, 1, 0, 1], 3, 4);
+        f!([0, 1, 0, 2], 4, 4);
+        f!([0, 1, 2, 0], 4, 4);
+        f!([0, 1, 2, 1], 4, 4);
+        f!([0, 1, 0, 1, 0], 4, 5);
+        f!([0, 1, 2, 0, 1], 4, 5);
+        f!([0, 1, 2, 1, 0], 4, 5);
+        f!([0, 1, 0, 2, 0], 5, 5);
+        f!([0, 1, 0, 2, 0, 1, 0], 5, 7);
+        f!([0, 1, 0, 2, 1, 0, 2], 5, 7);
+    }
+
+    #[test]
+    fn generate_redistributions_2_test() {
+        let xs = vec![0, 1, 0, 2];
+        let output = generate_redistributions(&xs);
         assert!(
-            wgametes[0]
-                .as_ref()
-                .expect("wgametes[0] should be set")
-                .gamete()
-                .alleles()
-                .iter()
-                .all(|&a| a == Allele::O),
+            vec![
+                (vec![0, 0, 1, 2], 0, 1),
+                (vec![0, 1, 0, 2], 0, 1),
+                (vec![0, 1, 1, 2], 0, 1),
+                (vec![0, 1, 0, 0], 0, 2),
+                (vec![0, 1, 0, 1], 1, 2),
+                (vec![0, 1, 2, 0], 0, 2),
+            ].into_iter().all(|x| output.contains(&x)),
+            "Output was: {}", pretty_print!(output)
         );
     }
 }

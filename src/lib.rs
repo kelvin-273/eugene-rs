@@ -200,7 +200,7 @@ mod tests {
         {
             print!("breeding_program successful");
 
-            visualisation::draw_tree_genotypes::<SingleChromGenotype, SingleChromGamete>(&res);
+            let _ = visualisation::draw_tree_genotypes::<SingleChromGenotype, SingleChromGamete>(&res);
         }
         Ok(())
     }
@@ -221,7 +221,7 @@ mod tests {
         {
             print!("breeding_program successful");
 
-            visualisation::draw_tree_genotypes::<SingleChromGenotype, SingleChromGamete>(&res);
+            let _ = visualisation::draw_tree_genotypes::<SingleChromGenotype, SingleChromGamete>(&res);
         }
         Ok(())
     }

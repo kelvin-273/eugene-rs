@@ -9,7 +9,7 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 
-struct Config {
+pub struct Config {
     full_join: bool,
     dominance: bool,
     diving: bool,
@@ -27,23 +27,12 @@ impl Config {
     }
 }
 
-#[derive(pyo3::IntoPyObject, Debug, Clone)]
+#[derive(pyo3::IntoPyObject, Debug, Clone, Default)]
 pub struct Output {
     expansions: usize,
     pushed_nodes: usize,
     children_created_by_branching: usize,
     objective: Option<usize>,
-}
-
-impl Output {
-    pub fn new() -> Self {
-        Self {
-            expansions: 0,
-            pushed_nodes: 0,
-            children_created_by_branching: 0,
-            objective: None,
-        }
-    }
 }
 
 /// Returns the number of crossings required for distribute array `xs` along with several other
@@ -314,6 +303,8 @@ impl AstarNodeBase {
 }
 
 impl PartialOrd for AstarNode {
+    #[allow(clippy::non_canonical_partial_ord_impl)]
+    #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         (self.head.g + self.head.n_pop + self.head.n_segments)
             .partial_cmp(&(other.head.g + other.head.n_pop + other.head.n_segments))
@@ -364,10 +355,10 @@ fn astar_general(xs: &DistArray, config: &Config, output: &mut Output) -> Option
     let mut closed_list = ClosedList::new();
 
     let mut file = config.debug_trace_file.as_ref().map(|s| fs::File::create(s).expect("unable to create debug trace file"));
-    file.as_mut().map(|f| {
+    if let Some(f) = file.as_mut() {
         let _ = f.write(b"version: 1.4.0\n");
         let _ = f.write(b"events:\n");
-    });
+    }
 
     while let Some(Reverse(node)) = open_list.pop() {
         let _ = file.as_mut().map(|f| write_node(f, &node));
@@ -383,6 +374,7 @@ fn astar_general(xs: &DistArray, config: &Config, output: &mut Output) -> Option
         let children = branching_general(&node, config);
         output.children_created_by_branching += children.len();
         for child in children {
+            let _ = file.as_mut().map(|f| write_expansion(f, &node));
             if !closed_list.contains(&child) {
                 open_list.push(Reverse(child));
                 output.pushed_nodes += 1;
@@ -773,7 +765,7 @@ fn branching_dominance(node: &AstarNode) -> Vec<AstarNode> {
         .filter_non_dominating_fn(|(zs1, _, _), (zs2, _, _)| dominates_gametewise(zs1, zs2))
         .map(|(zs, gx, gy)| (simplify_dist_array(&zs), gx, gy))
         .filter_non_dominating_fn(|(zs1, _, _), (zs2, _, _)| {
-            dominates_gametewise(&zs1, &zs2) || dominates_as_subsequence(&zs1, &zs2)
+            dominates_gametewise(zs1, zs2) || dominates_as_subsequence(zs1, zs2)
         })
         .map(|(zs, gx, gy)| node.create_offspring(zs, gx, gy))
         .collect()
@@ -785,7 +777,7 @@ fn _generate_redistributions_two_delta(xs: &DistArray) -> Vec<DistArray> {
     assert!(n_loci > 1);
 
     #[inline]
-    fn f(xs: &Vec<usize>, i: usize, gx: usize, gy: usize) -> bool {
+    fn f(xs: &[usize], i: usize, gx: usize, gy: usize) -> bool {
         (xs[i], xs[i + 1]) == (gx, gy) || (xs[i], xs[i + 1]) == (gy, gx)
     }
 
@@ -906,10 +898,10 @@ fn _generate_redistributions_two_delta(xs: &DistArray) -> Vec<DistArray> {
 /// ), [[1, 4], [4, 1]]);
 /// ```
 fn remaining_ranges(
-    xs: &Vec<usize>,
+    xs: &[usize],
     gx: usize,
     gy: usize,
-    segjoin_choice: &Vec<bool>,
+    segjoin_choice: &[bool],
 ) -> [[usize; 2]; 2] {
     let mut ranges_remaining = [[0, xs.len()], [0, xs.len()]];
     for i in 0..xs.len() - 1 {
@@ -1016,7 +1008,7 @@ fn generate_redistributions(xs: &DistArray) -> Vec<(DistArray, usize, usize)> {
         gy: usize,
         zs: &mut DistArray,
         i: usize,
-        available_gz_values: &Vec<usize>,
+        available_gz_values: &[usize],
         j_max: usize,
     ) {
         if i >= xs.len() {
@@ -1043,15 +1035,13 @@ fn generate_redistributions(xs: &DistArray) -> Vec<(DistArray, usize, usize)> {
     }
     for gx in 0..n_pop - 1 {
         for gy in gx + 1..n_pop {
-            for i in 0..n_loci {
-                zs[i] = xs[i];
-            }
+            zs[..n_loci].copy_from_slice(&xs[..n_loci]);
             available_gz_values[0] = gx;
             available_gz_values[1] = gy;
             bt(xs, &mut out, gx, gy, &mut zs, 0, &available_gz_values, 0);
         }
     }
-    if out.len() == 0 {
+    if out.is_empty() {
         dbg!("No redistributions found for {:?}", xs);
     }
     out
@@ -1196,9 +1186,9 @@ fn dominates_as_subsequence(xs: &DistArray, ys: &DistArray) -> bool {
     // Constructing DP array where dp[ix][iy] stores the length of the longest common subsequence
     // between xs[..ix] and ys[..iy]
     let mut dp = vec![vec![0; ny + 1]; nx + 1];
-    for ix in 0..nx {
-        for iy in 0..ny {
-            dp[ix + 1][iy + 1] = (dp[ix][iy] + ((xs[ix] == ys[iy]) as usize))
+    for (ix, x) in xs.iter().enumerate() {
+        for (iy, y) in ys.iter().enumerate() {
+            dp[ix + 1][iy + 1] = (dp[ix][iy] + ((x == y) as usize))
                 .max(dp[ix + 1][iy])
                 .max(dp[ix][iy + 1])
         }
@@ -1580,7 +1570,12 @@ mod tests {
     fn breeding_program_distribute_diving_general_test() {
         macro_rules! f {
             ($xs: expr, 0, $ub_check: expr) => {
-                if let Some(res) = breeding_program_distribute_general(&Vec::from($xs), &Config::new(false, false, true, None))
+                if let Some(res) = breeding_program_distribute_general(&Vec::from($xs), &Config {
+                    full_join: false,
+                    dominance: false,
+                    diving: true,
+                    debug_trace_file: None,
+                })
                     .map(|sol| sol.objective).flatten() {
                         assert!(res <= $ub_check, "breeding_program_distribute_general({:?}) returned a solution above the upper bound {}", $xs, $ub_check);
                 } else {

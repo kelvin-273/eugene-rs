@@ -292,7 +292,7 @@ where
             self.n_rem -= 1;
             self.arr.pop();
         }
-        while !self.arr.is_empty() {
+        if !self.arr.is_empty() {
             for j in 0..self.n_rem - 1 {
                 if !self.choice[j] {}
                 else if (self.dom)(&self.arr[self.n_rem - 1], &self.arr[j]) {

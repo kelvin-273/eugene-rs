@@ -124,7 +124,7 @@ pub trait Traverse<A, B, S> {
 }
 
 pub trait Feasible<Data>: Sized {
-    fn is_feasible(data: &Data, pop: &Vec<Self>) -> bool;
+    fn is_feasible(data: &Data, pop: &[Self]) -> bool;
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]

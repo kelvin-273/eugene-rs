@@ -87,6 +87,7 @@ pub fn breeding_program(n_loci: usize, pop_0: &[SingleChromGenotype]) -> Option<
         HashMap::new();
     for wx in pop_0 {
         for gx in CrosspointBitVec::crosspoints(&n_loci).map(|k| k.cross(wx.genotype())) {
+            #[allow(clippy::map_entry)]
             if !h.contains_key(&gx) {
                 let wgx = WGam::new_from_genotype(gx.clone(), wx.clone());
                 h.insert(gx, wgx);
@@ -103,6 +104,7 @@ pub fn breeding_program(n_loci: usize, pop_0: &[SingleChromGenotype]) -> Option<
                 let wz = WGen::from_gametes(wgx, wgy);
                 for k in CrosspointBitVec::crosspoints(&n_loci) {
                     let gz = k.cross(wz.genotype());
+                    #[allow(clippy::map_entry)]
                     if !h.contains_key(&gz) {
                         let wgz = WGam::new_from_genotype(gz.clone(), wz.clone());
                         h.insert(gz, wgz.clone());
@@ -127,6 +129,7 @@ pub fn min_generations_enumerator(n_loci: usize, pop_0: &[SingleChromGenotype]) 
         HashMap::new();
     for wx in pop_0 {
         for gx in CrosspointBitVec::crosspoints(&n_loci).map(|k| k.cross(wx.genotype())) {
+            #[allow(clippy::map_entry)]
             if !h.contains_key(&gx) {
                 let wgx = WGam::new_from_genotype(gx.clone(), wx.clone());
                 h.insert(gx, wgx);
@@ -145,6 +148,11 @@ pub fn min_generations_enumerator(n_loci: usize, pop_0: &[SingleChromGenotype]) 
                 let wz = WGen::from_gametes(wgx, wgy);
                 for k in CrosspointBitVec::crosspoints(&n_loci) {
                     let gz = k.cross(wz.genotype());
+                    // We use the following 4 lines as opposed to what clippy recommends because:
+                    // 1. What clippy recommends, doesn't compile
+                    // 2. Fixing what clippy recommends requires a second clone of gz
+                    // Maybe worth a test of the two methods and a bug report
+                    #[allow(clippy::map_entry)]
                     if !h.contains_key(&gz) {
                         let wgz = WGam::new_from_genotype(gz.clone(), wz.clone());
                         h.insert(gz, wgz.clone());

@@ -325,7 +325,7 @@ pub fn min_covering_segments(n_loci: usize, pop_0: &Vec<SingleChromGenotype>) ->
         .map(|c| SegW {
             s: c.s,
             e: c.e,
-            g: c.g.to_wgam(),
+            g: c.g.into_wgam(),
         })
         .collect()
 }
@@ -449,7 +449,7 @@ struct ChromLens {
 }
 
 impl LazyWGam {
-    fn to_wgam(self) -> WGa {
+    fn into_wgam(self) -> WGa {
         match self {
             Self::NoRecomb(Chrom::Upper, wx) => WGam::new_from_genotype(wx.genotype().upper(), wx),
             Self::NoRecomb(Chrom::Lower, wx) => WGam::new_from_genotype(wx.genotype().lower(), wx),

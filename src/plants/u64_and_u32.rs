@@ -137,7 +137,7 @@ impl Crosspoint<u64, u32, ()> for CrosspointSingleU64U32 {
 }
 
 impl Feasible<usize> for u64 {
-    fn is_feasible(n_loci: &usize, pop: &Vec<Self>) -> bool {
+    fn is_feasible(n_loci: &usize, pop: &[Self]) -> bool {
         let mut total = 0;
         for x in pop {
             total |= x;

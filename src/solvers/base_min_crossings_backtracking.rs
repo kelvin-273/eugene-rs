@@ -14,7 +14,7 @@ pub fn enumerate_covering_subsets<S>(_subsets: Vec<S>) {
 ///     vec![(0, 6), (7, 11), (12, 12)]
 /// );
 /// ```
-pub fn subproblems_shallow(dist_array: &Vec<usize>) -> Vec<(usize, usize)> {
+pub fn subproblems_shallow(dist_array: &[usize]) -> Vec<(usize, usize)> {
     use std::collections::HashMap;
     let n_pop = dist_array.iter().max().unwrap_or(&0) + 1;
     // collect start and end points of each genotype

@@ -14,7 +14,7 @@ pub fn breeding_program_python(
     pop_0: Vec<Vec<Vec<bool>>>,
     timeout: Option<u64>,
 ) -> PyBaseSolution {
-    let pop_0 = pop_0
+    let pop_0: Vec<_> = pop_0
         .iter()
         .map(|x| {
             SingleChromGenotype::new(
@@ -68,7 +68,7 @@ pub fn breeding_program_python(
 /// let solution = breeding_program(n_loci, &pop_0);
 /// assert!(solution.is_some());
 /// ```
-pub fn breeding_program(n_loci: usize, pop_0: &Vec<SingleChromGenotype>) -> Option<BaseSolution> {
+pub fn breeding_program(n_loci: usize, pop_0: &[SingleChromGenotype]) -> Option<BaseSolution> {
     let mut rng = rand::thread_rng();
     breeding_program_random(n_loci, pop_0, Some(20), &mut rng)
 }
@@ -96,7 +96,7 @@ pub fn breeding_program(n_loci: usize, pop_0: &Vec<SingleChromGenotype>) -> Opti
 /// ```
 pub fn breeding_program_random(
     n_loci: usize,
-    pop_0: &Vec<SingleChromGenotype>,
+    pop_0: &[SingleChromGenotype],
     k_cross: Option<usize>,
     rng: impl rand::Rng,
 ) -> Option<BaseSolution> {
@@ -173,7 +173,7 @@ pub fn repeated_breeding_random(
 /// ```
 pub fn breeding_program_random_dominance(
     n_loci: usize,
-    pop_0: &Vec<SingleChromGenotype>,
+    pop_0: &[SingleChromGenotype],
     k_cross: Option<usize>,
     rng: impl rand::Rng,
 ) -> Option<BaseSolution> {
@@ -208,7 +208,7 @@ pub fn breeding_program_random_dominance(
 /// ```
 pub fn repeated_breeding_random_dominance(
     n_loci: usize,
-    pop_0: &Vec<SingleChromGenotype>,
+    pop_0: &[SingleChromGenotype],
     k_cross: Option<usize>,
     mut rng: impl rand::Rng,
 ) -> Vec<WGen<SingleChromGenotype, SingleChromGamete>> {

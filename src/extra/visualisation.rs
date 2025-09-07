@@ -88,7 +88,7 @@ where
     unimplemented!()
 }
 
-pub fn draw_individual_genotypes<A, B>(pop: &Vec<WGen<A, B>>) -> Group
+pub fn draw_individual_genotypes<A, B>(pop: &[WGen<A, B>]) -> Group
 where
     A: Genotype<B> + Diploid<B>,
     B: Gamete<A> + Haploid,
@@ -111,8 +111,8 @@ where
                                 Rectangle::new()
                                     .set("width", BLOCKSIZE)
                                     .set("height", BLOCKSIZE)
-                                    .set("x", BLOCKSIZE * p as usize)
-                                    .set("y", BLOCKSIZE * (total_rows + i * 3 + j) as usize)
+                                    .set("x", BLOCKSIZE * p)
+                                    .set("y", BLOCKSIZE * (total_rows + i * 3 + j))
                                     .set("stroke", "black")
                                     .set("fill", allele_colour(*a)),
                             )

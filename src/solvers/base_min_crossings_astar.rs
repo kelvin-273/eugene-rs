@@ -20,7 +20,7 @@ pub fn breeding_program_python(
     pop_0: Vec<Vec<Vec<bool>>>,
     timeout: Option<u64>,
 ) -> PyBaseSolution {
-    let pop_0 = pop_0
+    let pop_0: Vec<_> = pop_0
         .iter()
         .map(|x| {
             SingleChromGenotype::new(
@@ -53,7 +53,7 @@ pub fn breeding_program_python(
     }
 }
 
-pub fn breeding_program(n_loci: usize, pop_0: &Vec<SingleChromGenotype>) -> Option<WGe>
+pub fn breeding_program(n_loci: usize, pop_0: &[SingleChromGenotype]) -> Option<WGe>
 where
 {
     // TODO: test for feasibility

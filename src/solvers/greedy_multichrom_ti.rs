@@ -173,7 +173,7 @@ pub fn breeding_program_python(
     pop_0: Vec<Vec<Vec<(bool, bool)>>>,
     timeout: Option<u64>,
 ) -> PyBaseSolution {
-    let pop_0 = pop_0.iter().map(|v| {
+    let pop_0: Vec<_> = pop_0.iter().map(|v| {
         let single_chrom_genotypes: Vec<SingleChromGenotype> = v.iter().map(|chrom| {
             SingleChromGenotype::from_str(
                 &chrom.iter().map(|(a, _)| if *a { '1' } else { '0' }).collect::<String>(),
@@ -204,7 +204,7 @@ pub fn breeding_program_python(
     }
 }
 
-fn breeding_program(pop_0: &Vec<MultiChromGenotype>) -> Option<WGe> {
+fn breeding_program(pop_0: &[MultiChromGenotype]) -> Option<WGe> {
     // Check if the instance is a valid TI instance
     if !is_ti_instance(pop_0) {
         return None;
@@ -243,7 +243,7 @@ fn breeding_program(pop_0: &Vec<MultiChromGenotype>) -> Option<WGe> {
 /// Additionally, the genotypes must be complementary, meaning that for each chromosome,
 /// the alleles in the first genotype must be the opposite of the alleles in the second genotype.
 /// Note, that any valid TI is also feasible.
-fn is_ti_instance(pop_0: &Vec<MultiChromGenotype>) -> bool {
+fn is_ti_instance(pop_0: &[MultiChromGenotype]) -> bool {
     if pop_0.len() != 2 {
         return false;
     }

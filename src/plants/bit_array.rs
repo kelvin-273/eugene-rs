@@ -112,7 +112,7 @@ impl SingleChromGenotype {
         R: rand::Rng + ?Sized,
     {
         // TODO: This is naive, do masking instead <26-04-23> //
-        let mut pop_0 = (0..n_pop)
+        let mut pop_0: Vec<_> = (0..n_pop)
             .map(|_| SingleChromGenotype::random_genotype::<R>(rng, n_loci))
             .collect();
         while !SingleChromGenotype::is_feasible(&n_loci, &pop_0) {
@@ -207,7 +207,7 @@ impl Genotype<SingleChromGamete> for SingleChromGenotype {
 }
 
 impl Feasible<usize> for SingleChromGenotype {
-    fn is_feasible(n_loci: &usize, pop: &Vec<Self>) -> bool {
+    fn is_feasible(n_loci: &usize, pop: &[Self]) -> bool {
         let mut total = BitVec::from_elem(*n_loci, false);
         for x in pop {
             total.or(&x.chrom1);
@@ -218,7 +218,7 @@ impl Feasible<usize> for SingleChromGenotype {
 }
 
 impl SingleChromGamete {
-    pub fn bool_array(v: &Vec<bool>) -> Self {
+    pub fn bool_array(v: &[bool]) -> Self {
         Self {
             n_loci: v.len(),
             gamete: BitVec::from_iter(v.iter().copied()),

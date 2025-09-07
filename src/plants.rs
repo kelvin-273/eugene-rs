@@ -4,5 +4,7 @@ pub mod vec_of_bools;
 
 pub mod bit_array;
 
+pub mod dist_array;
+
 #[cfg(test)]
 mod tests {}

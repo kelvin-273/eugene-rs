@@ -22,6 +22,9 @@ pub mod base_min_generations_segment;
 /// Finds the min generations for multi-chromosome diploid plants
 pub mod greedy_multichrom_ti;
 
+/// Finds the min resources for base problem using a Bell search heuristic
+pub mod base_min_resources_bell_search;
+
 /// ## Heuristic methods
 
 /// Find a crossing schedule by repeated performing random crossings until the ideotype is created

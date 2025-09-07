@@ -13,7 +13,7 @@ impl RecRate {
         let v_xu = x.upper().alleles();
         let v_xl = x.lower().alleles();
         let v_gx = gx.alleles();
-        assert!(v_gx.len() > 0);
+        assert!(!v_gx.is_empty());
         assert!(v_xu.len() == v_xl.len() && v_xu.len() == v_gx.len());
         assert!((0..v_gx.len()).all(|i| v_gx[i] == v_xu[i] || v_gx[i] == v_xl[i]));
         // Dynamic programming to calculate the probability of gamete
@@ -40,7 +40,7 @@ impl RecRate {
         A: Genotype<B> + Diploid<B>,
         B: Gamete<A> + Haploid
     {
-        assert!(0.0 <= gamma && gamma >= 1.0);
+        assert!((0.0..=1.0).contains(&gamma));
         let px = self.probability_gamete(x, &z.upper());
         let py = self.probability_gamete(y, &z.lower());
         let rho = px * py;

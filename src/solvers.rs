@@ -22,8 +22,8 @@ pub mod base_min_generations_segment;
 /// Finds the min generations for multi-chromosome diploid plants
 pub mod greedy_multichrom_ti;
 
-/// Finds the min resources for base problem using a Bell search heuristic
-pub mod base_min_resources_bell_search;
+/// Finds the min resources for base problem using Beam Search
+pub mod base_min_resources_beam_search;
 
 /// ## Heuristic methods
 

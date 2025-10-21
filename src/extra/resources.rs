@@ -1,7 +1,7 @@
 use crate::abstract_plants::*;
 
 pub struct RecRate {
-    rec_between_loci: Vec<f64>
+    rec_between_loci: Vec<f64>,
 }
 
 impl RecRate {
@@ -43,11 +43,28 @@ impl RecRate {
         assert!((0.0..=1.0).contains(&gamma));
         let px = self.probability_gamete(x, &z.upper());
         let py = self.probability_gamete(y, &z.lower());
-        let rho = px * py;
-        match rho {
-            0.0 => f64::INFINITY,
-            _ => f64::log2(1.0 - gamma) / f64::log2(1.0 - rho)
-        }
+        cost_of_crossing(gamma, px, py)
+    }
+}
+
+impl From<Vec<f64>> for RecRate {
+    fn from(rec_between_loci: Vec<f64>) -> Self {
+        assert!(rec_between_loci.iter().all(|&r| (0.0..=0.5).contains(&r)));
+        RecRate { rec_between_loci }
+    }
+}
+
+impl From<&[f64]> for RecRate {
+    fn from(rec_between_loci: &[f64]) -> Self {
+        RecRate::from(rec_between_loci.to_vec())
+    }
+}
+
+pub fn cost_of_crossing(gamma: f64, px: f64, py: f64) -> f64 {
+    let rho = px * py;
+    match rho {
+        0.0 => f64::INFINITY,
+        _ => f64::log2(1.0 - gamma) / f64::log2(1.0 - rho)
     }
 }
 

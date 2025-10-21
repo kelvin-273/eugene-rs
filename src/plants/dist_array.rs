@@ -218,5 +218,4 @@ mod tests {
             println!("Dist: {:?}, gx: {}, gy: {}", dist, gx, gy);
         }
     }
-
 }

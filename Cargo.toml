@@ -1,21 +1,6 @@
-[package]
-name = "eugene_rs"
-version = "0.1.0"
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[lib]
-name = "eugene_rs"
-version = "0.1.0"
-edition = "2021"
-crate-type = ["cdylib"]
-
-[dependencies]
-pyo3 = { version = "0.24.1", features = ["extension-module"] }
-pathfinding = "4.9.1"
-svg = "0.17.0"
-rand = "0.8.5"
-bit-vec = "0.6.3"
-#grb = "2.0.0"
-itertools = "0.13.0"
+[workspace]
+members = [
+  "eugene_core",
+  "eugene_pywrapper",
+]
+resolver = "2"

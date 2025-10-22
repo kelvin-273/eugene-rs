@@ -265,16 +265,18 @@ mod tests {
 
     #[test]
     fn filter_non_dominating_test() {
-        impl Dominance<i32> for i32 {
-            fn dom(x: &i32, y: &i32) -> bool {
-                x >= y
+        #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Copy)]
+        struct MyInt(i32);
+        impl Dominance<MyInt> for MyInt {
+            fn dom(x: &MyInt, y: &MyInt) -> bool {
+                x.0 >= y.0
             }
         }
 
         for _ in 0..100 {
             let n: usize = random::<usize>() % 100 + 1;
-            let v: Vec<i32> = (0..n).map(|_| random()).collect();
-            let res = filter_non_dominating::<i32, i32>(v.to_owned());
+            let v: Vec<MyInt> = (0..n).map(|_| MyInt(random())).collect();
+            let res = filter_non_dominating::<MyInt, MyInt>(v.clone());
             assert_eq!(res.len(), 1);
             assert_eq!(v.iter().max(), res.first());
         }

@@ -624,6 +624,29 @@ fn branching_dominance(node: &AstarNode) -> Vec<AstarNode> {
         .collect()
 }
 
+struct _TwoDeltaState<'a> {
+    xs: &'a DistArray,
+    gx: usize,
+    gy: usize,
+    available_gz_values: &'a mut Vec<usize>,
+    zs: &'a mut DistArray,
+    segjoin_choice: &'a mut Vec<bool>,
+    out: &'a mut Vec<DistArray>,
+}
+
+impl _TwoDeltaState<'_> {
+    #[inline]
+    fn _is_segjoin_index(&self, i: usize) -> bool {
+        (self.xs[i], self.xs[i + 1]) == (self.gx, self.gy)
+            || (self.xs[i], self.xs[i + 1]) == (self.gy, self.gx)
+    }
+
+    #[inline]
+    fn _is_gx_or_gy(&self, i: usize) -> bool {
+        self.xs[i] == self.gx || self.xs[i] == self.gy
+    }
+}
+
 fn _generate_redistributions_two_delta(xs: &DistArray) -> Vec<DistArray> {
     let n_loci = xs.len();
     let n_pop = distribute_n_pop(xs);
@@ -634,42 +657,19 @@ fn _generate_redistributions_two_delta(xs: &DistArray) -> Vec<DistArray> {
         (xs[i], xs[i + 1]) == (gx, gy) || (xs[i], xs[i + 1]) == (gy, gx)
     }
 
-    struct TwoDeltaState<'a> {
-        xs: &'a DistArray,
-        gx: usize,
-        gy: usize,
-        available_gz_values: &'a mut Vec<usize>,
-        zs: &'a mut DistArray,
-        segjoin_choice: &'a mut Vec<bool>,
-        out: &'a mut Vec<DistArray>,
-    }
-
-    impl TwoDeltaState<'_> {
-        #[inline]
-        fn is_segjoin_index(&self, i: usize) -> bool {
-            (self.xs[i], self.xs[i + 1]) == (self.gx, self.gy)
-                || (self.xs[i], self.xs[i + 1]) == (self.gy, self.gx)
-        }
-
-        #[inline]
-        fn is_gx_or_gy(&self, i: usize) -> bool {
-            self.xs[i] == self.gx || self.xs[i] == self.gy
-        }
-    }
-
-    fn bt_segjoin_choices(state: &mut TwoDeltaState, i: usize) {
+    fn bt_segjoin_choices(state: &mut _TwoDeltaState, i: usize) {
         if i >= state.xs.len() - 1 {
             todo!("return redistribution")
-        } else if !state.is_segjoin_index(i) {
+        } else if !state._is_segjoin_index(i) {
             bt_segjoin_choices(state, i + 1);
-        } else if i < state.xs.len() - 2 && state.is_segjoin_index(i + 1) {
+        } else if i < state.xs.len() - 2 && state._is_segjoin_index(i + 1) {
             state.segjoin_choice[i] = true;
             bt_segjoin_choices(state, i + 2);
             state.segjoin_choice[i] = false;
             state.segjoin_choice[i + 1] = true;
             bt_segjoin_choices(state, i + 3);
             state.segjoin_choice[i + 1] = false;
-        } else if i < state.xs.len() - 2 && !state.is_segjoin_index(i + 1) {
+        } else if i < state.xs.len() - 2 && !state._is_segjoin_index(i + 1) {
             state.segjoin_choice[i] = true;
             bt_segjoin_choices(state, i + 2);
             state.segjoin_choice[i] = false;
@@ -681,11 +681,11 @@ fn _generate_redistributions_two_delta(xs: &DistArray) -> Vec<DistArray> {
         }
     }
 
-    fn assign_given_segjoins(state: &mut TwoDeltaState) {
+    fn assign_given_segjoins(state: &mut _TwoDeltaState) {
         let n_loci = state.xs.len();
-        let ranges = remaining_ranges(state.xs, state.gx, state.gy, state.segjoin_choice);
+        let ranges = _remaining_ranges(state.xs, state.gx, state.gy, state.segjoin_choice);
         if (0..n_loci).any(|i| {
-            state.is_gx_or_gy(i)
+            state._is_gx_or_gy(i)
                 && !state.segjoin_choice[i]
                 && !state.segjoin_choice[i + 1]  // i.e. we didn't choose the next segjoin given
                                                  // that we didn't choose the current segjoin
@@ -702,9 +702,9 @@ fn _generate_redistributions_two_delta(xs: &DistArray) -> Vec<DistArray> {
 
         /// We've chosen which segment joins we're going to use.
         /// We know that
-        fn bt_final_gamete_construction(state: &mut TwoDeltaState, _i: usize) {
+        fn bt_final_gamete_construction(state: &mut _TwoDeltaState, _i: usize) {
             let [_x_rng, _y_rng] =
-                remaining_ranges(state.xs, state.gx, state.gy, state.segjoin_choice);
+                _remaining_ranges(state.xs, state.gx, state.gy, state.segjoin_choice);
             todo!("Complete bt_final_gamete_construction");
         }
     }
@@ -715,7 +715,7 @@ fn _generate_redistributions_two_delta(xs: &DistArray) -> Vec<DistArray> {
     let mut available_gz_values: Vec<usize> = (n_pop - 2..n_loci).collect();
     for gx in 0..n_pop - 1 {
         for gy in gx + 1..n_pop {
-            let mut state = TwoDeltaState {
+            let mut state = _TwoDeltaState {
                 xs,
                 gx,
                 gy,
@@ -750,7 +750,7 @@ fn _generate_redistributions_two_delta(xs: &DistArray) -> Vec<DistArray> {
 ///     &vec![true, false, false, true, false]
 /// ), [[1, 4], [4, 1]]);
 /// ```
-fn remaining_ranges(
+fn _remaining_ranges(
     xs: &[usize],
     gx: usize,
     gy: usize,
@@ -1228,7 +1228,7 @@ mod tests {
     #[test]
     fn remaining_ranges_test() {
         assert_eq!(
-            remaining_ranges(
+            _remaining_ranges(
                 &vec![0, 1, 2, 0, 1, 3],
                 0,
                 1,
@@ -1238,7 +1238,7 @@ mod tests {
         );
 
         assert_eq!(
-            remaining_ranges(
+            _remaining_ranges(
                 &vec![0, 1, 2, 1, 0, 3],
                 0,
                 1,

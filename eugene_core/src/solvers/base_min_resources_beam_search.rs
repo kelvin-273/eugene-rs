@@ -1,19 +1,15 @@
-use crate::abstract_plants::*;
 use crate::extra::resources::{cost_of_crossing, RecRate};
-use crate::plants::bit_array::{SingleChromGamete, SingleChromGenotype};
+use crate::plants::bit_array::SingleChromGenotype;
 use crate::plants::dist_array::DistArray;
 use crate::solution::BaseSolution;
 
 #[derive(Debug, Clone, Default)]
 pub struct Output {
-    expansions: usize,
-    pushed_nodes: usize,
-    children_created_by_branching: usize,
-    objective: Option<usize>,
+    //expansions: usize,
+    //pushed_nodes: usize,
+    //children_created_by_branching: usize,
+    //objective: Option<usize>,
 }
-
-type WGe = WGen<SingleChromGenotype, SingleChromGamete>;
-type WGa = WGam<SingleChromGenotype, SingleChromGamete>;
 
 pub fn breeding_program(
     n_loci: usize,
@@ -27,7 +23,7 @@ where
     let mut best_objective = f64::INFINITY;
     let mut _output = Output::default();
 
-    let mut subproblem_generator = SubproblemGenerator::new(n_loci, pop_0, recombination_rates);
+    let subproblem_generator = SubproblemGenerator::new(n_loci, pop_0, recombination_rates);
 
     for (xs, rec_rates) in subproblem_generator {
         let lower_bound = compute_lower_bound(&xs, &rec_rates, gamma);
@@ -35,7 +31,7 @@ where
             continue;
         }
         // Solve the subproblem
-        let (res, objective) = match solve_subproblem(&xs, rec_rates, gamma) {
+        let (_res, objective) = match solve_subproblem(&xs, rec_rates, gamma) {
             None => continue,
             Some(res) => res,
         };
@@ -79,30 +75,30 @@ impl Iterator for SubproblemGenerator {
     }
 }
 
-fn compute_lower_bound(xs: &DistArray, recombination_rates: &RecRate, gamma: f64) -> f64 {
+fn compute_lower_bound(_xs: &DistArray, _recombination_rates: &RecRate, _gamma: f64) -> f64 {
     todo!()
 }
 
-fn solve_subproblem(xs: &DistArray, recombination_rates: RecRate, gamma: f64) -> Option<(Vec<usize>, f64)> {
+fn solve_subproblem(_xs: &DistArray, _recombination_rates: RecRate, _gamma: f64) -> Option<(Vec<usize>, f64)> {
     unimplemented!()
 }
 
-struct Node {
+struct _Node {
     // Define the structure of a node in the search tree
 }
 
-struct SearchTree {
+struct _SearchTree {
     // Define the structure of the search tree
 }
 
-struct State {
+struct _State {
     xs: DistArray,
     pr_gx: Vec<f64>,
     resourses_used: f64,
 }
 
-impl State {
-    pub fn next_state_given_redistribution(
+impl _State {
+    pub fn _next_state_given_redistribution(
         &self,
         gamma: f64,
         _zs: DistArray,
@@ -114,8 +110,7 @@ impl State {
         let _next_cost = self.resourses_used + cost_of_crossing(gamma, px, py);
         let mut _next_pr_gx = self.pr_gx.clone();
         // Update based on new distribution
-        _next_pr_gx[gx] = todo!();
-        _next_pr_gx[gy] = todo!();
+        todo!();
     }
 }
 
@@ -123,7 +118,6 @@ impl State {
 mod tests {
     use super::*;
     use crate::plants::bit_array::SingleChromGenotype;
-    use crate::plants::dist_array::DistArray;
 
     #[test]
     fn test_breeding_program_2_loci() {

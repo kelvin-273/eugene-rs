@@ -43,7 +43,7 @@ fn heuristic(n_loci: usize, state: &State<WGe>) -> usize {
     (n_segments + 1) >> 1
 }
 
-fn heuristic_baseline(_n_loci: usize, _state: &State<WGe>) -> usize {
+fn _heuristic_baseline(_n_loci: usize, _state: &State<WGe>) -> usize {
     0
 }
 
@@ -211,6 +211,7 @@ impl<'a, A> Iterator for StateIter<'a, A> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::solution::Objective;
 
     #[test]
     fn breeding_program_test() {

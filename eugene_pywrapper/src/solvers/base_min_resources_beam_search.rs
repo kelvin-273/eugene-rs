@@ -1,5 +1,4 @@
-use eugene_core::abstract_plants::{WGam, WGen};
-use eugene_core::plants::bit_array::{SingleChromGamete, SingleChromGenotype};
+use eugene_core::plants::bit_array::SingleChromGenotype;
 use eugene_core::solvers::base_min_resources_beam_search;
 use crate::solution::PyBaseSolution;
 use std::sync::mpsc;
@@ -13,9 +12,6 @@ pub struct Output {
     children_created_by_branching: usize,
     objective: Option<usize>,
 }
-
-type WGe = WGen<SingleChromGenotype, SingleChromGamete>;
-type WGa = WGam<SingleChromGenotype, SingleChromGamete>;
 
 /// Runs a breeding program given `n_loci` and `pop_0` where `pop_0` is a population of single
 /// chromosome diploid genotypes with `n_loci` loci.

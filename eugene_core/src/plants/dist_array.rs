@@ -198,6 +198,56 @@ pub fn random_redistribution(xs: &DistArray, rng: &mut impl rand::Rng) -> (DistA
     (zs, gx, gy)
 }
 
+pub struct DistArrayGenerator {
+    n_loci: usize,
+    xs: DistArray,
+    xs_max: Vec<usize>,
+    initialised: bool,
+}
+
+impl DistArrayGenerator {
+    pub fn new(n_loci: usize) -> Self {
+        Self {
+            n_loci,
+            xs: DistArray::new(&vec![0; n_loci]),
+            xs_max: vec![0; n_loci],
+            initialised: false,
+        }
+    }
+}
+
+impl Iterator for DistArrayGenerator {
+    type Item = DistArray;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if !self.initialised {
+            for i in 0..self.n_loci {
+                self.xs[i] = i % 2;
+                self.xs_max[i] = if i == 0 { 0 } else { 1 };
+            }
+            self.initialised = true;
+            return Some(self.xs.clone())
+        }
+        for i in (0..self.n_loci).rev() {
+            if i > 0 && self.xs[i] <= self.xs_max[i-1] {
+                self.xs[i] += 1 + (self.xs[i] + 1 == self.xs[i-1]) as usize;
+                self.xs_max[i] = self.xs_max[i-1].max(self.xs[i]);
+                for j in i + 1..self.n_loci {
+                    self.xs_max[j] = self.xs_max[i];
+                    self.xs[j] = if self.xs[j-1] == 0 { 1 } else { 0 };
+                }
+                return Some(self.xs.clone());
+            }
+            else if i > 0 && self.xs_max[i] == self.xs_max[i-1] + 1 {
+                continue;
+            } else if i > 0 {
+                panic!("Either xs_max[i] < xs_max[i-1] - 1 or xs_max[i] > xs_max[i-1] + 1")
+            }
+        }
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -217,5 +267,36 @@ mod tests {
         for (dist, gx, gy) in r {
             println!("Dist: {:?}, gx: {}, gy: {}", dist, gx, gy);
         }
+    }
+
+    #[test]
+    fn test_generate_distribute_arrays() {
+        let n_loci = 4;
+        let mut distarray_generator = DistArrayGenerator::new(n_loci);
+        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 0, 1])));
+        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 0, 2])));
+        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 2, 0])));
+        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 2, 1])));
+        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 2, 3])));
+        assert_eq!(distarray_generator.next(), None);
+
+        let n_loci = 5;
+        let mut distarray_generator = DistArrayGenerator::new(n_loci);
+        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 0, 1, 0])));
+        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 0, 1, 2])));
+        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 0, 2, 0])));
+        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 0, 2, 1])));
+        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 0, 2, 3])));
+        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 2, 0, 1])));
+        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 2, 0, 2])));
+        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 2, 0, 3])));
+        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 2, 1, 0])));
+        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 2, 1, 2])));
+        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 2, 1, 3])));
+        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 2, 3, 0])));
+        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 2, 3, 1])));
+        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 2, 3, 2])));
+        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 2, 3, 4])));
+        assert_eq!(distarray_generator.next(), None);
     }
 }

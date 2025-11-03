@@ -9,9 +9,7 @@ pub struct DistArray {
 
 impl DistArray {
     pub fn new(xs: &[usize]) -> Self {
-        Self {
-            data: xs.to_vec(),
-        }
+        Self { data: xs.to_vec() }
     }
 
     #[inline]
@@ -43,6 +41,12 @@ impl DerefMut for DistArray {
 impl From<Vec<usize>> for DistArray {
     fn from(v: Vec<usize>) -> Self {
         Self { data: v }
+    }
+}
+
+impl Into<Vec<usize>> for DistArray {
+    fn into(self) -> Vec<usize> {
+        self.data
     }
 }
 
@@ -136,6 +140,21 @@ pub fn simplify_dist_array(xs: &DistArray) -> DistArray {
     DistArray::new(&new_data)
 }
 
+fn canonical_dist_array(xs: &DistArray) -> DistArray {
+    let mut zs = xs.clone();
+    let n_loci = zs.len();
+    let n_pop = xs.data.iter().max().unwrap() + 1;
+    let mut mapping = vec![None; n_pop];
+    mapping[zs[0]] = Some(0);
+    let mut x_max = 0;
+    for i in 0..n_loci {
+        zs[i] = *mapping[zs[i]].get_or_insert_with(|| {
+            x_max += 1;
+            x_max
+        });
+    }
+    zs
+}
 pub fn first_full_join(xs: &DistArray) -> Option<(DistArray, usize, usize)> {
     let n_loci = xs.n_loci();
     let n_pop = xs.n_pop();
@@ -166,7 +185,10 @@ pub fn first_full_join(xs: &DistArray) -> Option<(DistArray, usize, usize)> {
     None
 }
 
-pub fn random_redistribution(xs: &DistArray, rng: &mut impl rand::Rng) -> (DistArray, usize, usize) {
+pub fn random_redistribution(
+    xs: &DistArray,
+    rng: &mut impl rand::Rng,
+) -> (DistArray, usize, usize) {
     let n_pop = xs.n_pop();
     assert!(n_pop >= 2);
     let (gx, gy) = loop {
@@ -226,19 +248,18 @@ impl Iterator for DistArrayGenerator {
                 self.xs_max[i] = if i == 0 { 0 } else { 1 };
             }
             self.initialised = true;
-            return Some(self.xs.clone())
+            return Some(self.xs.clone());
         }
         for i in (0..self.n_loci).rev() {
-            if i > 0 && self.xs[i] <= self.xs_max[i-1] {
-                self.xs[i] += 1 + (self.xs[i] + 1 == self.xs[i-1]) as usize;
-                self.xs_max[i] = self.xs_max[i-1].max(self.xs[i]);
+            if i > 0 && self.xs[i] <= self.xs_max[i - 1] {
+                self.xs[i] += 1 + (self.xs[i] + 1 == self.xs[i - 1]) as usize;
+                self.xs_max[i] = self.xs_max[i - 1].max(self.xs[i]);
                 for j in i + 1..self.n_loci {
                     self.xs_max[j] = self.xs_max[i];
-                    self.xs[j] = if self.xs[j-1] == 0 { 1 } else { 0 };
+                    self.xs[j] = if self.xs[j - 1] == 0 { 1 } else { 0 };
                 }
                 return Some(self.xs.clone());
-            }
-            else if i > 0 && self.xs_max[i] == self.xs_max[i-1] + 1 {
+            } else if i > 0 && self.xs_max[i] == self.xs_max[i - 1] + 1 {
                 continue;
             } else if i > 0 {
                 panic!("Either xs_max[i] < xs_max[i-1] - 1 or xs_max[i] > xs_max[i-1] + 1")
@@ -272,31 +293,39 @@ mod tests {
     #[test]
     fn test_generate_distribute_arrays() {
         let n_loci = 4;
-        let mut distarray_generator = DistArrayGenerator::new(n_loci);
-        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 0, 1])));
-        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 0, 2])));
-        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 2, 0])));
-        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 2, 1])));
-        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 2, 3])));
-        assert_eq!(distarray_generator.next(), None);
+        let mut xs_gen = DistArrayGenerator::new(n_loci);
+        assert_eq!(xs_gen.next(), Some(DistArray::new(&[0, 1, 0, 1])));
+        assert_eq!(xs_gen.next(), Some(DistArray::new(&[0, 1, 0, 2])));
+        assert_eq!(xs_gen.next(), Some(DistArray::new(&[0, 1, 2, 0])));
+        assert_eq!(xs_gen.next(), Some(DistArray::new(&[0, 1, 2, 1])));
+        assert_eq!(xs_gen.next(), Some(DistArray::new(&[0, 1, 2, 3])));
+        assert_eq!(xs_gen.next(), None);
 
         let n_loci = 5;
-        let mut distarray_generator = DistArrayGenerator::new(n_loci);
-        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 0, 1, 0])));
-        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 0, 1, 2])));
-        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 0, 2, 0])));
-        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 0, 2, 1])));
-        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 0, 2, 3])));
-        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 2, 0, 1])));
-        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 2, 0, 2])));
-        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 2, 0, 3])));
-        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 2, 1, 0])));
-        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 2, 1, 2])));
-        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 2, 1, 3])));
-        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 2, 3, 0])));
-        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 2, 3, 1])));
-        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 2, 3, 2])));
-        assert_eq!(distarray_generator.next(), Some(DistArray::new(&[0, 1, 2, 3, 4])));
-        assert_eq!(distarray_generator.next(), None);
+        let mut xs_gen = DistArrayGenerator::new(n_loci);
+        assert_eq!(xs_gen.next(), Some(DistArray::new(&[0, 1, 0, 1, 0])));
+        assert_eq!(xs_gen.next(), Some(DistArray::new(&[0, 1, 0, 1, 2])));
+        assert_eq!(xs_gen.next(), Some(DistArray::new(&[0, 1, 0, 2, 0])));
+        assert_eq!(xs_gen.next(), Some(DistArray::new(&[0, 1, 0, 2, 1])));
+        assert_eq!(xs_gen.next(), Some(DistArray::new(&[0, 1, 0, 2, 3])));
+        assert_eq!(xs_gen.next(), Some(DistArray::new(&[0, 1, 2, 0, 1])));
+        assert_eq!(xs_gen.next(), Some(DistArray::new(&[0, 1, 2, 0, 2])));
+        assert_eq!(xs_gen.next(), Some(DistArray::new(&[0, 1, 2, 0, 3])));
+        assert_eq!(xs_gen.next(), Some(DistArray::new(&[0, 1, 2, 1, 0])));
+        assert_eq!(xs_gen.next(), Some(DistArray::new(&[0, 1, 2, 1, 2])));
+        assert_eq!(xs_gen.next(), Some(DistArray::new(&[0, 1, 2, 1, 3])));
+        assert_eq!(xs_gen.next(), Some(DistArray::new(&[0, 1, 2, 3, 0])));
+        assert_eq!(xs_gen.next(), Some(DistArray::new(&[0, 1, 2, 3, 1])));
+        assert_eq!(xs_gen.next(), Some(DistArray::new(&[0, 1, 2, 3, 2])));
+        assert_eq!(xs_gen.next(), Some(DistArray::new(&[0, 1, 2, 3, 4])));
+        assert_eq!(xs_gen.next(), None);
+    }
+
+    #[test]
+    fn canonical_dist_array_test() {
+        assert_eq!(
+            canonical_dist_array(&DistArray::new(&vec![5, 2, 6, 2, 5, 4])),
+            DistArray::new(&vec![0, 1, 2, 1, 0, 3])
+        );
     }
 }

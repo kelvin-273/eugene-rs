@@ -3,6 +3,16 @@ use crate::plants::bit_array::*;
 use crate::solution::{BaseSolution, Objective};
 use std::collections::HashMap;
 
+/// Breeding program to find the minimum number of generations to reach the ideotype
+/// from an initial population of single chromosome genotypes.
+/// Returns None if the ideotype is not reachable.
+///
+/// # Arguments
+/// - `n_loci`: Number of loci in the genotypes.
+/// - `pop_0`: Initial population of single chromosome genotypes.
+///
+/// # Returns
+/// - `Option<BaseSolution>`: The optimal breeding program solution, or None if infeasible.
 pub fn breeding_program(n_loci: usize, pop_0: &[SingleChromGenotype]) -> Option<BaseSolution> {
     let ideotype = SingleChromGenotype::ideotype(n_loci);
     if pop_0.contains(&ideotype) {
@@ -45,6 +55,16 @@ pub fn breeding_program(n_loci: usize, pop_0: &[SingleChromGenotype]) -> Option<
     Some(wx_star.to_base_sol(n_loci, Objective::Generations))
 }
 
+/// Enumerator to find the minimum number of generations to reach the ideotype
+/// from an initial population of single chromosome genotypes.
+/// This function is intended for small instances due to its combinatorial nature.
+/// 
+/// # Arguments
+/// - `n_loci`: Number of loci in the genotypes.
+/// - `pop_0`: Initial population of single chromosome genotypes.
+///
+/// # Returns
+/// - `usize`: The minimum number of generations required to reach the ideotype.
 pub fn min_generations_enumerator(n_loci: usize, pop_0: &[SingleChromGenotype]) -> usize {
     let ideotype = SingleChromGenotype::ideotype(n_loci);
     if pop_0.contains(&ideotype) {

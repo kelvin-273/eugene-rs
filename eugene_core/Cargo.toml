@@ -17,6 +17,10 @@ path = "bin/example_to_profile.rs"
 name = "full-join-test"
 path = "bin/full_join_test.rs"
 
+[[bin]]
+name = "btree-map-test"
+path = "bin/btree_map_test.rs"
+
 [dependencies]
 pathfinding = "4.9.1"
 svg = "0.17.0"
@@ -25,3 +29,6 @@ bit-vec = "0.6.3"
 #grb = "2.0.0"
 itertools = "0.13.0"
 serde = { version = "1.0.228", features = ["derive"] }
+btree-range-map = { version = "0.7.2", features = ["serde"] }
+num-bigint = "0.4.6"
+range-traits = "0.3.2"

@@ -6,6 +6,7 @@ use std::fs;
 use std::io::Write;
 use std::rc::Rc;
 
+/// Configuration flags for the A* distribution-based solver.
 pub struct Config {
     full_join: bool,
     dominance: bool,
@@ -14,6 +15,12 @@ pub struct Config {
 }
 
 impl Config {
+    /// Builds a solver configuration.
+    ///
+    /// * `full_join` - enable full-join branching.
+    /// * `dominance` - enable dominance pruning.
+    /// * `diving` - use diving search before A*.
+    /// * `debug_trace_file` - optional file path to emit a search trace.
     pub fn new(full_join: bool, dominance: bool, diving: bool, debug_trace_file: Option<String>) -> Self {
         Self {
             full_join,
@@ -24,6 +31,7 @@ impl Config {
     }
 }
 
+/// Summary statistics for a solver run.
 #[derive(Debug, Clone, Default)]
 pub struct Output {
     expansions: usize,
@@ -33,23 +41,28 @@ pub struct Output {
 }
 
 impl Output {
+    /// Returns the number of expanded nodes.
     pub fn expansions(&self) -> usize {
         self.expansions
     }
 
+    /// Returns the number of nodes pushed onto the open list.
     pub fn pushed_nodes(&self) -> usize {
         self.pushed_nodes
     }
 
+    /// Returns the number of children created during branching.
     pub fn children_created_by_branching(&self) -> usize {
         self.children_created_by_branching
     }
 
+    /// Returns the computed objective value, if available.
     pub fn objective(&self) -> Option<usize> {
         self.objective
     }
 }
 
+/// Distribution array where each entry stores a population index.
 pub type DistArray = Vec<usize>;
 
 #[inline]
@@ -188,6 +201,7 @@ fn compute_objective(path: &AstarNode) -> usize {
     obj
 }
 
+/// Runs the distribution-based A* search and returns run statistics.
 pub fn breeding_program_distribute_general(xs: &DistArray, config: &Config) -> Option<Output> {
     let mut output = Output {
         expansions: 0,
@@ -292,6 +306,7 @@ fn branching_general(node: &AstarNode, config: &Config) -> Vec<AstarNode> {
     }
 }
 
+/// Runs the default distribution-based A* solver and returns a base solution.
 pub fn breeding_program_distribute(xs: &DistArray) -> Option<BaseSolution> {
     let path = astar(xs)?;
     let mut node_ref = path.clone();
@@ -314,6 +329,7 @@ pub fn breeding_program_distribute(xs: &DistArray) -> Option<BaseSolution> {
     })
 }
 
+/// Runs the distribution-based solver with dominance pruning enabled.
 pub fn breeding_program_distribute_dominance(xs: &DistArray) -> Option<BaseSolution> {
     let path = astar_dominance(xs)?;
     let mut node_ref = path.clone();
@@ -336,6 +352,7 @@ pub fn breeding_program_distribute_dominance(xs: &DistArray) -> Option<BaseSolut
     })
 }
 
+/// Runs the distribution-based solver using diving search.
 pub fn breeding_program_distribute_diving(xs: &DistArray) -> Option<BaseSolution> {
     let path = diving(xs)?;
     let mut node_ref = path.clone();
@@ -358,6 +375,7 @@ pub fn breeding_program_distribute_diving(xs: &DistArray) -> Option<BaseSolution
     })
 }
 
+/// Runs the distribution-based solver without full-join branching.
 pub fn breeding_program_distribute_no_full_join(xs: &DistArray) -> Option<BaseSolution> {
     let path = astar_no_full_join(xs)?;
     let mut node_ref = path.clone();
@@ -380,6 +398,7 @@ pub fn breeding_program_distribute_no_full_join(xs: &DistArray) -> Option<BaseSo
     })
 }
 
+/// Runs the solver with dominance pruning and no full-join branching.
 pub fn breeding_program_distribute_dominance_no_full_join(xs: &DistArray) -> Option<BaseSolution> {
     let path = astar_dominance_no_full_join(xs)?;
     let mut node_ref = path.clone();

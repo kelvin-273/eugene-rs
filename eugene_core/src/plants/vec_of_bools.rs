@@ -2,22 +2,27 @@ use crate::abstract_plants::*;
 use crate::extra::visualisation;
 use crate::extra::visualisation::Draw;
 
+/// A haploid gamete represented as a vector of boolean alleles.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SingleChromGamete {
+    /// Allele state at each locus (true = 1, false = 0).
     pub array: Vec<bool>,
 }
 
 impl SingleChromGamete {
+    /// Creates a gamete from a vector of allele states.
     pub fn new(array: Vec<bool>) -> Self {
         Self { array }
     }
 
+    /// Returns a gamete with all loci set to `true`.
     pub fn ideotype(n_loci: usize) -> Self {
         Self {
             array: vec![true; n_loci],
         }
     }
 
+    /// Parses a `"0"`/`"1"` string into a gamete.
     pub fn from_str(s: &str) -> Self {
         Self {
             array: s
@@ -69,22 +74,27 @@ impl Draw for SingleChromGamete {
     }
 }
 
+/// A diploid single-chromosome genotype represented as paired alleles per locus.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SingleChromGenotype {
+    /// The allele pairs (upper, lower) for each locus.
     pub array: Vec<(bool, bool)>,
 }
 
 impl SingleChromGenotype {
+    /// Creates a genotype from explicit allele pairs.
     pub fn new(array: Vec<(bool, bool)>) -> Self {
         Self { array }
     }
 
+    /// Returns a genotype that is homozygous `true` at every locus.
     pub fn ideotype(n_loci: usize) -> Self {
         Self {
             array: vec![(true, true); n_loci],
         }
     }
 
+    /// Builds a genotype from two `"0"`/`"1"` strings representing each haplotype.
     pub fn from_str(s1: &str, s2: &str) -> Self {
         assert_eq!(s1.len(), s2.len());
         Self {
@@ -143,6 +153,7 @@ impl Draw for SingleChromGenotype {
     }
 }
 
+/// A single crosspoint for boolean-vector genotypes.
 #[derive(Debug)]
 pub struct CrosspointSingleVob {
     start: bool,
@@ -150,6 +161,7 @@ pub struct CrosspointSingleVob {
 }
 
 impl CrosspointSingleVob {
+    /// Creates a crosspoint with the starting chromosome and prefix length.
     pub fn new(start: bool, len_prefix: usize) -> Self {
         Self { start, len_prefix }
     }
@@ -180,6 +192,7 @@ impl Crosspoint<SingleChromGenotype, SingleChromGamete, usize> for CrosspointSin
     }
 }
 
+/// A multi-crosspoint specification for boolean-vector genotypes.
 #[derive(Debug)]
 pub struct CrosspointMultiVob {
     start: bool,
@@ -187,6 +200,7 @@ pub struct CrosspointMultiVob {
 }
 
 impl CrosspointMultiVob {
+    /// Creates a multi-crosspoint with a start chromosome and prefix switch points.
     pub fn new(start: bool, len_prefix: Vec<usize>) -> Self {
         Self { start, len_prefix }
     }
@@ -216,6 +230,7 @@ impl Crosspoint<SingleChromGenotype, SingleChromGamete, (usize, usize)> for Cros
     }
 }
 
+/// Weak dominance relation for single-chromosome genotypes and gametes.
 pub struct WeakDomSingle {}
 
 impl Dominance<SingleChromGenotype> for WeakDomSingle {

@@ -6,6 +6,7 @@ use bit_vec::BitVec;
 use rand::prelude::*;
 use std::collections::{HashMap, VecDeque};
 
+/// A haploid gamete backed by a compact `BitVec` representation.
 #[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub struct SingleChromGamete {
     n_loci: usize,
@@ -36,6 +37,7 @@ impl Gamete<SingleChromGenotype> for SingleChromGamete {
     }
 }
 
+/// A diploid genotype represented by two bit vectors.
 #[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub struct SingleChromGenotype {
     n_loci: usize,
@@ -44,6 +46,7 @@ pub struct SingleChromGenotype {
 }
 
 impl SingleChromGenotype {
+    /// Builds a genotype from paired boolean alleles.
     pub fn new(v: Vec<(bool, bool)>) -> Self {
         Self {
             n_loci: v.len(),
@@ -153,6 +156,7 @@ impl SingleChromGenotype {
         }
     }
 
+    /// Returns true when each chromosome is bitwise complementary to `other`.
     pub fn is_complementary(&self, other: &Self) -> bool {
         assert_eq!(self.n_loci, other.n_loci);
         self.chrom1.iter().zip(other.chrom1.iter()).all(|(a, b)| a != b)
@@ -218,6 +222,7 @@ impl Feasible<usize> for SingleChromGenotype {
 }
 
 impl SingleChromGamete {
+    /// Creates a gamete from a slice of boolean alleles.
     pub fn bool_array(v: &[bool]) -> Self {
         Self {
             n_loci: v.len(),
@@ -225,6 +230,7 @@ impl SingleChromGamete {
         }
     }
 
+    /// Parses a `"0"`/`"1"` string into a gamete.
     pub fn from_str(s1: &str) -> Self {
         let f = |c: char| match c {
             '0' => false,
@@ -237,6 +243,7 @@ impl SingleChromGamete {
         }
     }
 
+    /// Returns a gamete with all loci set to `true`.
     pub fn ideotype(n_loci: usize) -> Self {
         Self {
             n_loci,
@@ -245,6 +252,7 @@ impl SingleChromGamete {
     }
 }
 
+/// Dominance relation for `SingleChromGamete` values.
 pub struct DomGamete {}
 
 impl Dominance<SingleChromGamete> for DomGamete {
@@ -256,6 +264,7 @@ impl Dominance<SingleChromGamete> for DomGamete {
     }
 }
 
+/// A single crosspoint used to recombine `SingleChromGenotype` values.
 #[derive(Debug, Clone)]
 pub struct CrosspointBitVec {
     start: Chrom,
@@ -263,10 +272,12 @@ pub struct CrosspointBitVec {
 }
 
 impl CrosspointBitVec {
+    /// Creates a crosspoint with a starting chromosome and head index.
     pub fn new(start: Chrom, head: usize) -> Self {
         Self { start, head }
     }
 
+    /// Generates a uniformly random crosspoint for a given locus count.
     pub fn random_crosspoint_uniform(rng: &mut impl Rng, n_loci: &usize) -> Self {
         Self {
             start: rng.gen::<bool>().into(),
@@ -335,6 +346,7 @@ impl SingleChrom for SingleChromGenotype {}
 impl SingleChrom for SingleChromGamete {}
 
 impl WGen<SingleChromGenotype, SingleChromGamete> {
+    /// Converts a weighted genotype history into a `BaseSolution` tree.
     pub fn to_base_sol(&self, n_loci: usize, obj: Objective) -> BaseSolution {
         // get the number of crossings and cells required
         let mut q_node = VecDeque::new();

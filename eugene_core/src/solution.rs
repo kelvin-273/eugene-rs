@@ -1,15 +1,24 @@
+/// A compact representation of a breeding program tree and its objective value.
 #[derive(Debug, PartialEq, Eq)]
 pub struct BaseSolution {
+    /// Per-node data used by the downstream visualization/export layers.
     pub tree_data: Vec<Vec<Vec<i32>>>,
+    /// Per-node type labels such as `"Leaf"` or `"Node"`.
     pub tree_type: Vec<&'static str>,
+    /// Left-child indices for each node in the tree.
     pub tree_left: Vec<usize>,
+    /// Right-child indices for each node in the tree.
     pub tree_right: Vec<usize>,
+    /// The final objective value computed for the tree.
     pub objective: usize,
 }
 
+/// Objective function used when computing the `BaseSolution` score.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Objective {
+    /// Minimize the total number of generations.
     Generations,
+    /// Minimize the total number of crossings.
     Crossings,
 }
 

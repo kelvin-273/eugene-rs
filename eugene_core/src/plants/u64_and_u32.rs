@@ -71,6 +71,7 @@ impl Crosspoint<u64, u32, ()> for u32 {
     }
 }
 
+/// A single crosspoint for packing diploid data in a `u64` and gametes in a `u32`.
 #[derive(Debug)]
 pub struct CrosspointSingleU64U32 {
     start: bool,
@@ -78,6 +79,7 @@ pub struct CrosspointSingleU64U32 {
 }
 
 impl CrosspointSingleU64U32 {
+    /// Creates a crosspoint with the starting chromosome and prefix length.
     pub fn new(start: bool, len_prefix: usize) -> Self {
         Self { start, len_prefix }
     }

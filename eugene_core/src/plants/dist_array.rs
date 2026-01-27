@@ -6,7 +6,7 @@ use std::ops::{Deref, DerefMut};
 // Description: A simple array-like structure that describes which gamete owns which locus.
 // Each locus is owned by exactly one gamete, and each gamete can own multiple loci.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
-pub struct DistArray(Vec<usize>);
+pub struct DistArray(pub Vec<usize>);
 
 impl DistArray {
     /// Returns the number of loci. Is equivalent to `self.len()`.
@@ -16,8 +16,8 @@ impl DistArray {
     ///
     /// # Examples
     /// ```
-    /// use dist_array::DistArray;
-    /// let xs = DistArray::from(vec![0, 1, 0, 1, 2]);
+    /// use dist_array::dist_array;
+    /// let xs = dist_array![0, 1, 0, 1, 2];
     /// assert_eq!(xs.n_loci(), 5);
     /// ```
     #[inline]
@@ -42,9 +42,9 @@ impl DistArray {
     ///
     /// # Examples
     /// ```
-    /// use dist_array::DistArray;
-    /// let xs = DistArray::from(vec![0, 1, 0, 1, 2]);
-    /// let succ = DistArray::from(vec![0, 1, 2, 0, 1]);
+    /// use dist_array::dist_array;
+    /// let xs = dist_array![0, 1, 0, 1, 2];
+    /// let succ = dist_array![0, 1, 2, 0, 1];
     /// assert!(xs.has_successor(&succ));
     /// ```
     pub fn has_successor(&self, other: &Self) -> bool {
@@ -82,15 +82,16 @@ impl DistArray {
     ///
     /// # Examples
     /// ```
-    /// use dist_array::DistArray;
-    /// let xs = DistArray::from(vec![0, 1, 0, 1, 2]);
+    /// use dist_array::dist_array;
+    /// let xs = dist_array![0, 1, 0, 1, 2];
     /// let succ = xs.successor().unwrap();
-    /// assert_eq!(succ, DistArray::from(vec![0, 1, 2, 0, 1]));
+    /// assert_eq!(succ, dist_array![0, 1, 2, 0, 1]);
     /// ```
     pub fn successor(&self) -> Option<Self>
     where
         Self: Sized,
     {
+        assert!(is_canonical_dist_array(self));
         let n = self.len();
         let mut xs = self.0.clone();
 
@@ -114,6 +115,85 @@ impl DistArray {
         }
         Some((0..n + 1).map(|x| x % 2).collect::<DistArray>().into())
     }
+
+    /// Returns the successor DistArray in lexicographic order.
+    ///
+    /// # Returns
+    /// - `Option<DistArray>`: The successor DistArray if it exists, otherwise None.
+    ///
+    /// # Panics
+    /// - Panics if the DistArray is not in canonical form.
+    ///
+    /// # Examples
+    /// ```
+    /// use dist_array::dist_array;
+    /// let xs = dist_array![0, 1, 2, 0, 1];
+    /// let pred = xs.predecessor();
+    /// assert_eq!(pred, Some(dist_array![0, 1, 0, 1, 2]));
+    /// let ys = dist_array![0];
+    /// assert_eq!(ys.predecessor(), None)
+    /// ```
+    pub fn predecessor(&self) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        assert!(is_canonical_dist_array(self));
+        let n = self.len();
+        if n == 1 {
+            return None;
+        }
+
+        let mut xs = self.clone();
+
+        for i in (2..n).rev() {
+            if xs[i] > 0 && xs[i] != xs[i-1] + 1 {
+                xs[i] -= 1;
+                for j in 0..n-i {
+                   xs[i + 1 + j] = j & 1;
+                }
+                return Some(xs);
+            } else {
+                todo!("other cases")
+            }
+        }
+        Some((0..n-1).collect::<DistArray>().into())
+    }
+}
+
+/// Checks if a DistArray is in canonical form.
+///
+/// A DistArray is in canonical form if:
+/// - The first element is 0.
+/// - Each subsequent element is at most 1 greater than the maximum of all previous elements.
+/// - No two consecutive elements are equal.
+///
+/// # Arguments
+/// - `xs`: The DistArray to check.
+///
+/// # Returns
+/// - `bool`: True if the DistArray is in canonical form, otherwise false.
+///
+/// # Examples
+/// ```
+/// use dist_array::{dist_array, is_canonical_dist_array};
+/// let xs = dist_array![0, 1, 0, 2, 1];
+/// assert!(is_canonical_dist_array(&xs));
+/// let ys = dist_array![0, 2, 1, 0];
+/// assert!(!is_canonical_dist_array(&ys));
+/// ```
+pub fn is_canonical_dist_array(xs: &DistArray) -> bool {
+    let n = xs.len();
+    if n == 0  || xs[0] != 0 {
+        return false;
+    }
+    let mut x_max = 0;
+    for i in 1..n {
+        if xs[i] > x_max + 1 || xs[i] == xs[i-1] {
+            return false
+        }
+        x_max = x_max.max(xs[i])
+    }
+    true
 }
 
 impl Deref for DistArray {
@@ -454,6 +534,27 @@ impl Iterator for DistArrayGenerator {
     }
 }
 
+/// Counts the number of distinct DistArrays with a given number of loci.
+///
+/// # Arguments
+/// - `n_loci`: The number of loci.
+///
+/// # Returns
+/// - `usize`: The number of distinct DistArrays with the given number of loci.
+///
+/// # Panics
+/// - Panics if `n_loci` is greater than or equal to 26, as this would cause overflow.
+///
+/// # Examples
+/// ```
+/// use dist_array::count_distribute_instances;
+/// let count = dist_array::count_distribute_instances(1);
+/// assert_eq!(count, 1);
+/// let count = dist_array::count_distribute_instances(3);
+/// assert_eq!(count, 2);
+/// let count = dist_array::count_distribute_instances(5);
+/// assert_eq!(count, 15);
+/// ```
 pub fn count_distribute_instances(n_loci: usize) -> usize {
     if n_loci < 26 {
         H_LOOKUP[n_loci - 1][0]
@@ -462,6 +563,22 @@ pub fn count_distribute_instances(n_loci: usize) -> usize {
     }
 }
 
+/// Computes the ordinal index of a DistArray in the lexicographic ordering of all possible
+/// DistArrays with the same number of loci.
+///
+/// # Arguments
+/// - `xs`: The DistArray to compute the ordinal index for.
+///
+/// # Returns
+/// - `usize`: The ordinal index of the DistArray.
+///
+/// # Examples
+/// ```
+/// use dist_array::dist_array;
+/// let xs = dist_array![0, 1, 0, 2, 1];
+/// let index = dist_array::ordinal_index(&xs);
+/// assert_eq!(index, 4);
+/// ```
 pub fn ordinal_index(xs: &DistArray) -> usize {
     let n = xs.n_loci();
     let mut total = 1;
@@ -480,6 +597,24 @@ const H_LOOKUP: [[usize; 26]; 26] = [
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 0], [2, 5, 10, 17, 26, 37, 50, 65, 82, 101, 122, 145, 170, 197, 226, 257, 290, 325, 362, 401, 442, 485, 530, 577, 0, 0], [5, 15, 37, 77, 141, 235, 365, 537, 757, 1031, 1365, 1765, 2237, 2787, 3421, 4145, 4965, 5887, 6917, 8061, 9325, 10715, 12237, 0, 0, 0], [15, 52, 151, 372, 799, 1540, 2727, 4516, 7087, 10644, 15415, 21652, 29631, 39652, 52039, 67140, 85327, 106996, 132567, 162484, 197215, 237252, 0, 0, 0, 0], [52, 203, 674, 1915, 4736, 10427, 20878, 38699, 67340, 111211, 175802, 267803, 395224, 567515, 795686, 1092427, 1472228, 1951499, 2548690, 3284411, 4181552, 0, 0, 0, 0, 0], [203, 877, 3263, 10481, 29371, 73013, 163967, 338233, 649931, 1176701, 2025823, 3341057, 5310203, 8173381, 12232031, 17858633, 25507147, 35724173, 49160831, 66585361, 0, 0, 0, 0, 0, 0], [877, 4140, 17007, 60814, 190497, 529032, 1322035, 3017562, 6376149, 12616132, 23599287, 42061830, 71895817, 118485984, 189107067, 293386642, 443838525, 656471772, 951480319, 0, 0, 0, 0, 0, 0, 0], [4140, 21147, 94828, 372939, 1291020, 3967195, 10949772, 27499083, 63625324, 137144475, 278054700, 534575947, 981235788, 1729424859, 2940885580, 4844638155, 7757888172, 12111500443, 0, 0, 0, 0, 0, 0, 0, 0], [21147, 115975, 562595, 2409837, 9131275, 30785747, 93197715, 256118905, 646147067, 1512354975, 3315122947, 6861571205, 13504254315, 25423408747, 46017036275, 80427460497, 136237711195, 0, 0, 0, 0, 0, 0, 0, 0, 0], [115975, 678570, 3535027, 16360786, 67310847, 247126450, 815305195, 2438979402, 6681531511, 16926317722, 40012800675, 88981537570, 187474460527, 376521349986, 724665968347, 1342649618650, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [678570, 4213597, 23430840, 116393205, 516369838, 2050937445, 7330810572, 23754387325, 70378569810, 192349660173, 489109544320, 1166271373797, 2626214876310, 5619443518165, 11487973175508, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [4213597, 27644437, 163254885, 865549453, 4116416797, 17585497797, 67739250757, 236659281085, 755378218653, 2220256485877, 6057366816997, 15455199988077, 37134022033885, 84540738911653, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [27644437, 190899322, 1192059223, 6713065156, 34051164985, 155666739742, 643094785627, 2411993186248, 8263282235101, 26039675189890, 76028868158047, 207141221902732, 530149003318273, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [190899322, 1382958545, 9097183602, 54190360453, 291871399682, 1421428484337, 6270561900010, 25147234538837, 92145933070698, 310385944867057, 967429903483202, 2808702444248325, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [1382958545, 10480142147, 72384727657, 454442481041, 2588914083065, 13377704321695, 62770605938897, 268176574842557, 1047553409432641, 3760903407286715, 12483001479080345, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [10480142147, 82864869804, 599211936355, 3952241526188, 23733360653955, 129659127547372, 644800210475939, 2924789433330540, 12141330682747843, 46331132144660780, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [82864869804, 682076806159, 5150665398898, 35590085232519, 224592570163192, 1293095848212799, 6793590696186174, 32614856716061623, 143461777606643524, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [682076806159, 5832742205057, 45891416030315, 331362825860749, 2191466128865567, 13259069937250169, 73376400893178667, 371765774619074885, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [5832742205057, 51724158235372, 423145657921379, 3185554606447814, 22024934452712437, 139671750579429512, 812024179978146887, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [51724158235372, 474869816156751, 4031845922290572, 31581598272055879, 227771488390279260, 1510382932875294447, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [474869816156751, 4506715738447323, 39645290116637023, 322516283206446897, 2421468886436411487, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [4506715738447323, 44152005855084346, 401806863439720943, 3389017736055752178, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [44152005855084346, 445958869294805289, 4192631462935194064, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [445958869294805289, 4638590332229999353, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [4638590332229999353, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 ];
 
+/// Macro to create a DistArray from a list of usize values.
+///
+/// # Examples
+/// ```
+/// use dist_array::dist_array;
+/// let d = dist_array![0, 1, 0, 2, 1];
+/// assert_eq!(d.n_loci(), 5);
+/// assert_eq!(d.n_pop(), 3);
+/// assert_eq!(d.0, vec![0, 1, 0, 2, 1]);
+/// ```
+#[macro_export]
+macro_rules! dist_array {
+    ($($x:expr),*) => {
+        DistArray(vec![$($x),*])
+    };
+}
+pub use dist_array;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -487,6 +622,14 @@ mod tests {
     #[test]
     fn test_dist_array() {
         let d = DistArray(vec![0, 1, 0, 2, 1]);
+        assert_eq!(d.n_loci(), 5);
+        assert_eq!(d.n_pop(), 3);
+        assert_eq!(d.0, vec![0, 1, 0, 2, 1]);
+    }
+
+    #[test]
+    fn test_dist_array_macro() {
+        let d = dist_array![0, 1, 0, 2, 1];
         assert_eq!(d.n_loci(), 5);
         assert_eq!(d.n_pop(), 3);
         assert_eq!(d.0, vec![0, 1, 0, 2, 1]);

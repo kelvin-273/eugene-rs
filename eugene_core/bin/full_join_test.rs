@@ -1,13 +1,12 @@
 use std::ops::Range;
 
 use eugene_core::plants::dist_array;
-use eugene_core::plants::dist_array::{DistArray, OrderedDistArray};
+use eugene_core::plants::dist_array::{dist_array, DistArray, OrderedDistArray};
 use eugene_core::solvers::base_min_crossings_distribute_astar::{
     breeding_program_distribute_general, Config,
 };
-use rand::seq::SliceRandom;
-use btree_range_map::RangeMap;
-use btree_range_map::Measure;
+use btree_range_map::{AsRange, IntoRange, RangeMap, Measure};
+use range_traits::MaybeBounded;
 use serde::{Serialize, Deserialize};
 
 /// A wrapper around DistArray to implement Ord and Measure traits.
@@ -17,8 +16,8 @@ use serde::{Serialize, Deserialize};
 ///
 /// # Examples
 /// ```
-/// let da1 = DistArray::from(vec![0, 1, 0, 2, 1]);
-/// let da2 = DistArray::from(vec![0, 1, 2, 0]);
+/// let da1 = dist_array![0, 1, 0, 2, 1];
+/// let da2 = dist_array![0, 1, 2, 0];
 /// let wrapper1 = DistArrayWrapper::new(da1);
 /// let wrapper2 = DistArrayWrapper::new(da2);
 ///
@@ -91,9 +90,16 @@ impl Measure for DistArrayWrapper {
     }
 }
 
+enum DistArrayRange {
+    Empty,
+    UpperBounded(DistArrayWrapper),
+    LowerBounded(DistArrayWrapper),
+    DoubleBounded(DistArrayWrapper, DistArrayWrapper),
+}
+
 fn f() -> Range<DistArrayWrapper> {
-    let start = DistArrayWrapper::new(DistArray::from(vec![0, 1, 0, 1]));
-    let end = DistArrayWrapper::new(DistArray::from(vec![0, 1, 2, 3]));
+    let start = DistArrayWrapper::new(dist_array![0, 1, 0, 1]);
+    let end = DistArrayWrapper::new(dist_array![0, 1, 2, 3]);
     start..end
 }
 
@@ -106,6 +112,7 @@ impl range_traits::Enum for DistArrayWrapper {
         self.predecessor().map(DistArrayWrapper)
     }
 }
+
 
 /// Represents the result of a completed instance comparison between HEU and OPT.
 ///

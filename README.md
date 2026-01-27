@@ -6,8 +6,8 @@ module (`eugene_pywrapper`) that exposes selected solvers via PyO3.
 
 ## Workspace layout
 
-- `eugene_core`: Core domain types (genotypes, gametes, distributions), solvers, and
-  helper utilities for generating/visualizing instances.
+- `eugene_core`: Core domain types (genotypes, gametes, distribute arrays), solvers,
+  and helper utilities for generating/visualizing instances.
 - `eugene_pywrapper`: PyO3 wrapper that exposes solver APIs to Python as a native
   extension module.
 
@@ -19,7 +19,7 @@ From the workspace root:
 cargo build
 ```
 
-To run the example binary that exercises the distribution A* solver:
+To run the binary that solves an example Distribute instance with Distribute A*:
 
 ```bash
 cargo run -p eugene_core --bin example-to-profile
@@ -28,7 +28,7 @@ cargo run -p eugene_core --bin example-to-profile
 ## Using the Rust API
 
 The core crate exposes plant representations in `plants` and solvers in `solvers`.
-A simple flow is to generate a random initial population and run a solver:
+A simple workflow is to generate a random initial population and run a solver:
 
 ```rust
 use eugene_core::plants::bit_array::SingleChromGenotype;

@@ -113,6 +113,15 @@ impl range_traits::Enum for DistArrayWrapper {
     }
 }
 
+impl MaybeBounded for DistArrayWrapper {
+    fn min() -> Option<Self> {
+        Some(DistArrayWrapper(dist_array![0]))
+    }
+
+    fn max() -> Option<Self> {
+        None
+    }
+}
 
 /// Represents the result of a completed instance comparison between HEU and OPT.
 ///
@@ -253,12 +262,12 @@ impl CompletedInstances {
     }
 
     pub fn get(&self, da: &DistArrayWrapper) -> Option<CompletedInstanceResult> {
-        self.btree.get(da.clone()).copied()
+        unimplemented!()
     }
 
     pub fn insert(&mut self, da: DistArrayWrapper, result: bool) {
         let res_enum = CompletedInstanceResult::from_bool(result);
-        self.btree.insert(da, res_enum);
+        unimplemented!()
     }
 }
 

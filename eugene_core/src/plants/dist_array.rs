@@ -1,3 +1,21 @@
+//! A structure to represent the distribution of loci among gametes.
+//!
+//! This module provides the `DistArray` struct, which is an array-like structure that
+//! describes which gamete owns which locus. Each locus is owned by exactly one gamete,
+//! and each gamete can own multiple loci. The module includes methods for manipulating
+//! and analyzing `DistArray` instances, such as finding successors and predecessors
+//! in lexicographic order, generating redistributions, and checking for canonical form.
+//! It also includes utility functions for counting distinct distributions and computing
+//! ordinal indices.
+//!
+//! # Examples
+//! ```
+//! use dist_array::dist_array;
+//! let xs = dist_array![0, 1, 0, 1, 2];
+//! let succ = xs.successor().unwrap();
+//! assert_eq!(succ, dist_array![0, 1, 2, 0, 1]);
+//! ```
+
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::iter::FromIterator;
@@ -6,7 +24,7 @@ use std::ops::{Deref, DerefMut};
 // Description: A simple array-like structure that describes which gamete owns which locus.
 // Each locus is owned by exactly one gamete, and each gamete can own multiple loci.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
-pub struct DistArray(pub Vec<usize>);
+pub struct DistArray(Vec<usize>);
 
 impl DistArray {
     /// Returns the number of loci. Is equivalent to `self.len()`.
@@ -610,7 +628,7 @@ const H_LOOKUP: [[usize; 26]; 26] = [
 #[macro_export]
 macro_rules! dist_array {
     ($($x:expr),*) => {
-        DistArray(vec![$($x),*])
+        DistArray::from(vec![$($x),*])
     };
 }
 pub use dist_array;

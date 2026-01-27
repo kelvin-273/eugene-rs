@@ -17,10 +17,6 @@ path = "bin/example_to_profile.rs"
 name = "full-join-test"
 path = "bin/full_join_test.rs"
 
-[[bin]]
-name = "btree-map-test"
-path = "bin/btree_map_test.rs"
-
 [dependencies]
 pathfinding = "4.9.1"
 svg = "0.17.0"

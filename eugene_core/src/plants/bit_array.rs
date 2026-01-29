@@ -1,7 +1,8 @@
 use crate::abstract_plants::*;
+use crate::extra::resources::RecRate;
 use crate::extra::visualisation;
 use crate::solution::{BaseSolution, Objective};
-use crate::solvers::base_min_crossings_distribute_astar::DistArray;
+use crate::plants::dist_array::DistArray;
 use bit_vec::BitVec;
 use rand::prelude::*;
 use std::collections::{HashMap, VecDeque};
@@ -125,13 +126,8 @@ impl SingleChromGenotype {
 
     /// Initializes a population of single-chromosome genotypes based on a distribute array.
     pub fn init_pop_distribute(dist_array: &DistArray) -> Vec<SingleChromGenotype> {
-        let n_loci = dist_array.len();
-        let n_pop = dist_array
-            .iter()
-            .cloned()
-            .max()
-            .map(|x_max| x_max + 1)
-            .unwrap_or(0);
+        let n_loci = dist_array.n_loci();
+        let n_pop = dist_array.n_pop();
         (0..n_pop)
             .map(|gx| {
                 (0..n_loci)
@@ -256,17 +252,69 @@ impl Dominance<SingleChromGamete> for DomGamete {
     }
 }
 
-#[derive(Debug, Clone)]
+/// A crosspoint for single-chromosome genotypes represented as a pair of bit vectors.
+///
+/// The crosspoint consists of a starting chromosome (upper or lower) and a head index indicating
+/// where the crossover occurs.
+///
+/// For example, a crosspoint with `start = Chrom::Upper` and `head = 3` means that the first
+/// three loci are taken from the upper chromosome, and the remaining loci are taken from the
+/// lower chromosome.
+///
+/// # Examples
+/// ```
+/// use rand::thread_rng;
+/// use crate::plants::bit_array::{CrosspointBitVec, Chrom};
+/// let mut rng = thread_rng();
+/// let n_loci = 10;
+/// let crosspoint = CrosspointBitVec::random_crosspoint_uniform(&mut rng, &
+/// n_loci);
+/// println!("Random crosspoint: start = {:?}, head = {}", crosspoint.start, crosspoint.head);
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CrosspointBitVec {
     start: Chrom,
     head: usize,
 }
 
 impl CrosspointBitVec {
+    /// Creates a new crosspoint with the specified starting chromosome and head index.
+    ///
+    /// # Arguments
+    /// * `start` - The starting chromosome (upper or lower).
+    /// * `head` - The head index where the crossover occurs.
+    ///
+    /// # Returns
+    /// A new `CrosspointBitVec` instance.
     pub fn new(start: Chrom, head: usize) -> Self {
         Self { start, head }
     }
 
+    /// Generates a crosspoint with a uniform randomly starting chromosome and head.
+    /// The head is chosen uniformly from the range `[0, n_loci)`.
+    ///
+    /// # Arguments
+    /// * `rng` - A mutable reference to a random number generator.
+    /// * `n_loci` - The number of loci.
+    ///
+    /// # Returns
+    /// A new `CrosspointBitVec` instance with random start and head.
+    ///
+    /// # Examples
+    /// ```
+    /// use rand::thread_rng;
+    /// use crate::plants::bit_array::{CrosspointBitVec, Chrom};
+    /// let mut rng = thread_rng();
+    /// let n_loci = 10;
+    /// let crosspoint = CrosspointBitVec::random_crosspoint_uniform(&mut rng, &n_loci);
+    /// println!("Random crosspoint: start = {:?}, head = {}", crosspoint.start, crosspoint.head);
+    /// ```
+    ///
+    /// # Panics
+    /// Panics if `n_loci` is zero.
+    ///
+    /// # See Also
+    /// * `CrosspointBitVec::random_crosspoint` - Generates a crosspoint with recombination rates.
     pub fn random_crosspoint_uniform(rng: &mut impl Rng, n_loci: &usize) -> Self {
         Self {
             start: rng.gen::<bool>().into(),
@@ -277,9 +325,34 @@ impl CrosspointBitVec {
     /// Generates a crosspoint with a uniform randomly starting chromosome and a head that is
     /// chosen with respect to a vector of recombination rates. The recombination rates are
     /// marginalised so that the crosspoints are single-point recombinations.
-    pub fn random_crosspoint(rng: &mut impl Rng, n_loci: &usize, recomb_rates: &[f64]) -> Self {
+    ///
+    /// # Arguments
+    /// * `rng` - A mutable reference to a random number generator.
+    /// * `n_loci` - The number of loci.
+    /// * `recomb_rates` - A slice of recombination rates between loci.
+    ///
+    /// # Returns
+    /// A new `CrosspointBitVec` instance with random start and head.
+    ///
+    /// # Examples
+    /// ```
+    /// use rand::thread_rng;
+    /// use crate::plants::bit_array::{CrosspointBitVec, Chrom};
+    /// use crate::extra::resources::RecRate;
+    /// let mut rng = thread_rng();
+    /// let n_loci = 10;
+    /// let recomb_rates = vec![0.1; n_loci - 1];
+    /// let crosspoint = CrosspointBitVec::random_crosspoint(&mut rng, &n_loci, &recomb_rates);
+    /// println!("Random crosspoint: start = {:?}, head = {}", crosspoint.start, crosspoint.head);
+    /// ```
+    /// # Panics
+    /// Panics if `n_loci` is zero or if the length of `recomb_rates` is not equal to `n_loci - 1`.
+    ///
+    /// # See Also
+    /// * `CrosspointBitVec::random_crosspoint_uniform` - Generates a crosspoint with uniform head.
+    pub fn random_crosspoint(rng: &mut impl Rng, n_loci: usize, recomb_rates: &RecRate) -> Self {
         let start = rng.gen::<bool>().into();
-        if *n_loci <= 1 {
+        if n_loci <= 1 {
             return Self { start, head: 0 };
         }
         let total: f64 = recomb_rates.iter().sum();

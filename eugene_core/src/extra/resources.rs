@@ -1,3 +1,5 @@
+use std::ops::{Deref, Index};
+
 use crate::abstract_plants::*;
 
 pub struct RecRate {
@@ -57,6 +59,20 @@ impl From<Vec<f64>> for RecRate {
 impl From<&[f64]> for RecRate {
     fn from(rec_between_loci: &[f64]) -> Self {
         RecRate::from(rec_between_loci.to_vec())
+    }
+}
+
+impl RecRate {
+    pub fn n_loci(&self) -> usize {
+        self.rec_between_loci.len() + 1
+    }
+}
+
+impl Deref for RecRate {
+    type Target = [f64];
+
+    fn deref(&self) -> &Self::Target {
+        &self.rec_between_loci
     }
 }
 

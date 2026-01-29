@@ -46,7 +46,7 @@ impl DistArray {
     /// Returns the number of gametes in the population implied by the DistArray.
     pub fn n_pop(&self) -> usize {
         // assert that the values in data are in 0..n_pop
-        assert!((0..self.n_loci()).all(|i| self[i] == 0 || self.contains(&(self[i] - 1))));
+        debug_assert!((0..self.n_loci()).all(|i| self[i] == 0 || self.contains(&(self[i] - 1))));
         self.0.iter().max().map_or(0, |&max| max + 1)
     }
 
@@ -109,7 +109,7 @@ impl DistArray {
     where
         Self: Sized,
     {
-        assert!(is_canonical_dist_array(self));
+        debug_assert!(is_canonical_dist_array(self));
         let n = self.len();
         let mut xs = self.0.clone();
 
@@ -155,7 +155,7 @@ impl DistArray {
     where
         Self: Sized,
     {
-        assert!(is_canonical_dist_array(self));
+        debug_assert!(is_canonical_dist_array(self));
         let n = self.len();
         if n == 1 {
             return None;
@@ -456,7 +456,7 @@ pub fn first_full_join(xs: &DistArray) -> Option<(DistArray, usize, usize)> {
 
 pub fn random_redistribution(xs: &DistArray, rng: &mut impl Rng) -> (DistArray, usize, usize) {
     let n_pop = xs.n_pop();
-    assert!(n_pop >= 2);
+    debug_assert!(n_pop >= 2);
     let (gx, gy) = loop {
         let gx = rng.gen_range(0..n_pop);
         let gy = rng.gen_range(0..n_pop);
@@ -600,7 +600,7 @@ pub fn count_distribute_instances(n_loci: usize) -> usize {
 pub fn ordinal_index(xs: &DistArray) -> usize {
     let n = xs.n_loci();
     let mut total = 1;
-    assert!(xs[0] == 0);
+    debug_assert!(xs[0] == 0);
     let mut x_max = 0;
     for i in 1..n {
         let x_next = x_max.max(xs[i]);

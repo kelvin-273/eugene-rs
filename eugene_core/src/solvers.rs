@@ -24,6 +24,8 @@ pub mod greedy_multichrom_ti;
 
 /// Finds the min resources for base problem using Beam Search
 pub mod base_min_resources_beam_search;
+/// 
+pub mod base_min_resources_sampling;
 
 /// ## Heuristic methods
 

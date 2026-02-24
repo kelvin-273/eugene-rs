@@ -202,7 +202,12 @@ impl<F, I: Iterator> NonDominating<F, I> {
         let arr: Vec<I::Item> = iter.collect();
         let n_rem = arr.len();
         let choice = vec![true; n_rem];
-         Self { dom, arr, choice, n_rem }
+        Self {
+            dom,
+            arr,
+            choice,
+            n_rem,
+        }
     }
 }
 
@@ -221,8 +226,8 @@ where
         }
         if !self.arr.is_empty() {
             for j in 0..self.n_rem - 1 {
-                if !self.choice[j] {}
-                else if (self.dom)(&self.arr[self.n_rem - 1], &self.arr[j]) {
+                if !self.choice[j] {
+                } else if (self.dom)(&self.arr[self.n_rem - 1], &self.arr[j]) {
                     self.choice[j] = false;
                 } else if (self.dom)(&self.arr[j], &self.arr[self.n_rem - 1]) {
                     self.choice.pop();
@@ -247,7 +252,7 @@ pub trait IteratorNonDominating: IntoIterator + Sized {
 
 impl<I> IteratorNonDominating for I
 where
-    I: IntoIterator + Iterator
+    I: IntoIterator + Iterator,
 {
     fn filter_non_dominating_fn<F>(self, dom: F) -> NonDominating<F, Self::IntoIter> {
         NonDominating::new(self.into_iter(), dom)
@@ -255,7 +260,7 @@ where
 }
 
 //pub trait IteratorNonDominating: Iterator + Sized {
-    //fn filter_non_dominating_fn<F>(self, dom: F) -> NonDominating<F, Self>;
+//fn filter_non_dominating_fn<F>(self, dom: F) -> NonDominating<F, Self>;
 //}
 
 #[cfg(test)]
@@ -438,7 +443,10 @@ mod tests {
     #[test]
     fn non_dominating_test() {
         let u = vec![1, 2, 2, 3, 3];
-        let v: Vec<i32> = u.into_iter().filter_non_dominating_fn(|x, y| x >= y).collect();
+        let v: Vec<i32> = u
+            .into_iter()
+            .filter_non_dominating_fn(|x, y| x >= y)
+            .collect();
         assert_eq!(v, vec![3])
     }
 }

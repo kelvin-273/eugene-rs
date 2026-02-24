@@ -1,7 +1,7 @@
+use crate::solution::PyBaseSolution;
 use eugene_core::plants::bit_array::SingleChromGenotype;
 use eugene_core::solution::Objective;
 use eugene_core::solvers::base_min_crossings_astar;
-use crate::solution::PyBaseSolution;
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;

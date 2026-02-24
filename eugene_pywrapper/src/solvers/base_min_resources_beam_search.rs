@@ -1,6 +1,6 @@
+use crate::solution::PyBaseSolution;
 use eugene_core::plants::bit_array::SingleChromGenotype;
 use eugene_core::solvers::base_min_resources_beam_search;
-use crate::solution::PyBaseSolution;
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
@@ -24,7 +24,9 @@ pub fn breeding_program_python(
     timeout: Option<u64>,
 ) -> PyBaseSolution {
     assert_eq!(recombination_rates.len(), n_loci - 1);
-    assert!(recombination_rates.iter().all(|&r| (0.0..=0.5).contains(&r)));
+    assert!(recombination_rates
+        .iter()
+        .all(|&r| (0.0..=0.5).contains(&r)));
     assert!((0.0..=1.0).contains(&gamma));
 
     let pop_0: Vec<_> = pop_0
@@ -40,7 +42,12 @@ pub fn breeding_program_python(
         .collect();
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || {
-        let res = base_min_resources_beam_search::breeding_program(n_loci, &pop_0, &recombination_rates, gamma);
+        let res = base_min_resources_beam_search::breeding_program(
+            n_loci,
+            &pop_0,
+            &recombination_rates,
+            gamma,
+        );
         tx.send(res)
     });
     let res = rx

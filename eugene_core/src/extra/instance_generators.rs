@@ -37,12 +37,12 @@ pub fn parse_homozygous(s: &str) -> (usize, Vec<bit_array::SingleChromGenotype>)
 
 type DistArray = Vec<usize>;
 
-pub fn random_distribute_instance<R: Rng +?Sized>(n_loci: usize, rng: &mut R) -> DistArray {
+pub fn random_distribute_instance<R: Rng + ?Sized>(n_loci: usize, rng: &mut R) -> DistArray {
     let mut out = vec![0; n_loci];
     let mut x_max = 0;
     for i in 1..n_loci {
         out[i] = rng.gen_range(0..x_max);
-        out[i] += (out[i] >= out[i-1]) as usize;
+        out[i] += (out[i] >= out[i - 1]) as usize;
         x_max = x_max.max(out[i]);
     }
     out

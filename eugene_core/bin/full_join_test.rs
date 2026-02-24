@@ -1,13 +1,13 @@
 use std::ops::Range;
 
+use btree_range_map::{Measure, RangeMap};
 use eugene_core::plants::dist_array;
 use eugene_core::plants::dist_array::{dist_array, DistArray, OrderedDistArray};
 use eugene_core::solvers::base_min_crossings_distribute_astar::{
     breeding_program_distribute_general, Config,
 };
-use btree_range_map::{AsRange, IntoRange, RangeMap, Measure};
 use range_traits::MaybeBounded;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// A wrapper around DistArray to implement Ord and Measure traits.
 ///
@@ -277,9 +277,7 @@ pub fn main() {
     let conf_heu = Config::new(true, false, false, None);
 
     for n_loci in 2.. {
-        for instance in dist_array::DistArrayGenerator::new(n_loci) {
-            let xs: Vec<_> = instance.into();
-
+        for xs in dist_array::DistArrayGenerator::new(n_loci) {
             print!("Solving instance: {:?}", xs);
 
             // Reverse check
@@ -317,13 +315,13 @@ pub fn main() {
             } else {
                 println!(" HEU=OPT");
             }
-            let res = db.get(&DistArrayWrapper({
+            let _res = db.get(&DistArrayWrapper({
                 let rev = xs.iter().rev().cloned().collect::<Vec<usize>>();
                 dist_array::canonical_dist_array(&DistArray::from(rev))
             }));
             db.insert(
                 DistArrayWrapper(OrderedDistArray(xs.into()).into()),
-                res_heu.objective() == res_opt.objective()
+                res_heu.objective() == res_opt.objective(),
             );
         }
     }

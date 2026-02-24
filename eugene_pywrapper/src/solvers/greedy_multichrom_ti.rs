@@ -1,7 +1,7 @@
-use eugene_core::plants::bit_array::SingleChromGenotype;
-use eugene_core::solvers::greedy_multichrom_ti;
-use eugene_core::solution::Objective;
 use crate::solution::PyBaseSolution;
+use eugene_core::plants::bit_array::SingleChromGenotype;
+use eugene_core::solution::Objective;
+use eugene_core::solvers::greedy_multichrom_ti;
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
@@ -14,15 +14,27 @@ pub fn breeding_program_python(
     pop_0: Vec<Vec<Vec<(bool, bool)>>>,
     timeout: Option<u64>,
 ) -> PyBaseSolution {
-    let pop_0: Vec<_> = pop_0.iter().map(|v| {
-        let single_chrom_genotypes: Vec<SingleChromGenotype> = v.iter().map(|chrom| {
-            SingleChromGenotype::from_str(
-                &chrom.iter().map(|(a, _)| if *a { '1' } else { '0' }).collect::<String>(),
-                &chrom.iter().map(|(_, b)| if *b { '1' } else { '0' }).collect::<String>(),
-            )
-        }).collect();
-        greedy_multichrom_ti::MultiChromGenotype::new(single_chrom_genotypes)
-    }).collect();
+    let pop_0: Vec<_> = pop_0
+        .iter()
+        .map(|v| {
+            let single_chrom_genotypes: Vec<SingleChromGenotype> = v
+                .iter()
+                .map(|chrom| {
+                    SingleChromGenotype::from_str(
+                        &chrom
+                            .iter()
+                            .map(|(a, _)| if *a { '1' } else { '0' })
+                            .collect::<String>(),
+                        &chrom
+                            .iter()
+                            .map(|(_, b)| if *b { '1' } else { '0' })
+                            .collect::<String>(),
+                    )
+                })
+                .collect();
+            greedy_multichrom_ti::MultiChromGenotype::new(single_chrom_genotypes)
+        })
+        .collect();
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || {
         let res = greedy_multichrom_ti::breeding_program(&pop_0)

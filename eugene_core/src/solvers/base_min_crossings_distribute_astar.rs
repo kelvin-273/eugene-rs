@@ -14,7 +14,12 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn new(full_join: bool, dominance: bool, diving: bool, debug_trace_file: Option<String>) -> Self {
+    pub fn new(
+        full_join: bool,
+        dominance: bool,
+        diving: bool,
+        debug_trace_file: Option<String>,
+    ) -> Self {
         Self {
             full_join,
             dominance,
@@ -207,7 +212,10 @@ fn astar_general(xs: &DistArray, config: &Config, output: &mut Output) -> Option
     let mut open_list = BinaryHeap::from([Reverse(AstarNode::new(xs))]);
     let mut closed_list = ClosedList::new();
 
-    let mut file = config.debug_trace_file.as_ref().map(|s| fs::File::create(s).expect("unable to create debug trace file"));
+    let mut file = config
+        .debug_trace_file
+        .as_ref()
+        .map(|s| fs::File::create(s).expect("unable to create debug trace file"));
     if let Some(f) = file.as_mut() {
         let _ = f.write(b"version: 1.4.0\n");
         let _ = f.write(b"events:\n");
@@ -250,7 +258,7 @@ fn branching_general(node: &AstarNode, config: &Config) -> Vec<AstarNode> {
     if config.diving {
         // TODO: return either the minimum one or the one that meets the lower bound
         let lower_bound = node.n_segments() + node.n_pop();
-        assert !(lower_bound >= 2);
+        assert!(lower_bound >= 2);
 
         let mut min_obj = usize::MAX;
         let mut min_dist_arr = (node.dist_array().clone(), 0, 0);
@@ -1182,7 +1190,7 @@ mod tests {
 
                 let mut check = generate_redistributions_brute_force(&Vec::from($xs));
                 check.sort();
-                assert!(guess.iter().zip(check.iter()).all(|(x, y)| x.0 == y.0), "assertion failed `guess == check` failed for xs = {:?}\n guess: {}\n check: {}\n", 
+                assert!(guess.iter().zip(check.iter()).all(|(x, y)| x.0 == y.0), "assertion failed `guess == check` failed for xs = {:?}\n guess: {}\n check: {}\n",
                     $xs,
                     pretty_print!(guess),
                     pretty_print!(check)
@@ -1443,8 +1451,11 @@ mod tests {
                 (vec![0, 1, 0, 0], 0, 2),
                 (vec![0, 1, 0, 1], 1, 2),
                 (vec![0, 1, 2, 0], 0, 2),
-            ].into_iter().all(|x| output.contains(&x)),
-            "Output was: {}", pretty_print!(output)
+            ]
+            .into_iter()
+            .all(|x| output.contains(&x)),
+            "Output was: {}",
+            pretty_print!(output)
         );
     }
 }

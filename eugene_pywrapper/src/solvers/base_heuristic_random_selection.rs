@@ -1,6 +1,6 @@
+use crate::solution::PyBaseSolution;
 use eugene_core::plants::bit_array::SingleChromGenotype;
 use eugene_core::solvers::base_heuristic_random_selection;
-use crate::solution::PyBaseSolution;
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;

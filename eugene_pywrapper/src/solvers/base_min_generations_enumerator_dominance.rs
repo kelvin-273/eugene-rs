@@ -1,6 +1,6 @@
+use crate::solution::PyBaseSolution;
 use eugene_core::plants::bit_array::SingleChromGenotype;
 use eugene_core::solvers::base_min_generations_enumerator_dominance;
-use crate::solution::PyBaseSolution;
 use pyo3::PyResult;
 use std::sync::mpsc;
 use std::thread;
@@ -66,7 +66,8 @@ pub fn mingen_answer_dominance(
         .collect::<Vec<_>>();
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || {
-        let res = base_min_generations_enumerator_dominance::min_generations_dominator(n_loci, &pop_0);
+        let res =
+            base_min_generations_enumerator_dominance::min_generations_dominator(n_loci, &pop_0);
         tx.send(res)
     });
     let res = rx

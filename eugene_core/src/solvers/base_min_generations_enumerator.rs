@@ -58,7 +58,7 @@ pub fn breeding_program(n_loci: usize, pop_0: &[SingleChromGenotype]) -> Option<
 /// Enumerator to find the minimum number of generations to reach the ideotype
 /// from an initial population of single chromosome genotypes.
 /// This function is intended for small instances due to its combinatorial nature.
-/// 
+///
 /// # Arguments
 /// - `n_loci`: Number of loci in the genotypes.
 /// - `pop_0`: Initial population of single chromosome genotypes.
@@ -90,8 +90,12 @@ pub fn min_generations_enumerator(n_loci: usize, pop_0: &[SingleChromGenotype]) 
         let contained_gametes: Vec<SingleChromGamete> = h.keys().cloned().collect();
         for i in 0..contained_gametes.len() {
             for j in i + 1..contained_gametes.len() {
-                let wgx = h.get(&contained_gametes[i]).expect("gamete not found in hash map");
-                let wgy = h.get(&contained_gametes[j]).expect("gamete not found in hash map");
+                let wgx = h
+                    .get(&contained_gametes[i])
+                    .expect("gamete not found in hash map");
+                let wgy = h
+                    .get(&contained_gametes[j])
+                    .expect("gamete not found in hash map");
                 let wz = WGen::from_gametes(wgx, wgy);
                 for k in CrosspointBitVec::crosspoints(&n_loci) {
                     let gz = k.cross(wz.genotype());

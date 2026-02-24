@@ -1,10 +1,10 @@
+use crate::solution::PyBaseSolution;
 use eugene_core::plants::bit_array::SingleChromGenotype;
 use eugene_core::solvers::base_min_generations_enumerator;
-use crate::solution::PyBaseSolution;
+use pyo3::PyResult;
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
-use pyo3::PyResult;
 
 /// Runs a breeding program given `n_loci` and `pop_0` where `pop_0` is a population of single
 /// chromosome diploid genotypes with `n_loci` loci.

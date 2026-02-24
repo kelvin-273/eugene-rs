@@ -1,0 +1,35 @@
+[alias]
+# Profile eugene_core natively on ARM (Apple Silicon)
+# Requires `cargo install cargo-instruments`
+profile-core = "instruments --release -p eugene_core --template 'Time Profiler'"
+
+# Build/Develop Python bindings for x86 Anaconda (Rosetta) environment
+# Use this instead of `maturin develop`
+py-dev = "run --release -p eugene_pywrapper --target x86_64-apple-darwin"
+
+# Shortcut for building the core library for the python environment
+py-build = "build -p eugene_core --release --target x86_64-apple-darwin"
+rs-build = "build -p eugene_core --release --target aarch64-apple-darwin"
+
+#[build]
+## Force frame pointers to ensure accurate stack traces in instruments
+#rustflags = ["-C", "force-frame-poiners=yes"]
+
+#[target.x86_64-apple-darwin]
+## Ensures cross-compilation from ARM to x86 works correctly for Anaconda
+#linker = "clang"
+
+[target.aarch64-apple-darwin]
+# Ensure native ARM builds use the correct linker
+linker = "clang"
+
+[target.x86_64-apple-darwin]
+# Ensure x86 builds use the correct linker for Rosetta
+linker = "cc"
+#linker = "/Users/kdav0007/opt/anaconda3/envs/py39/bin/clang"
+
+[env]
+# Set the path to the Gurobi library for linking when the "gurobi"
+# feature is enabled. Adjust the path as needed for your system.
+GUROBI_HOME = "/Users/kdav0007/Downloads/gurobi1301/armlinux64/"
+GUROBI_LIBNAME = "/Users/kdav0007/Downloads/gurobi1301/armlinux64/lib/libgurobi1301.so"

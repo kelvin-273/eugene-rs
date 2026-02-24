@@ -144,7 +144,7 @@ impl SegW {
 
 enum _Segment2<B> {
     SegNone(B, usize),
-    SegSome(B, usize, usize, usize)
+    SegSome(B, usize, usize, usize),
 }
 
 impl<B> _Segment2<B> {
@@ -211,15 +211,16 @@ fn is_ti_instance(pop_0: &[MultiChromGenotype]) -> bool {
     }
     // Check if all chromosomes are of the same length
     let chrom_length = elite.arr[0].n_loci();
-    if pop_0.iter().any(|x| x.arr.iter().any(|chrom| chrom.n_loci() != chrom_length)) {
+    if pop_0
+        .iter()
+        .any(|x| x.arr.iter().any(|chrom| chrom.n_loci() != chrom_length))
+    {
         return false;
     }
     // Check if all chromosomes are homozygous
     if pop_0.iter().any(|x| {
         let first_chrom = &x.arr[0];
-        x.arr.iter().any(|chrom| {
-            chrom != first_chrom
-        })
+        x.arr.iter().any(|chrom| chrom != first_chrom)
     }) {
         return false;
     }

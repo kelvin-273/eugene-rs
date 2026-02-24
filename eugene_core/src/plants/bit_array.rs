@@ -151,8 +151,15 @@ impl SingleChromGenotype {
 
     pub fn is_complementary(&self, other: &Self) -> bool {
         assert_eq!(self.n_loci, other.n_loci);
-        self.chrom1.iter().zip(other.chrom1.iter()).all(|(a, b)| a != b)
-            && self.chrom2.iter().zip(other.chrom2.iter()).all(|(a, b)| a != b)
+        self.chrom1
+            .iter()
+            .zip(other.chrom1.iter())
+            .all(|(a, b)| a != b)
+            && self
+                .chrom2
+                .iter()
+                .zip(other.chrom2.iter())
+                .all(|(a, b)| a != b)
     }
 }
 

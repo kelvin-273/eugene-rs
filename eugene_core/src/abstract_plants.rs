@@ -189,6 +189,13 @@ impl<A, B> WGen<A, B> {
             .map(|(wgl, wgr)| (WGam { head: wgl.clone() }, WGam { head: wgr.clone() }))
     }
 
+    pub fn parents(&self) -> Option<(WGen<A, B>, WGen<A, B>)> {
+        let (wgx, wgy) = self.history()?;
+        let wx = wgx.history()?;
+        let wy = wgy.history()?;
+        Some((wx, wy))
+    }
+
     pub fn from_gametes(wgl: &WGam<A, B>, wgr: &WGam<A, B>) -> Self
     where
         A: Genotype<B>,

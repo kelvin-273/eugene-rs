@@ -79,7 +79,11 @@ fn compute_lower_bound(_xs: &DistArray, _recombination_rates: &RecRate, _gamma: 
     todo!()
 }
 
-fn solve_subproblem(_xs: &DistArray, _recombination_rates: RecRate, _gamma: f64) -> Option<(Vec<usize>, f64)> {
+fn solve_subproblem(
+    _xs: &DistArray,
+    _recombination_rates: RecRate,
+    _gamma: f64,
+) -> Option<(Vec<usize>, f64)> {
     unimplemented!()
 }
 

@@ -10,7 +10,7 @@ impl RecRate {
     pub fn probability_gamete<A, B>(&self, x: &A, gx: &B) -> f64
     where
         A: Genotype<B> + Diploid<B>,
-        B: Gamete<A> + Haploid
+        B: Gamete<A> + Haploid,
     {
         let v_xu = x.upper().alleles();
         let v_xl = x.lower().alleles();
@@ -29,7 +29,7 @@ impl RecRate {
 
             dp = [
                 dp[0] * (1.0 - r) * b_u + dp[1] * r * b_l, // upper parent
-                dp[1] * (1.0 - r) * b_l + dp[0] * r * b_u // lower parent
+                dp[1] * (1.0 - r) * b_l + dp[0] * r * b_u, // lower parent
             ]
         }
         // The probability of creating the gamete is the sum of the probabilities of sourcing it
@@ -40,7 +40,7 @@ impl RecRate {
     pub fn crossing_resources<A, B>(&self, gamma: f64, x: &A, y: &A, z: &A) -> f64
     where
         A: Genotype<B> + Diploid<B>,
-        B: Gamete<A> + Haploid
+        B: Gamete<A> + Haploid,
     {
         assert!((0.0..=1.0).contains(&gamma));
         let px = self.probability_gamete(x, &z.upper());
@@ -80,7 +80,7 @@ pub fn cost_of_crossing(gamma: f64, px: f64, py: f64) -> f64 {
     let rho = px * py;
     match rho {
         0.0 => f64::INFINITY,
-        _ => f64::log2(1.0 - gamma) / f64::log2(1.0 - rho)
+        _ => f64::log2(1.0 - gamma) / f64::log2(1.0 - rho),
     }
 }
 
@@ -92,7 +92,7 @@ mod tests {
     fn test_rec_rate_probability_gamete() {
         use crate::plants::bit_array::{SingleChromGamete, SingleChromGenotype};
         let rec_rate = RecRate {
-            rec_between_loci: vec![0.1, 0.2, 0.3]
+            rec_between_loci: vec![0.1, 0.2, 0.3],
         };
         let x = SingleChromGenotype::from_str("011", "110");
         let gx = SingleChromGamete::from_str("011");

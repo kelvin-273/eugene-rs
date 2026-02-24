@@ -1,7 +1,7 @@
 use crate::abstract_plants::*;
 use crate::extra::visualisation;
 use crate::solution::{BaseSolution, Objective};
-use crate::solvers::base_min_crossings_distribute_astar::DistArray;
+use crate::plants::dist_array::DistArray;
 use bit_vec::BitVec;
 use rand::prelude::*;
 use std::collections::{HashMap, VecDeque};

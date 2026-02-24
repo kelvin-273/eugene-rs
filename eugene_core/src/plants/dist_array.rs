@@ -50,6 +50,11 @@ impl DistArray {
         self.0.iter().max().map_or(0, |&max| max + 1)
     }
 
+    pub fn is_target(&self) -> bool {
+        let first = self[0];
+        self.iter().all(|&x| x == first)
+    }
+
     /// Checks if the current DistArray has `other` as its successor in lexicographic order.
     ///
     /// # Arguments
@@ -175,6 +180,14 @@ impl DistArray {
             }
         }
         Some((0..n-1).collect::<DistArray>().into())
+    }
+
+    pub fn resize(&mut self, new_size: usize, fill_value: usize) {
+        if new_size < self.len() {
+            self.0.truncate(new_size);
+        } else if new_size > self.len() {
+            self.0.extend(std::iter::repeat(fill_value).take(new_size - self.len()));
+        }
     }
 }
 
@@ -360,6 +373,31 @@ pub fn canonical_dist_array(xs: &DistArray) -> DistArray {
     zs
 }
 
+impl PartialOrd for DistArray {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for DistArray {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match self.n_loci().cmp(&other.n_loci()) {
+            std::cmp::Ordering::Less => return std::cmp::Ordering::Less,
+            std::cmp::Ordering::Greater => return std::cmp::Ordering::Greater,
+            std::cmp::Ordering::Equal => {
+                for (x, y) in self.iter().zip(other.iter()) {
+                    match x.cmp(y) {
+                        std::cmp::Ordering::Less => return std::cmp::Ordering::Less,
+                        std::cmp::Ordering::Greater => return std::cmp::Ordering::Greater,
+                        std::cmp::Ordering::Equal => continue,
+                    }
+                }
+            std::cmp::Ordering::Equal
+            }
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct OrderedDistArray(pub DistArray);
 
@@ -407,20 +445,20 @@ impl PartialOrd for OrderedDistArray {
 
 impl Ord for OrderedDistArray {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        if self.n_loci() < other.n_loci() {
-            return std::cmp::Ordering::Less;
-        } else if self.n_loci() > other.n_loci() {
-            return std::cmp::Ordering::Greater;
-        }
-        let n = self.n_loci().min(other.n_loci());
-        for i in 0..n {
-            if self[i] < other[i] {
-                return std::cmp::Ordering::Less;
-            } else if self[i] > other[i] {
-                return std::cmp::Ordering::Greater;
+        match self.n_loci().cmp(&other.n_loci()) {
+            std::cmp::Ordering::Less => return std::cmp::Ordering::Less,
+            std::cmp::Ordering::Greater => return std::cmp::Ordering::Greater,
+            std::cmp::Ordering::Equal => {
+                for (x, y) in self.iter().zip(other.iter()) {
+                    match x.cmp(y) {
+                        std::cmp::Ordering::Less => return std::cmp::Ordering::Less,
+                        std::cmp::Ordering::Greater => return std::cmp::Ordering::Greater,
+                        std::cmp::Ordering::Equal => continue,
+                    }
+                }
+            std::cmp::Ordering::Equal
             }
         }
-        std::cmp::Ordering::Equal
     }
 }
 

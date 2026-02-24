@@ -1,8 +1,8 @@
 use crate::abstract_plants::*;
 use crate::extra::resources::RecRate;
 use crate::extra::visualisation;
-use crate::solution::{BaseSolution, Objective};
 use crate::plants::dist_array::DistArray;
+use crate::solution::{BaseSolution, Objective};
 use bit_vec::BitVec;
 use rand::prelude::*;
 use std::collections::{HashMap, VecDeque};

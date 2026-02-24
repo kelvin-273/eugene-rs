@@ -112,9 +112,7 @@ pub fn breeding_program(
 ///
 /// # Returns:
 /// * `bool` - `true` if the ancestors of wz contain wz itself, `false` otherwise
-fn ancestors_contain(
-    wz: &WGe,
-) -> bool {
+fn ancestors_contain(wz: &WGe) -> bool {
     let mut stack: Vec<WGe> = vec![wz.clone()];
     let mut pushed: HashSet<SingleChromGenotype> = HashSet::new();
 
@@ -168,7 +166,10 @@ mod tests {
         let new_wz = WGen::from_gametes(&new_wgl, &wgr);
 
         assert_eq!(wz.genotype(), &SingleChromGenotype::from_str("11", "11"));
-        assert_eq!(new_wz.genotype(), &SingleChromGenotype::from_str("11", "11"));
+        assert_eq!(
+            new_wz.genotype(),
+            &SingleChromGenotype::from_str("11", "11")
+        );
 
         wz = new_wz;
     }

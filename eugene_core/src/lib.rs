@@ -15,7 +15,6 @@
 //!
 //! let result = breeding_program(n_loci, pop_0);
 //! ```
-#![warn(missing_docs)]
 
 /// Exports the traits used by the algorithms in `solvers`
 pub mod abstract_plants;

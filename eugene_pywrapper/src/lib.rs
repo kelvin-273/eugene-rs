@@ -15,7 +15,6 @@
 //!
 //! let result = breeding_program(n_loci, pop_0);
 //! ```
-//#![deny(missing_docs)]
 
 use pyo3::prelude::*;
 

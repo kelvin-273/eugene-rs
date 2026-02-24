@@ -1063,6 +1063,7 @@ mod tests {
 
     use crate::{
         abstract_plants::{Allele, Haploid},
+        dist_array,
         plants::bit_array::CrosspointBitVec,
     };
 
@@ -1261,9 +1262,10 @@ mod tests {
         use crate::abstract_plants::Chrom;
         use crate::abstract_plants::WGen;
         use crate::plants::bit_array::SingleChromGenotype;
-        let dist_array = vec![0, 1];
-        let n_loci = dist_array.len();
-        let pop_0 = SingleChromGenotype::init_pop_distribute(&dist_array);
+        use crate::plants::dist_array::{dist_array, DistArray};
+        let xs = dist_array![0, 1];
+        let n_loci = xs.len();
+        let pop_0 = SingleChromGenotype::init_pop_distribute(&xs);
 
         // check that the initial population is valid
         assert_eq!(pop_0.len(), 2);
@@ -1273,13 +1275,13 @@ mod tests {
             (0..n_loci).all(|j| {
                 pop_0[i]
                     .get(true, j)
-                    .map(|b| b == (dist_array[j] == i))
+                    .map(|b| b == (xs[j] == i))
                     .expect("get should not return None")
             })
         }));
 
         // construct the path using astar and check the output
-        let path = astar(&dist_array).expect("astar failed");
+        let path = astar(&xs).expect("astar failed");
         let mut node_ref = path.clone();
         let mut out_distarrays = vec![path.dist_array().clone()];
         let mut out_parents = vec![path.parent_gametes()];

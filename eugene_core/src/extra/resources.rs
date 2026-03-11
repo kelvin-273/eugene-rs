@@ -7,10 +7,14 @@ pub struct RecRate {
 }
 
 impl RecRate {
+    pub fn new(rec_between_loci: Vec<f64>) -> Self {
+        Self { rec_between_loci }
+    }
+
     pub fn probability_gamete<A, B>(&self, x: &A, gx: &B) -> f64
     where
-        A: Genotype<B> + Diploid<B>,
-        B: Gamete<A> + Haploid,
+        A: Diploid<B>,
+        B: Haploid,
     {
         let v_xu = x.upper().alleles();
         let v_xl = x.lower().alleles();
@@ -39,8 +43,8 @@ impl RecRate {
 
     pub fn crossing_resources<A, B>(&self, gamma: f64, x: &A, y: &A, z: &A) -> f64
     where
-        A: Genotype<B> + Diploid<B>,
-        B: Gamete<A> + Haploid,
+        A: Diploid<B>,
+        B: Haploid,
     {
         assert!((0.0..=1.0).contains(&gamma));
         let px = self.probability_gamete(x, &z.upper());

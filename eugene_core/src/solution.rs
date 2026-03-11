@@ -1,3 +1,12 @@
+use std::ops::Index;
+
+use bit_vec::BitVec;
+
+use crate::{
+    abstract_plants::{Allele, Diploid, Genotype, Haploid, IndexAllele, WGen},
+    extra::resources::RecRate,
+};
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct BaseSolution {
     pub tree_data: Vec<Vec<Vec<i32>>>,
@@ -14,6 +23,136 @@ pub enum Objective {
 }
 
 impl BaseSolution {}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+enum TreeType {
+    Node,
+    Leaf,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct CrossingSchedule {
+    n_loci: usize,
+    tree_data: Vec<[BitVec; 2]>,
+    tree_type: Vec<TreeType>,
+    tree_left: Vec<usize>,
+    tree_right: Vec<usize>,
+}
+
+/// Compact representation of a crossing schedule.
+///
+/// Maintains the following invariants:
+/// - crossing schedule is non-empty
+/// - elements are stored `Node`s first and `Leave`s second
+/// - the target if constructed is stored in index 0
+/// - crossing schedule is an acyclic graph
+/// - parents of each node are stored to the right of the node
+impl CrossingSchedule {
+    pub fn len(&self) -> usize {
+        self.tree_type.len()
+    }
+
+    #[inline]
+    pub fn n_loci(&self) -> usize {
+        self.n_loci
+    }
+
+    fn genotype_view(&self, i: usize) -> Option<GenotypeView> {
+        if i >= self.len() {
+            return None;
+        }
+        Some(GenotypeView {
+            crossing_schedule: self,
+            idx: i,
+        })
+    }
+
+    /// Computes the number of generations required to create the first node in the crossing
+    /// schedule. Assumes the elements in the crossing schedule are ordered with the target in
+    /// index 0 and leaves in the end.
+    pub fn generations(&self) -> usize {
+        let mut dp = vec![0; self.len()];
+        for i in (0..self.len()).rev() {
+            dp[i] = match self.tree_type[i] {
+                TreeType::Leaf => 0,
+                TreeType::Node => 1 + dp[self.tree_left[i]].max(dp[self.tree_right[i]]),
+            }
+        }
+        dp[0]
+    }
+
+    pub fn crossings(&self) -> usize {
+        self.tree_type
+            .iter()
+            .filter(|typ| **typ == TreeType::Node)
+            .count()
+    }
+
+    pub fn resources(&self, rec_rate: &RecRate, gamma: f64) -> usize {
+        let mut out = 0;
+        let mut i = 0;
+        while self.tree_type[i] == TreeType::Node {
+            out += rec_rate
+                .crossing_resources(
+                    gamma,
+                    &self.genotype_view(self.tree_left[i]).unwrap(),
+                    &self.genotype_view(self.tree_right[i]).unwrap(),
+                    &self.genotype_view(i).unwrap(),
+                )
+                .ceil() as usize;
+            i += 1;
+        }
+        out
+    }
+}
+
+struct GenotypeView<'a> {
+    crossing_schedule: &'a CrossingSchedule,
+    idx: usize,
+}
+
+struct GameteView<'a> {
+    crossing_schedule: &'a CrossingSchedule,
+    idx: usize,
+    chrom: bool,
+}
+
+impl<'a> Diploid<GameteView<'a>> for GenotypeView<'a> {
+    fn upper(&self) -> GameteView<'a> {
+        GameteView {
+            crossing_schedule: self.crossing_schedule,
+            idx: self.idx,
+            chrom: false,
+        }
+    }
+
+    fn lower(&self) -> GameteView<'a> {
+        GameteView {
+            crossing_schedule: self.crossing_schedule,
+            idx: self.idx,
+            chrom: true,
+        }
+    }
+}
+
+impl<'a> Haploid for GameteView<'a> {
+    fn alleles(&self) -> Vec<Allele> {
+        self.crossing_schedule.tree_data[self.idx][self.chrom as usize]
+            .iter()
+            .map(Into::into)
+            .collect()
+    }
+}
+
+impl<'a> IndexAllele<usize> for GameteView<'a> {
+    fn index(&self, idx: usize) -> Allele {
+        self.crossing_schedule.tree_data[self.idx][self.chrom as usize]
+            .get(idx)
+            .expect("idx out of bounds")
+            .into()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

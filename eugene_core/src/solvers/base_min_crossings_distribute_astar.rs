@@ -1,4 +1,3 @@
-use crate::dist_array;
 use crate::plants::dist_array::DistArray;
 use crate::solution::BaseSolution;
 use crate::solvers::base_min_generations_enumerator_dominance::IteratorNonDominating;
@@ -56,8 +55,6 @@ impl Output {
         self.objective
     }
 }
-
-//pub type DistArray = Vec<usize>;
 
 #[inline]
 fn distribute_n_pop(xs: &DistArray) -> usize {

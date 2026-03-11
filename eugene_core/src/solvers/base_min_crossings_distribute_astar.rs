@@ -1383,11 +1383,6 @@ mod tests {
     }
 
     #[test]
-    fn branching_full_joins_test() {
-        unimplemented!()
-    }
-
-    #[test]
     fn remaining_ranges_test() {
         assert_eq!(
             _remaining_ranges(
@@ -1411,126 +1406,13 @@ mod tests {
     }
 
     #[test]
+    fn branching_full_join_test() {
+        unimplemented!()
+    }
+
+    #[test]
     fn path_to_crossing_schedule_test() {
-        /**
-         * NOTE: this function is currently half implementing all of the logic for converting a
-         * path of AstarNodes into a crossing schedule. The main missing piece is correctly
-         * inferring the crosspoints for each cross, which is nontrivial because the simplification
-         * of the distribute arrays in the path can change the positions of the gametes and the
-         * labels of the gametes. This is a critical piece to implement before we can use this
-         * function to convert paths into crossing schedules.
-         **/
-        use crate::abstract_plants::Chrom;
-        use crate::abstract_plants::WGen;
-        use crate::plants::bit_array::SingleChromGenotype;
-        let dist_array = dist_array![0, 1];
-        let n_loci = dist_array.len();
-        let pop_0 = SingleChromGenotype::init_pop_distribute(&dist_array);
-
-        // check that the initial population is valid
-        assert_eq!(pop_0.len(), 2);
-        assert!((0..pop_0.len())
-            .all(|i| (0..n_loci).all(|j| { pop_0[i].get(true, j) == pop_0[i].get(false, j) })));
-        assert!((0..pop_0.len()).all(|i| {
-            (0..n_loci).all(|j| {
-                pop_0[i]
-                    .get(true, j)
-                    .map(|b| b == (dist_array[j] == i))
-                    .expect("get should not return None")
-            })
-        }));
-
-        // construct the path using astar and check the output
-        let path = astar(&dist_array).expect("astar failed");
-        let mut node_ref = path.clone();
-        let mut out_distarrays = vec![path.dist_array().clone()];
-        let mut out_parents = vec![path.parent_gametes()];
-        while node_ref.parent_node().is_some() {
-            node_ref = node_ref.parent_node().unwrap();
-            out_distarrays.push(node_ref.dist_array().clone());
-            out_parents.push(node_ref.parent_gametes());
-        }
-        out_distarrays.reverse();
-        out_parents.reverse();
-        assert_eq!(out_distarrays, vec![dist_array![0, 1], dist_array![0],]);
-        assert_eq!(out_parents, vec![None, Some((0, 1))]);
-
-        // create a crossing schedule from the path
-
-        let mut wgametes = pop_0
-            .iter()
-            .map(|x| Some(WGen::new(x.clone()).cross(CrosspointBitVec::new(Chrom::Upper, n_loci))))
-            .collect::<Vec<_>>();
-        wgametes.resize(n_loci, None);
-        for (i, (dist_array, parent_gametes)) in
-            out_distarrays.iter().zip(out_parents.iter()).enumerate()
-        {
-            if i == 0 {
-                // first dist_array is the initial population
-                continue;
-            }
-            let prev_dist_array = &out_distarrays[i - 1];
-            let (gx, gy) = parent_gametes.expect("parent gametes should be set");
-            let (wgx, wgy) = (
-                wgametes[gx].as_ref().expect("gx should be set"),
-                wgametes[gy].as_ref().expect("gy should be set"),
-            );
-            let wz = WGen::from_gametes(wgx, wgy);
-
-            // infer the redistribution from the previous dist_array and the current dist_array
-            let new_gametes = (0..dist_array.len())
-                .filter(|j| prev_dist_array[*j] == gx || prev_dist_array[*j] == gy)
-                .map(|j| dist_array[j])
-                .collect::<HashSet<_>>()
-                .into_iter()
-                .collect::<Vec<_>>();
-            for new_gamete in new_gametes {
-                // infer the crosspoint from the new gamete and the previous gametes
-                let mut crosspoint = CrosspointBitVec::new(Chrom::Upper, n_loci);
-                let mut first_source = None;
-                for j in 0..dist_array.len() {
-                    if dist_array[j] == gx || dist_array[j] == gy {
-                        if first_source.is_none() {
-                            first_source = Some(dist_array[j]);
-                        } else if Some(dist_array[j]) == first_source {
-                            continue;
-                        } else {
-                            let crosspoint_locus = j - 1;
-                            let crosspoint_chrom = Chrom::from(Some(gx) == first_source);
-                            crosspoint = CrosspointBitVec::new(crosspoint_chrom, crosspoint_locus);
-                            break;
-                        }
-                    }
-                }
-                ///////////////
-                //  BIG BUG  //
-                ///////////////
-                // The crosspoint is not always correct, because the size of the distribute array
-                // decreases as we go through the path.
-                // Solution: we need to figure out how to undo the simplification of the
-                // between the current and previous distribute arrays and then apply that operation
-                // to the remaining distribute arrays in the path.
-
-                /////////////////////////
-                //  THE OTHER BIG BUG  //
-                /////////////////////////
-                // The crosspoint is also not always correct because the simplification of the
-                // distribute also relabels the gametes.
-                // as well.
-
-                // create a new WGam for the new gamete
-                let wgz = wz.cross(crosspoint);
-                wgametes[new_gamete] = Some(wgz);
-            }
-        }
-        // check that the first index of the wgametes is the target gamete
-        assert!(wgametes[0]
-            .as_ref()
-            .expect("wgametes[0] should be set")
-            .gamete()
-            .alleles()
-            .iter()
-            .all(|&a| a == Allele::O),);
+        unimplemented!()
     }
 
     #[test]

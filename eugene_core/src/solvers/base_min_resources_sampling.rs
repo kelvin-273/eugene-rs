@@ -135,6 +135,8 @@ fn ancestors_contain(wz: &WGe) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use crate::plants::dist_array;
+
     use super::*;
 
     #[test]
@@ -165,12 +167,34 @@ mod tests {
         let new_wgl = WGam::new_from_genotype(SingleChromGamete::from_str("11"), new_wx);
         let new_wz = WGen::from_gametes(&new_wgl, &wgr);
 
-        assert_eq!(wz.genotype(), &SingleChromGenotype::from_str("11", "11"));
+        assert_eq!(wz.genotype(), &SingleChromGenotype::from_str("11", "01"));
         assert_eq!(
             new_wz.genotype(),
-            &SingleChromGenotype::from_str("11", "11")
+            &SingleChromGenotype::from_str("11", "01")
         );
 
         wz = new_wz;
+        todo!("complete this test")
+    }
+
+    #[test]
+    fn trivial_solution() {
+        use crate::plants::dist_array::{dist_array, DistArray};
+        let r = &RecRate::new(vec![]);
+        let gamma = 0.99;
+        let solution = breeding_program_distribute(&dist_array![0], &r, gamma)
+            .expect("breeding_program_distribute returned None");
+        assert_eq!(solution.resources(&r, gamma), 0);
+    }
+
+    #[test]
+    fn two_loci_distribute_instance() {
+        use crate::plants::dist_array::{dist_array, DistArray};
+        let r = &RecRate::new(vec![0.1]);
+        let gamma = 0.99;
+        let solution = breeding_program_distribute(&dist_array![0, 1], &r, gamma)
+            .expect("breeding_program_distribute returned None");
+        assert_ne!(solution.resources(&r, gamma), 1840);
+        assert_eq!(solution.resources(&r, gamma), 107);
     }
 }

@@ -1211,12 +1211,6 @@ mod tests {
     use crate::plants::dist_array::dist_array;
     use std::vec;
 
-    use crate::{
-        abstract_plants::{Allele, Haploid},
-        dist_array,
-        plants::bit_array::CrosspointBitVec,
-    };
-
     use super::*;
 
     macro_rules! pretty_print {

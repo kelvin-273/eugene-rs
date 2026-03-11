@@ -1,7 +1,8 @@
+use crate::plants::dist_array::DistArray;
 use crate::solution::BaseSolution;
 use crate::solvers::base_min_generations_enumerator_dominance::IteratorNonDominating;
 use core::cmp::Reverse;
-use std::collections::{BinaryHeap, HashSet};
+use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::fs;
 use std::io::Write;
 use std::rc::Rc;
@@ -55,8 +56,6 @@ impl Output {
     }
 }
 
-pub type DistArray = Vec<usize>;
-
 #[inline]
 fn distribute_n_pop(xs: &DistArray) -> usize {
     *xs.iter().max().expect("xs is empty") + 1
@@ -109,6 +108,12 @@ impl AstarNode {
     #[inline]
     fn g(&self) -> usize {
         self.head.g
+    }
+
+    #[inline]
+    fn crossings(&self) -> usize {
+        debug_assert_eq!(self.g() & 1, 0);
+        self.g() >> 1
     }
 
     #[inline]
@@ -301,25 +306,56 @@ fn branching_general(node: &AstarNode, config: &Config) -> Vec<AstarNode> {
 }
 
 pub fn breeding_program_distribute(xs: &DistArray) -> Option<BaseSolution> {
+    if xs.is_target() {
+        return Some(BaseSolution {
+            tree_data: vec![vec![vec![1; xs.n_loci()]; 2]],
+            tree_type: vec!["Leaf"],
+            tree_left: vec![0],
+            tree_right: vec![0],
+            objective: 0,
+        });
+    }
+
     let path = astar(xs)?;
-    let mut node_ref = path.clone();
-    // TODO: convert path into BaseSolution <10-03-25> //
-    let mut obj = 0;
-    // Add the final selfing to the total
-    if node_ref.parent_node().is_some() {
-        obj += 1;
-    }
-    while node_ref.parent_node().is_some() {
-        node_ref = node_ref.parent_node().unwrap();
-        obj += 1;
-    }
-    Some(BaseSolution {
+    let obj = path.crossings() + (path.crossings() > 0) as usize;
+
+    let mut sol = BaseSolution {
         tree_data: vec![],
         tree_type: vec![],
         tree_left: vec![],
         tree_right: vec![],
         objective: obj,
-    })
+    };
+
+    // Create population of gametes (as `Vec<i32>'s`)
+    let popg: Vec<Vec<i32>> = (0..xs.n_pop())
+        .map(|i| {
+            (0..xs.n_loci())
+                .map(|j| if xs[j] == i { 1 } else { 0 })
+                .collect()
+        })
+        .collect();
+    let _popg_idx = (0..popg.len()).collect::<Vec<_>>();
+
+    for g in popg.iter() {
+        sol.tree_data.push(vec![g.clone(), g.clone()]);
+        sol.tree_type.push("Leaf");
+        sol.tree_left.push(0);
+        sol.tree_right.push(0);
+    }
+
+    // collect distribute arrays on the path
+    let mut node_ref = path.clone();
+    let mut path_dist_arrays = vec![node_ref.dist_array().clone()];
+    while node_ref.parent_node().is_some() {
+        node_ref = node_ref.parent_node().unwrap();
+        path_dist_arrays.push(node_ref.dist_array().clone());
+    }
+
+    // Working backwards, convert the distribute arrays to unsimplifed form
+    //todo!("Oh God!");
+
+    Some(sol)
 }
 
 pub fn breeding_program_distribute_dominance(xs: &DistArray) -> Option<BaseSolution> {
@@ -834,6 +870,32 @@ fn simplify_dist_array(xs: &DistArray) -> DistArray {
     zs
 }
 
+fn simplify_dist_array_new(xs: &DistArray) -> DistArray {
+    let mut zs = xs.clone();
+    let n_loci = xs.n_loci();
+    let n_pop = xs.n_pop();
+    let mut mapping = vec![None; n_pop];
+    mapping[zs[0]] = Some(0);
+    let mut x_max = 0;
+    let mut i = 1;
+    let mut j = 1;
+    while j < n_loci {
+        if xs[j] != xs[j - 1] {
+            if mapping[zs[j]].is_none() {
+                mapping[zs[j]] = Some(x_max);
+                x_max += 1;
+            }
+            zs[i] = mapping[xs[j]]
+                // TODO: is there a way to rewrite this so that we don't have to call expect?
+                .expect("mapping[xs[j]] contains None despite .is_some() reporting otherwise");
+            i += 1;
+        }
+        j += 1;
+    }
+    zs.resize(i, 0);
+    zs
+}
+
 fn requires_multipoint(zs: &DistArray, xs: &DistArray, g: usize, i: usize) -> bool {
     let mut swaps = -1;
     let mut prev_value = None;
@@ -1057,8 +1119,96 @@ fn dominates_as_subsequence(xs: &DistArray, ys: &DistArray) -> bool {
     dp[nx][ny] == nx
 }
 
+/// Constructs a `BaseSolution` from a list of `DistArray`s corresponding to a path from the
+/// starting distribute array to the target distribute array. If the list of distribute arrays does
+/// not correspond to a valid path, then `None` is returned.
+fn distribute_arrays_to_solution_with_parents(
+    xss: &[DistArray],
+    gxys: &[(usize, usize)],
+) -> Option<BaseSolution> {
+    todo!("Implement distribute_arrays_to_solution_with_parents");
+}
+
+fn gametes_from_redistribution_forwards(
+    xs: &DistArray,
+    zs: &DistArray,
+    gxs: &Vec<Vec<i32>>,
+) -> Vec<Vec<i32>> {
+    todo!("Implement gametes_from_redistribution_forwards");
+}
+
+fn gametes_from_redistribution_forwards_with_parents(
+    xs: &DistArray,
+    zs: &DistArray,
+    gzs: &Vec<Vec<i32>>,
+    gx: usize,
+    gy: usize,
+) -> Vec<Vec<i32>> {
+    todo!("Implement gametes_from_redistribution_backwards");
+}
+
+fn gmaetes_used_in_redistribution(xs: &DistArray, zs: &DistArray) -> (usize, usize) {
+    let mut d_forwards = HashMap::new();
+    let mut d_backwards = HashMap::new();
+    for (gx, gz) in xs.iter().zip(zs.iter()) {
+        d_forwards
+            .entry(*gx)
+            .and_modify(|s: &mut HashSet<usize>| {
+                s.insert(*gz);
+            })
+            .or_insert_with(|| {
+                let mut s = HashSet::new();
+                s.insert(*gz);
+                s
+            });
+        d_backwards
+            .entry(*gz)
+            .and_modify(|s: &mut HashSet<usize>| {
+                s.insert(*gx);
+            })
+            .or_insert_with(|| {
+                let mut s = HashSet::new();
+                s.insert(*gx);
+                s
+            });
+    }
+    debug_assert!(
+        d_forwards.len() >= 2,
+        "Less than two gametes are used in the redistribution"
+    );
+    debug_assert!(
+        d_backwards.values().all(|s| s.len() >= 1),
+        "Gamete with too few parents"
+    );
+    debug_assert!(
+        d_backwards.values().any(|s| s.len() <= 2),
+        "Gamete with too many parents"
+    );
+    debug_assert!(
+        d_forwards.values().filter(|s| s.len() > 1).count() <= 2,
+        "More than two gametes used in the redistribution"
+    );
+    for gxs in d_backwards.values() {
+        if gxs.len() == 2 {
+            let items: [usize; 2] = gxs.iter().cloned().collect::<Vec<_>>().try_into().unwrap();
+            return (items[0], items[1]);
+        }
+    }
+    let current_out: Vec<usize> = d_forwards
+        .into_iter()
+        .filter_map(|(gx, gzs)| if gzs.len() > 1 { Some(gx) } else { None })
+        .collect();
+    match current_out.len() {
+        2 => (current_out[0], current_out[1]),
+        1 => (current_out[0], if current_out[0] == 0 { 1 } else { 0 }),
+        0 => (0, 1),
+        _ => panic!("More than two parents got through this code."),
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::plants::dist_array::dist_array;
     use std::vec;
 
     use crate::{
@@ -1085,14 +1235,14 @@ mod tests {
     fn branching_failed_test() {
         macro_rules! f {
             ($xs: expr, $zs: expr) => {
-                let node = AstarNode::new(&Vec::from($xs));
+                let node = AstarNode::new(&DistArray::from(Vec::from($xs)));
                 let output: Vec<DistArray> = branching(&node)
                     .iter()
                     .map(|x| x.dist_array())
                     .cloned()
                     .collect();
                 assert!(
-                    output.contains(&Vec::from($zs)),
+                    output.contains(&DistArray::from(Vec::from($zs))),
                     "{:?} not in {}",
                     $zs,
                     pretty_print!(output)
@@ -1108,7 +1258,8 @@ mod tests {
         macro_rules! f {
             ($xs: expr, $obj_check: expr) => {
                 assert_eq!(
-                    breeding_program_distribute(&Vec::from($xs)).map(|sol| sol.objective),
+                    breeding_program_distribute(&DistArray::from(Vec::from($xs)))
+                        .map(|sol| sol.objective),
                     Some($obj_check)
                 )
             };
@@ -1132,8 +1283,8 @@ mod tests {
     #[test]
     fn simplify_dist_array_test() {
         assert_eq!(
-            simplify_dist_array(&vec![0, 1, 0, 0, 1, 2, 2]),
-            vec![0, 1, 0, 1, 2]
+            simplify_dist_array(&dist_array![0, 1, 0, 0, 1, 2, 2]),
+            dist_array![0, 1, 0, 1, 2]
         )
     }
 
@@ -1141,25 +1292,25 @@ mod tests {
     fn generate_redistributions_brute_force_test() {
         assert_eq!(
             vec![
-                (vec![0, 0, 1], 0, 1),
-                (vec![0, 1, 0], 0, 1),
-                (vec![0, 1, 1], 0, 1),
-                (vec![0, 1, 2], 0, 1),
+                (dist_array![0, 0, 1], 0, 1),
+                (dist_array![0, 1, 0], 0, 1),
+                (dist_array![0, 1, 1], 0, 1),
+                (dist_array![0, 1, 2], 0, 1),
             ],
-            generate_redistributions_brute_force(&vec![0, 1, 0])
+            generate_redistributions_brute_force(&dist_array![0, 1, 0])
         );
         assert_eq!(
             vec![
-                (vec![0, 0, 1, 2], 0, 1),
-                (vec![0, 1, 0, 0], 0, 2),
-                (vec![0, 1, 0, 1], 1, 2),
-                (vec![0, 1, 0, 2], 0, 1),
-                (vec![0, 1, 1, 2], 0, 1),
-                (vec![0, 1, 2, 0], 0, 2),
-                (vec![0, 1, 2, 2], 0, 2),
-                (vec![0, 1, 2, 3], 0, 2),
+                (dist_array![0, 0, 1, 2], 0, 1),
+                (dist_array![0, 1, 0, 0], 0, 2),
+                (dist_array![0, 1, 0, 1], 1, 2),
+                (dist_array![0, 1, 0, 2], 0, 1),
+                (dist_array![0, 1, 1, 2], 0, 1),
+                (dist_array![0, 1, 2, 0], 0, 2),
+                (dist_array![0, 1, 2, 2], 0, 2),
+                (dist_array![0, 1, 2, 3], 0, 2),
             ],
-            generate_redistributions_brute_force(&vec![0, 1, 0, 2])
+            generate_redistributions_brute_force(&dist_array![0, 1, 0, 2])
         );
     }
 
@@ -1167,9 +1318,9 @@ mod tests {
     fn generate_redistributions_test() {
         macro_rules! f {
             ($xs: expr, $zs: expr) => {
-                let output = generate_redistributions(&Vec::from($xs));
+                let output = generate_redistributions(&DistArray::from(Vec::from($xs)));
                 assert!(
-                    output.contains(&(Vec::from($zs.0), $zs.1, $zs.2)),
+                    output.contains(&(DistArray::from(Vec::from($zs.0)), $zs.1, $zs.2)),
                     "{:?} not in {}",
                     $zs,
                     pretty_print!(output)
@@ -1181,7 +1332,7 @@ mod tests {
         use std::collections::HashMap;
         macro_rules! f2 {
             ($xs: expr) => {
-                let guess = generate_redistributions(&Vec::from($xs));
+                let guess = generate_redistributions(&DistArray::from(Vec::from($xs)));
                 let deduped_guess: HashMap<_, _> = guess
                     .into_iter()
                     .map(|zss| (format!("{:?}", zss.0.clone()), zss.clone()))
@@ -1189,7 +1340,7 @@ mod tests {
                 let mut guess: Vec<_> = deduped_guess.into_values().collect();
                 guess.sort();
 
-                let mut check = generate_redistributions_brute_force(&Vec::from($xs));
+                let mut check = generate_redistributions_brute_force(&DistArray::from(Vec::from($xs)));
                 check.sort();
                 assert!(guess.iter().zip(check.iter()).all(|(x, y)| x.0 == y.0), "assertion failed `guess == check` failed for xs = {:?}\n guess: {}\n check: {}\n",
                     $xs,
@@ -1218,7 +1369,10 @@ mod tests {
         macro_rules! f {
             ($xs: expr, $ys: expr) => {
                 assert!(
-                    dominates_gametewise(&Vec::from($xs), &Vec::from($ys)),
+                    dominates_gametewise(
+                        &DistArray::from(Vec::from($xs)),
+                        &DistArray::from(Vec::from($ys))
+                    ),
                     "dominates_gametewise({:?}, {:?}) == false",
                     $xs,
                     $ys
@@ -1227,11 +1381,6 @@ mod tests {
         }
         f!([0, 0, 1], [0, 1, 2]);
         f!([0, 1, 1], [0, 1, 2]);
-    }
-
-    #[test]
-    fn branching_full_joins_test() {
-        unimplemented!()
     }
 
     #[test]
@@ -1258,119 +1407,13 @@ mod tests {
     }
 
     #[test]
+    fn branching_full_join_test() {
+        unimplemented!()
+    }
+
+    #[test]
     fn path_to_crossing_schedule_test() {
-        use crate::abstract_plants::Chrom;
-        use crate::abstract_plants::WGen;
-        use crate::plants::bit_array::SingleChromGenotype;
-        use crate::plants::dist_array::{dist_array, DistArray};
-        let xs = dist_array![0, 1];
-        let n_loci = xs.len();
-        let pop_0 = SingleChromGenotype::init_pop_distribute(&xs);
-
-        // check that the initial population is valid
-        assert_eq!(pop_0.len(), 2);
-        assert!((0..pop_0.len())
-            .all(|i| (0..n_loci).all(|j| { pop_0[i].get(true, j) == pop_0[i].get(false, j) })));
-        assert!((0..pop_0.len()).all(|i| {
-            (0..n_loci).all(|j| {
-                pop_0[i]
-                    .get(true, j)
-                    .map(|b| b == (xs[j] == i))
-                    .expect("get should not return None")
-            })
-        }));
-
-        // construct the path using astar and check the output
-        let path = astar(&xs).expect("astar failed");
-        let mut node_ref = path.clone();
-        let mut out_distarrays = vec![path.dist_array().clone()];
-        let mut out_parents = vec![path.parent_gametes()];
-        while node_ref.parent_node().is_some() {
-            node_ref = node_ref.parent_node().unwrap();
-            out_distarrays.push(node_ref.dist_array().clone());
-            out_parents.push(node_ref.parent_gametes());
-        }
-        out_distarrays.reverse();
-        out_parents.reverse();
-        assert_eq!(out_distarrays, vec![vec![0, 1], vec![0],]);
-        assert_eq!(out_parents, vec![None, Some((0, 1))]);
-
-        // create a crossing schedule from the path
-
-        let mut wgametes = pop_0
-            .iter()
-            .map(|x| Some(WGen::new(x.clone()).cross(CrosspointBitVec::new(Chrom::Upper, n_loci))))
-            .collect::<Vec<_>>();
-        wgametes.resize(n_loci, None);
-        for (i, (dist_array, parent_gametes)) in
-            out_distarrays.iter().zip(out_parents.iter()).enumerate()
-        {
-            if i == 0 {
-                // first dist_array is the initial population
-                continue;
-            }
-            let prev_dist_array = &out_distarrays[i - 1];
-            let (gx, gy) = parent_gametes.expect("parent gametes should be set");
-            let (wgx, wgy) = (
-                wgametes[gx].as_ref().expect("gx should be set"),
-                wgametes[gy].as_ref().expect("gy should be set"),
-            );
-            let wz = WGen::from_gametes(wgx, wgy);
-
-            // infer the redistribution from the previous dist_array and the current dist_array
-            let new_gametes = (0..dist_array.len())
-                .filter(|j| prev_dist_array[*j] == gx || prev_dist_array[*j] == gy)
-                .map(|j| dist_array[j])
-                .collect::<HashSet<_>>()
-                .into_iter()
-                .collect::<Vec<_>>();
-            for new_gamete in new_gametes {
-                // infer the crosspoint from the new gamete and the previous gametes
-                let mut crosspoint = CrosspointBitVec::new(Chrom::Upper, n_loci);
-                let mut first_source = None;
-                for j in 0..dist_array.len() {
-                    if dist_array[j] == gx || dist_array[j] == gy {
-                        if first_source.is_none() {
-                            first_source = Some(dist_array[j]);
-                        } else if Some(dist_array[j]) == first_source {
-                            continue;
-                        } else {
-                            let crosspoint_locus = j - 1;
-                            let crosspoint_chrom = Chrom::from(Some(gx) == first_source);
-                            crosspoint = CrosspointBitVec::new(crosspoint_chrom, crosspoint_locus);
-                            break;
-                        }
-                    }
-                }
-                ///////////////
-                //  BIG BUG  //
-                ///////////////
-                // The crosspoint is not always correct, because the size of the distribute array
-                // decreases as we go through the path.
-                // Solution: we need to figure out how to undo the simplification of the
-                // between the current and previous distribute arrays and then apply that operation
-                // to the remaining distribute arrays in the path.
-
-                /////////////////////////
-                //  THE OTHER BIG BUG  //
-                /////////////////////////
-                // The crosspoint is also not always correct because the simplification of the
-                // distribute also relabels the gametes.
-                // as well.
-
-                // create a new WGam for the new gamete
-                let wgz = wz.cross(crosspoint);
-                wgametes[new_gamete] = Some(wgz);
-            }
-        }
-        // check that the first index of the wgametes is the target gamete
-        assert!(wgametes[0]
-            .as_ref()
-            .expect("wgametes[0] should be set")
-            .gamete()
-            .alleles()
-            .iter()
-            .all(|&a| a == Allele::O),);
+        unimplemented!()
     }
 
     #[test]
@@ -1378,7 +1421,8 @@ mod tests {
         macro_rules! f {
             ($xs: expr, $obj_check: expr) => {
                 assert_eq!(
-                    breeding_program_distribute_diving(&Vec::from($xs)).map(|sol| sol.objective),
+                    //breeding_program_distribute_diving(&DistArray::from(Vec::from($xs))).map(|sol| sol.objective),
+                    breeding_program_distribute_diving(&DistArray::from(Vec::from($xs))).map(|sol| sol.objective),
                     Some($obj_check)
                 )
             };
@@ -1403,7 +1447,7 @@ mod tests {
     fn breeding_program_distribute_diving_general_test() {
         macro_rules! f {
             ($xs: expr, 0, $ub_check: expr) => {
-                if let Some(res) = breeding_program_distribute_general(&Vec::from($xs), &Config {
+                if let Some(res) = breeding_program_distribute_general(&DistArray::from(Vec::from($xs)), &Config {
                     full_join: false,
                     dominance: false,
                     diving: true,
@@ -1416,7 +1460,7 @@ mod tests {
                 }
             };
             ($xs: expr, $lb_check: expr, $ub_check: expr) => {
-                if let Some(res) = breeding_program_distribute_general(&Vec::from($xs), &Config::new(false, false, true, None))
+                if let Some(res) = breeding_program_distribute_general(&DistArray::from(Vec::from($xs)), &Config::new(false, false, true, None))
                     .map(|sol| sol.objective).flatten() {
                         assert!(res >= $lb_check, "breeding_program_distribute_general({:?}) returned a solution below the lower bound {}", $xs, $lb_check);
                         assert!(res <= $ub_check, "breeding_program_distribute_general({:?}) returned a solution above the upper bound {}", $xs, $ub_check);
@@ -1443,16 +1487,16 @@ mod tests {
 
     #[test]
     fn generate_redistributions_2_test() {
-        let xs = vec![0, 1, 0, 2];
+        let xs = dist_array![0, 1, 0, 2];
         let output = generate_redistributions(&xs);
         assert!(
             vec![
-                (vec![0, 0, 1, 2], 0, 1),
-                (vec![0, 1, 0, 2], 0, 1),
-                (vec![0, 1, 1, 2], 0, 1),
-                (vec![0, 1, 0, 0], 0, 2),
-                (vec![0, 1, 0, 1], 1, 2),
-                (vec![0, 1, 2, 0], 0, 2),
+                (dist_array![0, 0, 1, 2], 0, 1),
+                (dist_array![0, 1, 0, 2], 0, 1),
+                (dist_array![0, 1, 1, 2], 0, 1),
+                (dist_array![0, 1, 0, 0], 0, 2),
+                (dist_array![0, 1, 0, 1], 1, 2),
+                (dist_array![0, 1, 2, 0], 0, 2),
             ]
             .into_iter()
             .all(|x| output.contains(&x)),

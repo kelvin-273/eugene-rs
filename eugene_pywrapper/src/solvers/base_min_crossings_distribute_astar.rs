@@ -1,6 +1,6 @@
 use crate::solution::PyBaseSolution;
 use eugene_core::solvers::base_min_crossings_distribute_astar;
-use eugene_core::solvers::base_min_crossings_distribute_astar::{Config, DistArray};
+use eugene_core::solvers::base_min_crossings_distribute_astar::Config;
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
@@ -28,7 +28,7 @@ pub fn breeding_program_distribute_general_python(
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || {
         let res = base_min_crossings_distribute_astar::breeding_program_distribute_general(
-            &xs,
+            &xs.into(),
             &Config::new(full_join, dominance, diving, debug_trace_file),
         );
         tx.send(res)
@@ -49,10 +49,10 @@ pub fn breeding_program_distribute_general_python(
 ///
 /// For now, only the objective is computed.
 #[pyo3::pyfunction]
-pub fn breeding_program_distribute_python(xs: DistArray, timeout: Option<u64>) -> PyBaseSolution {
+pub fn breeding_program_distribute_python(xs: Vec<usize>, timeout: Option<u64>) -> PyBaseSolution {
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || {
-        let res = base_min_crossings_distribute_astar::breeding_program_distribute(&xs);
+        let res = base_min_crossings_distribute_astar::breeding_program_distribute(&xs.into());
         tx.send(res)
     });
     let res = rx
@@ -73,13 +73,14 @@ pub fn breeding_program_distribute_python(xs: DistArray, timeout: Option<u64>) -
 
 #[pyo3::pyfunction]
 pub fn breeding_program_distribute_no_full_join_python(
-    xs: DistArray,
+    xs: Vec<usize>,
     timeout: Option<u64>,
 ) -> PyBaseSolution {
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || {
-        let res =
-            base_min_crossings_distribute_astar::breeding_program_distribute_no_full_join(&xs);
+        let res = base_min_crossings_distribute_astar::breeding_program_distribute_no_full_join(
+            &xs.into(),
+        );
         tx.send(res)
     });
     let res = rx
@@ -100,12 +101,13 @@ pub fn breeding_program_distribute_no_full_join_python(
 
 #[pyo3::pyfunction]
 pub fn breeding_program_distribute_dominance_python(
-    xs: DistArray,
+    xs: Vec<usize>,
     timeout: Option<u64>,
 ) -> PyBaseSolution {
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || {
-        let res = base_min_crossings_distribute_astar::breeding_program_distribute_dominance(&xs);
+        let res =
+            base_min_crossings_distribute_astar::breeding_program_distribute_dominance(&xs.into());
         tx.send(res)
     });
     let res = rx
@@ -126,14 +128,14 @@ pub fn breeding_program_distribute_dominance_python(
 
 #[pyo3::pyfunction]
 pub fn breeding_program_distribute_dominance_no_full_join_python(
-    xs: DistArray,
+    xs: Vec<usize>,
     timeout: Option<u64>,
 ) -> PyBaseSolution {
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || {
         let res =
             base_min_crossings_distribute_astar::breeding_program_distribute_dominance_no_full_join(
-                &xs,
+                &xs.into(),
             );
         tx.send(res)
     });
@@ -155,12 +157,13 @@ pub fn breeding_program_distribute_dominance_no_full_join_python(
 
 #[pyo3::pyfunction]
 pub fn breeding_program_distribute_diving_python(
-    xs: DistArray,
+    xs: Vec<usize>,
     timeout: Option<u64>,
 ) -> PyBaseSolution {
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || {
-        let res = base_min_crossings_distribute_astar::breeding_program_distribute_diving(&xs);
+        let res =
+            base_min_crossings_distribute_astar::breeding_program_distribute_diving(&xs.into());
         tx.send(res)
     });
     let res = rx

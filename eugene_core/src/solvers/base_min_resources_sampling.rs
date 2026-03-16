@@ -4,7 +4,7 @@ use crate::abstract_plants::{Crosspoint, WGam, WGen};
 use crate::extra::resources::{cost_of_crossing, RecRate};
 use crate::plants::bit_array::{CrosspointBitVec, SingleChromGamete, SingleChromGenotype};
 use crate::plants::dist_array::DistArray;
-use crate::solution::BaseSolution;
+use crate::solution::{BaseSolution, CrossingSchedule};
 use rand::seq::SliceRandom;
 
 type WGe = WGen<SingleChromGenotype, SingleChromGamete>;
@@ -26,7 +26,7 @@ pub fn breeding_program_distribute(
     xs: &DistArray,
     rec_rate: &RecRate,
     gamma: f64,
-) -> Option<BaseSolution> {
+) -> Option<CrossingSchedule> {
     let n_loci = xs.n_loci();
     assert!(gamma >= 0.0 && gamma <= 1.0);
     let pop_0 = SingleChromGenotype::init_pop_distribute(xs);
@@ -51,7 +51,7 @@ pub fn breeding_program(
     pop_0: &Vec<SingleChromGenotype>,
     rec_rate: &RecRate,
     gamma: f64,
-) -> Option<BaseSolution> {
+) -> Option<CrossingSchedule> {
     let ideotype = SingleChromGenotype::ideotype(n_loci);
 
     let mut pop: Vec<WGe> = pop_0.iter().cloned().map(WGen::new).collect();
@@ -101,7 +101,7 @@ pub fn breeding_program(
         }
     }
     let wz = h.get(&ideotype)?;
-    Some(wz.to_base_sol(n_loci, crate::solution::Objective::Crossings))
+    Some(wz.clone().into())
 }
 
 /// Check if the ancestors of wz contain wz itself

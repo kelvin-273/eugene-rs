@@ -361,4 +361,77 @@ mod tests {
         assert_eq!(schedule.tree_left, vec![2, 2, 0]);
         assert_eq!(schedule.tree_right, vec![1, 2, 0]);
     }
+
+    #[test]
+    fn crossing_schedule_generations_test() {
+        let x1 = SingleChromGenotype::from_str("10101", "01010");
+        let wx1 = WGen::new(x1);
+
+        let g1 = SingleChromGamete::from_str("01101");
+        let g2 = SingleChromGamete::from_str("01011");
+        let wg1 = WGam::new_from_genotype(g1, wx1.clone());
+        let wg2 = WGam::new_from_genotype(g2, wx1.clone());
+        let wx2 = WGen::from_gametes(&wg1, &wg2);
+
+        let g3 = SingleChromGamete::from_str("10101");
+        let g4 = SingleChromGamete::from_str("01111");
+
+        let wg3 = WGam::new_from_genotype(g3, wx1.clone());
+        let wg4 = WGam::new_from_genotype(g4, wx2.clone());
+        let wx3 = WGen::from_gametes(&wg3, &wg4);
+
+        let schedule = CrossingSchedule::from(wx3);
+        assert_eq!(schedule.generations(), 2);
+    }
+
+    #[test]
+    fn crossing_schedule_crossings_test() {
+        let x1 = SingleChromGenotype::from_str("10101", "01010");
+        let wx1 = WGen::new(x1);
+
+        let g1 = SingleChromGamete::from_str("01101");
+        let g2 = SingleChromGamete::from_str("01011");
+        let wg1 = WGam::new_from_genotype(g1, wx1.clone());
+        let wg2 = WGam::new_from_genotype(g2, wx1.clone());
+        let wx2 = WGen::from_gametes(&wg1, &wg2);
+
+        let g3 = SingleChromGamete::from_str("10101");
+        let g4 = SingleChromGamete::from_str("01111");
+
+        let wg3 = WGam::new_from_genotype(g3, wx1.clone());
+        let wg4 = WGam::new_from_genotype(g4, wx2.clone());
+        let wx3 = WGen::from_gametes(&wg3, &wg4);
+
+        let schedule = CrossingSchedule::from(wx3);
+        assert_eq!(schedule.crossings(), 2);
+    }
+
+    #[test]
+    fn crossing_schedule_resources_test() {
+        let x1 = SingleChromGenotype::from_str("10", "10");
+        let x2 = SingleChromGenotype::from_str("01", "01");
+
+        let g1 = SingleChromGamete::from_str("10");
+        let g2 = SingleChromGamete::from_str("01");
+        let g3 = SingleChromGamete::from_str("11");
+
+        let wx1 = WGen::new(x1);
+        let wx2 = WGen::new(x2);
+        let wg1 = WGam::new_from_genotype(g1, wx1.clone());
+        let wg2 = WGam::new_from_genotype(g2, wx2.clone());
+        let wx3 = WGen::from_gametes(&wg1, &wg2);
+        let wg3 = WGam::new_from_genotype(g3.clone(), wx3.clone());
+        let wx4 = WGen::from_gametes(&wg3, &wg2);
+        let wg4 = WGam::new_from_genotype(g3, wx4.clone());
+        let wx5 = WGen::from_gametes(&wg4, &wg4);
+        // Head of a shorter crossing schedule with the same target as wx5.
+        let wx6 = WGen::from_gametes(&wg3, &wg3);
+
+        let rec_rate = RecRate::from(vec![0.1]);
+        let gamma = 0.99;
+        let crossing_schedule = CrossingSchedule::from(wx5);
+        let crossing_schedule2 = CrossingSchedule::from(wx6);
+        assert_eq!(crossing_schedule.resources(&rec_rate, gamma), 3);
+        assert_eq!(crossing_schedule2.resources(&rec_rate, gamma), 1);
+    }
 }

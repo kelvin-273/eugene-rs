@@ -21,19 +21,22 @@ impl RecRate {
         let v_gx = gx.alleles();
         assert!(!v_gx.is_empty());
         assert!(v_xu.len() == v_xl.len() && v_xu.len() == v_gx.len());
-        assert!((0..v_gx.len()).all(|i| v_gx[i] == v_xu[i] || v_gx[i] == v_xl[i]));
+        //assert!((0..v_gx.len()).all(|i| v_gx[i] == v_xu[i] || v_gx[i] == v_xl[i]));
         // Dynamic programming to calculate the probability of gamete
-        let mut dp = [1.0; 2];
-        for i in 0..v_gx.len() {
+        let mut dp = [
+            if v_gx[0] == v_xu[0] { 0.5 } else { 0.0 }, // upper parent
+            if v_gx[0] == v_xl[0] { 0.5 } else { 0.0 }, // lower parent
+        ];
+        for i in 0..v_gx.len() - 1 {
             // dp[c] is the probability of creating the gamete up to locus i having sourced locus i
             // from the upper (c=0) or lower (c=1) parent
             let r = self.rec_between_loci[i];
-            let b_u = if v_gx[i] == v_xu[i] { 1.0 } else { 0.0 };
-            let b_l = if v_gx[i] == v_xl[i] { 1.0 } else { 0.0 };
+            let b_u = if v_gx[i + 1] == v_xu[i + 1] { 1.0 } else { 0.0 };
+            let b_l = if v_gx[i + 1] == v_xl[i + 1] { 1.0 } else { 0.0 };
 
             dp = [
-                dp[0] * (1.0 - r) * b_u + dp[1] * r * b_l, // upper parent
-                dp[1] * (1.0 - r) * b_l + dp[0] * r * b_u, // lower parent
+                b_u * (dp[0] * (1.0 - r) + dp[1] * r), // upper parent
+                b_l * (dp[1] * (1.0 - r) + dp[0] * r), // lower parent
             ]
         }
         // The probability of creating the gamete is the sum of the probabilities of sourcing it
@@ -93,14 +96,28 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_rec_rate_probability_gamete() {
+    fn test_rec_rate_probability_gamete_2_loci() {
         use crate::plants::bit_array::{SingleChromGamete, SingleChromGenotype};
-        let rec_rate = RecRate {
-            rec_between_loci: vec![0.1, 0.2, 0.3],
-        };
-        let x = SingleChromGenotype::from_str("011", "110");
-        let gx = SingleChromGamete::from_str("011");
-        let _prob = rec_rate.probability_gamete(&x, &gx);
-        todo!("Implement test for probability_gamete");
+        let rec_rate = RecRate::from(vec![0.1]);
+
+        let x = SingleChromGenotype::from_str("01", "10");
+        let gx = SingleChromGamete::from_str("01");
+        assert_eq!(rec_rate.probability_gamete(&x, &gx), 0.45);
+        let gx = SingleChromGamete::from_str("10");
+        assert_eq!(rec_rate.probability_gamete(&x, &gx), 0.45);
+        let gx = SingleChromGamete::from_str("00");
+        assert_eq!(rec_rate.probability_gamete(&x, &gx), 0.05);
+        let gx = SingleChromGamete::from_str("11");
+        assert_eq!(rec_rate.probability_gamete(&x, &gx), 0.05);
+
+        let x = SingleChromGenotype::from_str("10", "11");
+        let gx = SingleChromGamete::from_str("01");
+        assert_eq!(rec_rate.probability_gamete(&x, &gx), 0.0);
+        let gx = SingleChromGamete::from_str("10");
+        assert_eq!(rec_rate.probability_gamete(&x, &gx), 0.5);
+        let gx = SingleChromGamete::from_str("00");
+        assert_eq!(rec_rate.probability_gamete(&x, &gx), 0.0);
+        let gx = SingleChromGamete::from_str("11");
+        assert_eq!(rec_rate.probability_gamete(&x, &gx), 0.5);
     }
 }

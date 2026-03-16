@@ -1,10 +1,14 @@
-use std::ops::Index;
+use std::{
+    collections::{HashMap, HashSet, VecDeque},
+    ops::Index,
+};
 
 use bit_vec::BitVec;
 
 use crate::{
     abstract_plants::{Allele, Diploid, Genotype, Haploid, IndexAllele, WGen},
     extra::resources::RecRate,
+    plants::bit_array::{SingleChromGamete, SingleChromGenotype},
 };
 
 #[derive(Debug, PartialEq, Eq)]
@@ -103,6 +107,112 @@ impl CrossingSchedule {
             i += 1;
         }
         out
+    }
+}
+
+impl From<WGen<SingleChromGenotype, SingleChromGamete>> for CrossingSchedule {
+    fn from(wtarget: WGen<SingleChromGenotype, SingleChromGamete>) -> Self {
+        let n_loci = wtarget.genotype().n_loci();
+
+        let mut tree_refs = Vec::new();
+        let mut tree_type = Vec::new();
+        let mut tree_left = Vec::new();
+        let mut tree_right = Vec::new();
+
+        let mut hash_map = HashMap::new();
+
+        // DFS to construct the crossing schedule tree from the target WGen. Maintains a hash set
+        // to avoid visiting the same WGen twice and to assign indices to WGen in the crossing
+        // schedule.
+        fn visit(
+            wx: WGen<SingleChromGenotype, SingleChromGamete>,
+            hash_map: &mut HashMap<SingleChromGenotype, usize>,
+            tree_refs: &mut Vec<WGen<SingleChromGenotype, SingleChromGamete>>,
+            tree_type: &mut Vec<TreeType>,
+            tree_left: &mut Vec<usize>,
+            tree_right: &mut Vec<usize>,
+        ) -> usize {
+            if let Some(idx) = hash_map.get(wx.genotype()) {
+                return *idx;
+            }
+            match wx.history() {
+                None => {
+                    tree_type.push(TreeType::Leaf);
+                    tree_left.push(0);
+                    tree_right.push(0);
+                }
+                Some((wgx, wgy)) => {
+                    let left_idx = visit(
+                        wgx.history().unwrap(),
+                        hash_map,
+                        tree_refs,
+                        tree_type,
+                        tree_left,
+                        tree_right,
+                    );
+                    let right_idx = visit(
+                        wgy.history().unwrap(),
+                        hash_map,
+                        tree_refs,
+                        tree_type,
+                        tree_left,
+                        tree_right,
+                    );
+                    tree_type.push(TreeType::Node);
+                    tree_left.push(left_idx);
+                    tree_right.push(right_idx);
+                }
+            };
+            let idx = tree_refs.len();
+            tree_refs.push(wx.clone());
+            hash_map.insert(wx.genotype().clone(), idx);
+            idx
+        }
+
+        visit(
+            wtarget,
+            &mut hash_map,
+            &mut tree_refs,
+            &mut tree_type,
+            &mut tree_left,
+            &mut tree_right,
+        );
+
+        tree_refs.reverse();
+        tree_type.reverse();
+        tree_left.reverse();
+        tree_right.reverse();
+
+        let tree_data = tree_refs
+            .into_iter()
+            .map(|wx| wx.genotype().clone().into())
+            .collect();
+        tree_left
+            .iter_mut()
+            .zip(tree_type.iter())
+            .for_each(|(left, typ)| {
+                *left = match typ {
+                    TreeType::Node => tree_type.len() - *left - 1,
+                    TreeType::Leaf => 0,
+                }
+            });
+        tree_right
+            .iter_mut()
+            .zip(tree_type.iter())
+            .for_each(|(right, typ)| {
+                *right = match typ {
+                    TreeType::Node => tree_type.len() - *right - 1,
+                    TreeType::Leaf => 0,
+                }
+            });
+
+        Self {
+            n_loci,
+            tree_data,
+            tree_type,
+            tree_left,
+            tree_right,
+        }
     }
 }
 
@@ -221,5 +331,34 @@ mod tests {
         assert_eq!(vec!["Node", "Leaf"], sol_g.tree_type);
         assert_eq!(vec![2, 0], sol_g.tree_left);
         assert_eq!(vec![2, 0], sol_g.tree_right);
+    }
+
+    #[test]
+    fn crossing_schedule_from_wgen_test() {
+        let x1 = SingleChromGenotype::from_str("10101", "01010");
+        let wx1 = WGen::new(x1);
+
+        let g1 = SingleChromGamete::from_str("01101");
+        let g2 = SingleChromGamete::from_str("01011");
+        let wg1 = WGam::new_from_genotype(g1, wx1.clone());
+        let wg2 = WGam::new_from_genotype(g2, wx1.clone());
+        let wx2 = WGen::from_gametes(&wg1, &wg2);
+
+        let g3 = SingleChromGamete::from_str("10101");
+        let g4 = SingleChromGamete::from_str("01111");
+
+        let wg3 = WGam::new_from_genotype(g3, wx1.clone());
+        let wg4 = WGam::new_from_genotype(g4, wx2.clone());
+        let wx3 = WGen::from_gametes(&wg3, &wg4);
+
+        let schedule = CrossingSchedule::from(wx3);
+        assert_eq!(schedule.n_loci(), 5);
+        assert_eq!(schedule.len(), 3);
+        assert_eq!(
+            schedule.tree_type,
+            vec![TreeType::Node, TreeType::Node, TreeType::Leaf]
+        );
+        assert_eq!(schedule.tree_left, vec![2, 2, 0]);
+        assert_eq!(schedule.tree_right, vec![1, 2, 0]);
     }
 }

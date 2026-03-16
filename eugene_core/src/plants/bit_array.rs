@@ -220,6 +220,18 @@ impl Feasible<usize> for SingleChromGenotype {
     }
 }
 
+impl From<SingleChromGenotype> for [BitVec; 2] {
+    fn from(x: SingleChromGenotype) -> Self {
+        [x.chrom1, x.chrom2]
+    }
+}
+
+impl From<SingleChromGamete> for BitVec {
+    fn from(gx: SingleChromGamete) -> Self {
+        gx.gamete
+    }
+}
+
 impl SingleChromGamete {
     pub fn bool_array(v: &[bool]) -> Self {
         Self {

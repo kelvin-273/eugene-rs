@@ -429,9 +429,11 @@ mod tests {
 
         let rec_rate = RecRate::from(vec![0.1]);
         let gamma = 0.99;
-        let crossing_schedule = CrossingSchedule::from(wx5);
+        let crossing_schedule0 = CrossingSchedule::from(wx3);
+        let crossing_schedule1 = CrossingSchedule::from(wx5);
         let crossing_schedule2 = CrossingSchedule::from(wx6);
-        assert_eq!(crossing_schedule.resources(&rec_rate, gamma), 3);
-        assert_eq!(crossing_schedule2.resources(&rec_rate, gamma), 1);
+        assert_eq!(crossing_schedule0.resources(&rec_rate, gamma), 1);
+        assert_eq!(crossing_schedule1.resources(&rec_rate, gamma), 108);
+        assert_eq!(crossing_schedule2.resources(&rec_rate, gamma), 1841);
     }
 }

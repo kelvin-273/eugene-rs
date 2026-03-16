@@ -84,9 +84,13 @@ impl Deref for RecRate {
 }
 
 pub fn cost_of_crossing(gamma: f64, px: f64, py: f64) -> f64 {
+    assert!((0.0..=1.0).contains(&gamma));
+    assert!((0.0..=1.0).contains(&px));
+    assert!((0.0..=1.0).contains(&px));
     let rho = px * py;
     match rho {
         0.0 => f64::INFINITY,
+        1.0 => 1.0,
         _ => f64::log2(1.0 - gamma) / f64::log2(1.0 - rho),
     }
 }

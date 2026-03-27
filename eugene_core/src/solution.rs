@@ -226,11 +226,13 @@ impl From<WGen<SingleChromGenotype, SingleChromGamete>> for CrossingSchedule {
     }
 }
 
+#[derive(Debug)]
 pub struct GenotypeView<'a> {
     crossing_schedule: &'a CrossingSchedule,
     idx: usize,
 }
 
+#[derive(Debug)]
 pub struct GameteView<'a> {
     crossing_schedule: &'a CrossingSchedule,
     idx: usize,

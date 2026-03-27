@@ -26,7 +26,8 @@ pub mod greedy_multichrom_ti;
 pub mod base_min_resources_beam_search;
 /// Heuristically minimises resources by greedy selection over non-dominated crossings
 pub mod base_min_resources_greedy_dom;
-///
+/// Heuristically minimises resources by sampling crossings according to the inheritance
+/// distribution, parameterised by the recombination rates, from pairs of parents chosen uniformly
 pub mod base_min_resources_sampling;
 
 /// ## Heuristic methods

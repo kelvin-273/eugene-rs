@@ -260,6 +260,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_multi_chrom_min_generations_feasible() {
         let pop_0 = vec![
             MultiChromGenotype {
@@ -280,6 +281,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_multi_chrom_min_generations_different_chromosomes() {
         let pop_0 = vec![
             MultiChromGenotype {

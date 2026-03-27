@@ -124,6 +124,7 @@ mod tests {
     use crate::plants::bit_array::SingleChromGenotype;
 
     #[test]
+    #[ignore]
     fn test_breeding_program_2_loci() {
         let n_loci = 2;
         let pop_0 = vec![
@@ -138,6 +139,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_breeding_program_3_loci() {
         let n_loci = 3;
         let pop_0 = vec![

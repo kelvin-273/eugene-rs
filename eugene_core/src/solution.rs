@@ -61,13 +61,23 @@ impl CrossingSchedule {
         self.n_loci
     }
 
-    fn genotype_view(&self, i: usize) -> Option<GenotypeView> {
+    pub fn genotype_view(&'_ self, i: usize) -> Option<GenotypeView<'_>> {
         if i >= self.len() {
             return None;
         }
         Some(GenotypeView {
             crossing_schedule: self,
             idx: i,
+        })
+    }
+
+    pub fn left_parent(&'_ self, i: usize) -> Option<GenotypeView<'_>> {
+        if i >= self.len() || self.tree_type[i] == TreeType::Leaf {
+            return None;
+        }
+        Some(GenotypeView {
+            crossing_schedule: self,
+            idx: self.tree_left[i],
         })
     }
 
@@ -216,12 +226,12 @@ impl From<WGen<SingleChromGenotype, SingleChromGamete>> for CrossingSchedule {
     }
 }
 
-struct GenotypeView<'a> {
+pub struct GenotypeView<'a> {
     crossing_schedule: &'a CrossingSchedule,
     idx: usize,
 }
 
-struct GameteView<'a> {
+pub struct GameteView<'a> {
     crossing_schedule: &'a CrossingSchedule,
     idx: usize,
     chrom: bool,
@@ -435,5 +445,43 @@ mod tests {
         assert_eq!(crossing_schedule0.resources(&rec_rate, gamma), 1);
         assert_eq!(crossing_schedule1.resources(&rec_rate, gamma), 108);
         assert_eq!(crossing_schedule2.resources(&rec_rate, gamma), 1841);
+    }
+
+    #[test]
+    fn crossing_schedule_view_test() {
+        use Allele::*;
+        let x1 = SingleChromGenotype::from_str("10101", "01010");
+        let wx1 = WGen::new(x1);
+
+        let g1 = SingleChromGamete::from_str("01101");
+        let g2 = SingleChromGamete::from_str("01011");
+        let wg1 = WGam::new_from_genotype(g1, wx1.clone());
+        let wg2 = WGam::new_from_genotype(g2, wx1.clone());
+        let wx2 = WGen::from_gametes(&wg1, &wg2);
+
+        let g3 = SingleChromGamete::from_str("10101");
+        let g4 = SingleChromGamete::from_str("01111");
+
+        let wg3 = WGam::new_from_genotype(g3, wx1.clone());
+        let wg4 = WGam::new_from_genotype(g4, wx2.clone());
+        let wx3 = WGen::from_gametes(&wg3, &wg4);
+
+        let schedule = CrossingSchedule::from(wx3);
+
+        let vz = schedule
+            .genotype_view(1)
+            .expect("One'th element yields None");
+
+        assert_eq!(vz.upper().index(0), Z);
+        assert_eq!(vz.upper().index(1), O);
+        assert_eq!(vz.upper().index(2), O);
+        assert_eq!(vz.upper().index(3), Z);
+        assert_eq!(vz.upper().index(4), O);
+
+        assert_eq!(vz.lower().index(0), Z);
+        assert_eq!(vz.lower().index(1), O);
+        assert_eq!(vz.lower().index(2), Z);
+        assert_eq!(vz.lower().index(3), O);
+        assert_eq!(vz.lower().index(4), O);
     }
 }

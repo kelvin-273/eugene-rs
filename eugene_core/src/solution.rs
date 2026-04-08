@@ -275,6 +275,39 @@ impl<'a> IndexAllele<usize> for GameteView<'a> {
     }
 }
 
+impl From<&CrossingSchedule>
+    for (
+        Vec<Vec<Vec<i32>>>,
+        Vec<&'static str>,
+        Vec<usize>,
+        Vec<usize>,
+    )
+{
+    fn from(cs: &CrossingSchedule) -> Self {
+        let tree_data = cs
+            .tree_data
+            .iter()
+            .map(|x| {
+                x.iter()
+                    .map(|xi| xi.iter().map(|b| b as i32).collect())
+                    .collect()
+            })
+            .collect();
+        let tree_type = cs
+            .tree_type
+            .iter()
+            .map(|ty| match ty {
+                TreeType::Node => "Node",
+                TreeType::Leaf => "Leaf",
+            })
+            .collect();
+        let tree_left = cs.tree_left.clone();
+        let tree_right = cs.tree_right.clone();
+
+        (tree_data, tree_type, tree_left, tree_right)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

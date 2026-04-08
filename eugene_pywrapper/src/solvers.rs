@@ -20,6 +20,13 @@ pub mod greedy_multichrom_ti;
 
 /// Finds the min resources for base problem using Beam Search
 pub mod base_min_resources_beam_search;
+/// Heuristically constructs a crossing schedule to minimise resources by greedily choosing a
+/// single crossing at a time with minimum cost such that the crossing provides at least one
+/// non-dominated gamete
+pub mod base_min_resources_greedy;
+/// Heuristically constructs a crossing schedule to minimise resources by repeatedly sampling
+/// crossings
+pub mod base_min_resources_sampling;
 
 /// ## Heuristic methods
 

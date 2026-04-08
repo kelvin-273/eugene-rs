@@ -124,4 +124,21 @@ mod tests {
         let gx = SingleChromGamete::from_str("11");
         assert_eq!(rec_rate.probability_gamete(&x, &gx), 0.5);
     }
+
+    #[test]
+    fn test_cost_of_crossing() {
+        let gamma = 0.99;
+        assert_eq!(cost_of_crossing(gamma, 1.0, 1.0), 1.0);
+        assert!({
+            let cost = cost_of_crossing(gamma, 0.5, 0.5);
+            16.0 < cost && cost <= 17.0
+        });
+        assert!({
+            use rand::prelude::*;
+            let mut rng = thread_rng();
+            let px = rng.gen_range(0.0..=1.0);
+            let py = rng.gen_range(0.0..=1.0);
+            cost_of_crossing(gamma, px, py) == cost_of_crossing(gamma, py, px)
+        });
+    }
 }

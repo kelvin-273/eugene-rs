@@ -104,6 +104,54 @@ pub fn breeding_program(
     Some(wz.clone().into())
 }
 
+/// Breeding program of an instance of MinRes.
+///
+/// # Arguments
+/// * `n_loci` - The number of loci in the genotype
+/// * `pop_0` - The initial population of genotypes
+/// * `rec_rate` - The recombination rate between loci
+/// * `gamma` - The threshold probability required a crossing to succeed
+///
+/// # Returns
+/// * `Option<BaseSolution>` - The breeding program solution if found within the limits
+///
+/// # Panics
+/// Panics if `gamma` is not in the range [0.0, 1.0]
+pub fn breeding_program_2(
+    n_loci: usize,
+    pop_0: &Vec<SingleChromGenotype>,
+    rec_rate: &RecRate,
+    gamma: f64,
+) -> Option<CrossingSchedule> {
+    let ideotype = SingleChromGenotype::ideotype(n_loci);
+
+    let mut pop: Vec<WGe> = pop_0.iter().cloned().map(WGen::new).collect();
+    let mut rng = rand::thread_rng();
+    let mut h: HashMap<_, _> = pop
+        .iter()
+        .map(|wx| (wx.genotype().clone(), wx.clone()))
+        .collect();
+
+    while !pop.iter().any(|wx| wx.genotype() == &ideotype) {
+        let wx = pop.choose(&mut rng)?;
+        let wy = pop.choose(&mut rng)?;
+
+        let kx = CrosspointBitVec::random_crosspoint(&mut rng, n_loci, rec_rate);
+        let ky = CrosspointBitVec::random_crosspoint(&mut rng, n_loci, rec_rate);
+
+        let wgy = wy.cross(kx);
+        let wgx = wx.cross(ky);
+
+        let wz = WGe::from_gametes(&wgx, &wgy);
+        if !h.contains_key(wz.genotype()) {
+            h.insert(wz.genotype().clone(), wz.clone());
+            pop.push(wz);
+        }
+    }
+    let wz = h.get(&ideotype)?;
+    Some(wz.clone().into())
+}
+
 /// Check if the ancestors of wz contain wz itself
 ///
 /// # Arguments:

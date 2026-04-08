@@ -28,6 +28,7 @@ pub mod solvers;
 fn eugene_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     let min_gen = PyModule::new(m.py(), "min_gen")?;
     let min_cross = PyModule::new(m.py(), "min_cross")?;
+    let min_res = PyModule::new(m.py(), "min_res")?;
 
     let mg_naive1 = PyModule::new(m.py(), "naive1")?;
     let mg_naive2 = PyModule::new(m.py(), "naive2")?;
@@ -105,7 +106,34 @@ fn eugene_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     //min_cross.add_submodule(&mc_mip)?;
     min_cross.add_submodule(&mc_distribute_astar)?;
 
+    let mr_sampling = PyModule::new(m.py(), "sampling")?;
+    let mr_greedy_dom = PyModule::new(m.py(), "greedy_dom")?;
+
+    mr_sampling.add_function(wrap_pyfunction!(
+        solvers::base_min_resources_sampling::breeding_program_python,
+        &mr_sampling
+    )?)?;
+
+    mr_sampling.add_function(wrap_pyfunction!(
+        solvers::base_min_resources_sampling::breeding_program_distribute_python,
+        &mr_sampling
+    )?)?;
+
+    mr_greedy_dom.add_function(wrap_pyfunction!(
+        solvers::base_min_resources_greedy::breeding_program_python,
+        &mr_greedy_dom
+    )?)?;
+
+    mr_greedy_dom.add_function(wrap_pyfunction!(
+        solvers::base_min_resources_greedy::breeding_program_distribute_python,
+        &mr_greedy_dom
+    )?)?;
+
+    min_res.add_submodule(&mr_sampling)?;
+    min_res.add_submodule(&mr_greedy_dom)?;
+
     m.add_submodule(&min_gen)?;
     m.add_submodule(&min_cross)?;
+    m.add_submodule(&min_res)?;
     Ok(())
 }

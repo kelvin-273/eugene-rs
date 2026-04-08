@@ -1,7 +1,7 @@
 use eugene_core::extra::resources::RecRate;
 use eugene_core::plants::bit_array::SingleChromGenotype;
 use eugene_core::plants::dist_array::DistArray;
-use eugene_core::solvers::base_min_resources_greedy_dom::{
+use eugene_core::solvers::base_min_resources_sampling::{
     breeding_program, breeding_program_distribute,
 };
 use pyo3::prelude::*;

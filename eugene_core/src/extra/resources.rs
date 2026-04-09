@@ -2,6 +2,7 @@ use std::ops::{Deref, Index};
 
 use crate::abstract_plants::*;
 
+#[derive(Debug)]
 pub struct RecRate {
     rec_between_loci: Vec<f64>,
 }
@@ -44,7 +45,30 @@ impl RecRate {
         dp[0] + dp[1]
     }
 
-    pub fn crossing_resources<A, B>(&self, gamma: f64, x: &A, y: &A, z: &A) -> f64
+    /// Computes the number of resources (as `f64`) required by a given crossing of `(x, y -> z)`
+    /// with a given threshold probability `gamma`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `gamma` is not in the range [0.0, 1.0].
+    pub fn crossing_resources<A, B>(&self, gamma: f64, x: &A, y: &A, z: &A) -> usize
+    where
+        A: Diploid<B>,
+        B: Haploid,
+    {
+        assert!((0.0..=1.0).contains(&gamma));
+        let px = self.probability_gamete(x, &z.upper());
+        let py = self.probability_gamete(y, &z.lower());
+        cost_of_crossing(gamma, px, py).ceil() as usize
+    }
+
+    /// Computes the number of resources (as `f64`) required by a given crossing of `(x, y -> z)`
+    /// with a given threshold probability `gamma`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `gamma` is not in the range [0.0, 1.0].
+    pub fn crossing_resources_f64<A, B>(&self, gamma: f64, x: &A, y: &A, z: &A) -> f64
     where
         A: Diploid<B>,
         B: Haploid,

@@ -26,6 +26,10 @@ pub mod solvers;
 #[pymodule]
 #[pyo3(name = "eugene_pywrapper")]
 fn eugene_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    let utils = PyModule::new(m.py(), "utils")?;
+    utils.add_class::<solution::PyCrossingSchedule>()?;
+    utils.add_class::<solution::PyRecRate>()?;
+
     let min_gen = PyModule::new(m.py(), "min_gen")?;
     let min_cross = PyModule::new(m.py(), "min_cross")?;
     let min_res = PyModule::new(m.py(), "min_res")?;
@@ -147,6 +151,7 @@ fn eugene_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     min_res.add_submodule(&mr_sampling)?;
     min_res.add_submodule(&mr_greedy_dom)?;
 
+    m.add_submodule(&utils)?;
     m.add_submodule(&min_gen)?;
     m.add_submodule(&min_cross)?;
     m.add_submodule(&min_res)?;

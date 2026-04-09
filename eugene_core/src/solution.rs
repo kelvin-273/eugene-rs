@@ -106,14 +106,12 @@ impl CrossingSchedule {
         let mut out = 0;
         let mut i = 0;
         while self.tree_type[i] == TreeType::Node {
-            out += rec_rate
-                .crossing_resources(
-                    gamma,
-                    &self.genotype_view(self.tree_left[i]).unwrap(),
-                    &self.genotype_view(self.tree_right[i]).unwrap(),
-                    &self.genotype_view(i).unwrap(),
-                )
-                .ceil() as usize;
+            out += rec_rate.crossing_resources(
+                gamma,
+                &self.genotype_view(self.tree_left[i]).unwrap(),
+                &self.genotype_view(self.tree_right[i]).unwrap(),
+                &self.genotype_view(i).unwrap(),
+            );
             i += 1;
         }
         out

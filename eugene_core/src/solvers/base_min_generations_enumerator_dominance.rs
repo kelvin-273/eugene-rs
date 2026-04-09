@@ -1,5 +1,6 @@
 use crate::abstract_plants::{Crosspoint, Dominance, WGam, WGen};
 use crate::plants::bit_array::*;
+use crate::plants::dist_array::DistArray;
 use crate::solution::{BaseSolution, Objective};
 use std::collections::HashSet;
 
@@ -95,6 +96,12 @@ pub fn min_generations_dominator(n_loci: usize, pop_0: &[SingleChromGenotype]) -
             filter_non_dominating_fn(v, |wgx, wgy| DomGamete::dom(wgx.gamete(), wgy.gamete()));
     }
     gen + 1
+}
+
+pub fn breeding_program_distribute(xs: &DistArray) -> Option<BaseSolution> {
+    let n_loci = xs.n_loci();
+    let pop_0 = SingleChromGenotype::init_pop_distribute(xs);
+    breeding_program(n_loci, &pop_0)
 }
 
 pub fn filter_non_dominating<T, D>(s: impl IntoIterator<Item = T>) -> Vec<T>

@@ -1,5 +1,6 @@
 use crate::abstract_plants::*;
 use crate::plants::bit_array::*;
+use crate::plants::dist_array::DistArray;
 use std::collections::HashMap;
 
 /// A triple containing a start-point `s`, end-point `e`, and gamete `g` used to represent a
@@ -127,6 +128,14 @@ pub fn breeding_program(
         n_segments = n_segments.div_ceil(2);
     }
     Some(WGen::from_gametes(&min_segments[0].g, &min_segments[0].g))
+}
+
+pub fn breeding_program_distribute(
+    xs: &DistArray,
+) -> Option<WGen<SingleChromGenotype, SingleChromGamete>> {
+    let n_loci = xs.n_loci();
+    let pop_0 = SingleChromGenotype::init_pop_distribute(xs);
+    breeding_program(n_loci, &pop_0)
 }
 
 /// Finds the number of generations required to construct the ideotype from pop_0.

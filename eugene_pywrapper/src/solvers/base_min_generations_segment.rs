@@ -1,5 +1,6 @@
 use crate::solution::PyBaseSolution;
 use eugene_core::plants::bit_array::SingleChromGenotype;
+use eugene_core::plants::dist_array::DistArray;
 use eugene_core::solution::Objective;
 use eugene_core::solvers::base_min_generations_segment;
 use pyo3::PyResult;
@@ -75,4 +76,31 @@ pub fn mingen_answer_segment(
     });
     let n_gen = rx.recv_timeout(Duration::new(timeout.unwrap_or(u64::MAX), 0));
     Ok(n_gen.ok())
+}
+
+/// Runs a breeding program given `n_loci` and `pop_0` where `pop_0` is a population of single
+/// chromosome diploid genotypes with `n_loci` loci.
+#[pyo3::pyfunction]
+pub fn breeding_program_distribute_python(xs: Vec<usize>, timeout: Option<u64>) -> PyBaseSolution {
+    let xs = DistArray::from(xs);
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || {
+        let res = base_min_generations_segment::breeding_program_distribute(&xs)
+            .map(|x_star| x_star.to_base_sol(xs.n_loci(), Objective::Generations));
+        tx.send(res)
+    });
+    let res = rx
+        .recv_timeout(Duration::new(timeout.unwrap_or(u64::MAX), 0))
+        .ok()
+        .flatten();
+    match res {
+        None => Ok(None),
+        Some(sol) => Ok(Some((
+            sol.tree_data,
+            sol.tree_type,
+            sol.tree_left,
+            sol.tree_right,
+            sol.objective,
+        ))),
+    }
 }

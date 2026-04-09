@@ -1,5 +1,6 @@
 use crate::abstract_plants::{Crosspoint, WGam, WGen};
 use crate::plants::bit_array::*;
+use crate::plants::dist_array::DistArray;
 use crate::solution::{BaseSolution, Objective};
 use std::collections::HashMap;
 
@@ -113,6 +114,21 @@ pub fn min_generations_enumerator(n_loci: usize, pop_0: &[SingleChromGenotype]) 
         }
     }
     gen + 1
+}
+
+/// Breeding program to find the minimum number of generations to reach the ideotype
+/// from an initial population of single chromosome genotypes.
+/// Returns None if the ideotype is not reachable.
+///
+/// # Arguments
+/// - `xs`: distribute array representing the initial population
+///
+/// # Returns
+/// - `Option<BaseSolution>`: The optimal breeding program solution, or None if infeasible.
+pub fn breeding_program_distribute(xs: &DistArray) -> Option<BaseSolution> {
+    let n_loci = xs.n_loci();
+    let pop_0 = SingleChromGenotype::init_pop_distribute(xs);
+    breeding_program(n_loci, &pop_0)
 }
 
 #[cfg(test)]

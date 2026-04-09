@@ -1,5 +1,6 @@
 use crate::solution::PyBaseSolution;
 use eugene_core::plants::bit_array::SingleChromGenotype;
+use eugene_core::plants::dist_array::DistArray;
 use eugene_core::solvers::base_min_generations_enumerator;
 use pyo3::PyResult;
 use std::sync::mpsc;
@@ -73,4 +74,28 @@ pub fn mingen_answer_enumerator(
         .recv_timeout(Duration::new(timeout.unwrap_or(u64::MAX), 0))
         .ok();
     Ok(res)
+}
+
+#[pyo3::pyfunction]
+pub fn breeding_program_distribute_python(xs: Vec<usize>, timeout: Option<u64>) -> PyBaseSolution {
+    let xs = DistArray::from(xs);
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || {
+        let res = base_min_generations_enumerator::breeding_program_distribute(&xs);
+        tx.send(res)
+    });
+    let res = rx
+        .recv_timeout(Duration::new(timeout.unwrap_or(u64::MAX), 0))
+        .ok()
+        .flatten();
+    match res {
+        None => Ok(None),
+        Some(sol) => Ok(Some((
+            sol.tree_data,
+            sol.tree_type,
+            sol.tree_left,
+            sol.tree_right,
+            sol.objective,
+        ))),
+    }
 }

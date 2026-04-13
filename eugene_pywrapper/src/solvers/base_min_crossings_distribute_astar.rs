@@ -1,5 +1,4 @@
 use crate::solution::{PyBaseSolution, PyCrossingSchedule};
-use eugene_core::solution::CrossingSchedule;
 use eugene_core::solvers::base_min_crossings_distribute_astar;
 use eugene_core::solvers::base_min_crossings_distribute_astar::Config;
 use std::sync::mpsc;

@@ -93,6 +93,7 @@ fn gamete_from_biguint(x: BigUint, n_loci: usize) -> SingleChromGenotype {
 }
 
 #[pyclass]
+#[derive(Debug)]
 pub struct PyCrossingSchedule {
     crossing_schedule: CrossingSchedule,
 }

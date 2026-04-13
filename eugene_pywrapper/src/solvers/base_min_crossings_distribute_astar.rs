@@ -1,4 +1,5 @@
-use crate::solution::PyBaseSolution;
+use crate::solution::{PyBaseSolution, PyCrossingSchedule};
+use eugene_core::solution::CrossingSchedule;
 use eugene_core::solvers::base_min_crossings_distribute_astar;
 use eugene_core::solvers::base_min_crossings_distribute_astar::Config;
 use std::sync::mpsc;
@@ -10,6 +11,7 @@ pub struct Output {
     expansions: usize,
     pushed_nodes: usize,
     children_created_by_branching: usize,
+    crossing_schedule: Option<PyCrossingSchedule>,
     objective: Option<usize>,
 }
 
@@ -41,6 +43,9 @@ pub fn breeding_program_distribute_general_python(
         expansions: res.expansions(),
         pushed_nodes: res.pushed_nodes(),
         children_created_by_branching: res.children_created_by_branching(),
+        crossing_schedule: res
+            .crossing_schedule()
+            .map(|cs| PyCrossingSchedule::new(cs.clone())),
         objective: res.objective(),
     }))
 }

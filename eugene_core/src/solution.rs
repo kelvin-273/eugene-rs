@@ -29,12 +29,12 @@ pub enum Objective {
 impl BaseSolution {}
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-enum TreeType {
+pub enum TreeType {
     Node,
     Leaf,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct CrossingSchedule {
     n_loci: usize,
     tree_data: Vec<[BitVec; 2]>,
@@ -52,6 +52,26 @@ pub struct CrossingSchedule {
 /// - crossing schedule is an acyclic graph
 /// - parents of each node are stored to the right of the node
 impl CrossingSchedule {
+    pub fn new(
+        n_loci: usize,
+        tree_data: Vec<[BitVec; 2]>,
+        tree_type: Vec<TreeType>,
+        tree_left: Vec<usize>,
+        tree_right: Vec<usize>,
+    ) -> Self {
+        assert!(!tree_type.is_empty());
+        assert_eq!(tree_data.len(), tree_type.len());
+        assert_eq!(tree_left.len(), tree_type.len());
+        assert_eq!(tree_right.len(), tree_type.len());
+        Self {
+            n_loci,
+            tree_data,
+            tree_type,
+            tree_left,
+            tree_right,
+        }
+    }
+
     pub fn len(&self) -> usize {
         self.tree_type.len()
     }

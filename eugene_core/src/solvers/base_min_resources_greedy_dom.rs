@@ -1,7 +1,7 @@
 #![deny(unused)]
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 
-use crate::abstract_plants::{Chrom, Crosspoint, Dominance, WGam, WGen};
+use crate::abstract_plants::{Crosspoint, Dominance, WGam, WGen};
 use crate::extra::resources::{cost_of_crossing, RecRate};
 use crate::plants::bit_array::{
     CrosspointBitVec, DomGamete, SingleChromGamete, SingleChromGenotype,
@@ -37,14 +37,13 @@ pub fn breeding_program(
         return Some(WGen::new(target).into());
     }
     let mut pop: Vec<WGe> = pop_0.iter().map(|x| WGen::new(x.clone())).collect();
-    let mut d_gen: HashMap<SingleChromGenotype, WGe> =
+    let mut d_gen: BTreeMap<SingleChromGenotype, WGe> =
         pop_0.iter().cloned().zip(pop.iter().cloned()).collect();
-    let mut d_gam: HashMap<SingleChromGamete, (WGa, f64)> = HashMap::new();
+    let mut d_gam: BTreeMap<SingleChromGamete, (WGa, f64)> = BTreeMap::new();
 
     // Generate initial population of non-dominated gametes
     for wx in &pop {
-        for k_head in 1..n_loci + 1 {
-            let k_x = CrosspointBitVec::new(Chrom::Upper, k_head);
+        for k_x in CrosspointBitVec::crosspoints(&n_loci) {
             let gx = k_x.cross(wx.genotype());
             let rgx = rec_rate.probability_gamete(wx.genotype(), &gx);
             d_gam
@@ -60,6 +59,8 @@ pub fn breeding_program(
     }
 
     loop {
+        //dbg!("Current population: {:?}", pop.iter().map(|w| w.genotype()).collect::<Vec<_>>());
+        //dbg!("Current gametes: {:?}", d_gam.iter().map(|(k, (_, p))| (k, p)).collect::<Vec<_>>());
         let wz = min_cost_crossing(rec_rate, gamma, &d_gen, &d_gam)
             .expect("no new supporting crossing available");
         if wz.genotype() == &target {
@@ -74,8 +75,8 @@ pub fn breeding_program(
 fn min_cost_crossing(
     rec_rate: &RecRate,
     gamma: f64,
-    d_gen: &HashMap<SingleChromGenotype, WGe>,
-    d_gam: &HashMap<SingleChromGamete, (WGa, f64)>,
+    d_gen: &BTreeMap<SingleChromGenotype, WGe>,
+    d_gam: &BTreeMap<SingleChromGamete, (WGa, f64)>,
 ) -> Option<WGe> {
     let mut candidates = vec![];
 
@@ -124,7 +125,7 @@ pub fn unique_gametes_with_probs(
     let n_loci = z.n_loci();
     CrosspointBitVec::crosspoints(&n_loci)
         .map(|k| k.cross(z))
-        .collect::<HashSet<SingleChromGamete>>()
+        .collect::<BTreeSet<SingleChromGamete>>()
         .into_iter()
         .map(|gz| {
             let rgz = rec_rate.probability_gamete(z, &gz);
@@ -136,7 +137,7 @@ pub fn unique_gametes_with_probs(
 fn augment_d_gam(
     wz: WGe,
     rec_rate: &RecRate,
-    d_gam: &mut HashMap<SingleChromGamete, (WGa, f64)>,
+    d_gam: &mut BTreeMap<SingleChromGamete, (WGa, f64)>,
     n_loci: usize,
 ) {
     for gz in CrosspointBitVec::crosspoints(&n_loci).map(|k| k.cross(wz.genotype())) {
@@ -220,9 +221,27 @@ mod tests {
         let wgx = WGa::new_from_genotype(gx.clone(), wx.clone());
         let wgy = WGa::new_from_genotype(gy.clone(), wy.clone());
 
-        let d_gam = HashMap::from([(gx, (wgx.clone(), rgx)), (gy, (wgy.clone(), rgy))]);
-        let d_gen = HashMap::from([(x, wx), (y, wy)]);
+        let d_gam = BTreeMap::from([(gx, (wgx.clone(), rgx)), (gy, (wgy.clone(), rgy))]);
+        let d_gen = BTreeMap::from([(x, wx), (y, wy)]);
         let results = min_cost_crossing(&rec_rate, gamma, &d_gen, &d_gam);
         assert_eq!(results, Some(WGe::from_gametes(&wgx, &wgy)));
+    }
+
+    #[test]
+    fn breeding_program_2_loci_2_test() {
+        let n_loci = 2;
+        let pop_0 = vec![
+            SingleChromGenotype::from_str("01", "00"),
+            SingleChromGenotype::from_str("01", "10"),
+            SingleChromGenotype::from_str("00", "00"),
+            SingleChromGenotype::from_str("00", "01"),
+        ];
+        let rec_rate = RecRate::new(vec![0.3]);
+        let gamma = 0.7;
+        let result = breeding_program(n_loci, &pop_0, &rec_rate, gamma)
+            .expect("breeding_program_distribute returned None");
+        assert_eq!(result.resources(&rec_rate, gamma), 13);
+        assert_eq!(result.crossings(), 4);
+        assert_eq!(result.generations(), 3);
     }
 }

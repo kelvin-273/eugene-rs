@@ -7,7 +7,7 @@
 //! use eugene::solvers::base_min_generations_segment::*;
 //!
 //! use rand::prelude::*;
-//! let mut rng = thread_rng();
+//! let mut rng = rng();
 //!
 //! let n_loci = 10;
 //! let n_pop = 6;
@@ -31,7 +31,7 @@ pub mod solvers;
 mod tests {
     use crate::extra::*;
     use crate::solvers::*;
-    use rand::prelude::*;
+    use rand::rng;
     use std::env;
     use std::io;
 
@@ -58,7 +58,7 @@ mod tests {
 
     fn _main6() -> io::Result<()> {
         use crate::plants::bit_array::*;
-        let mut rng = thread_rng();
+        let mut rng = rng();
         let n_loci = 18;
         let n_pop = 6;
         for _ in 0..1 {
@@ -79,7 +79,7 @@ mod tests {
         let n_pop = 2;
         let _res = base_min_crossings_astar::breeding_program(
             n_loci,
-            &SingleChromGenotype::init_pop_random(&mut thread_rng(), n_loci, n_pop),
+            &SingleChromGenotype::init_pop_random(&mut rng(), n_loci, n_pop),
         );
         Ok(())
     }
@@ -90,7 +90,7 @@ mod tests {
         let n_pop = 1024;
         let _res = base_min_generations_segment::breeding_program(
             n_loci,
-            &SingleChromGenotype::init_pop_random(&mut thread_rng(), n_loci, n_pop),
+            &SingleChromGenotype::init_pop_random(&mut rng(), n_loci, n_pop),
         );
         Ok(())
     }

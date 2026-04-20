@@ -1,3 +1,4 @@
+use rand::rng;
 use std::ops::{Deref, Index};
 
 use crate::abstract_plants::*;
@@ -159,9 +160,9 @@ mod tests {
         });
         assert!({
             use rand::prelude::*;
-            let mut rng = thread_rng();
-            let px = rng.gen_range(0.0..=1.0);
-            let py = rng.gen_range(0.0..=1.0);
+            let mut rng = rng();
+            let px = rng.random_range(0.0..=1.0);
+            let py = rng.random_range(0.0..=1.0);
             cost_of_crossing(gamma, px, py) == cost_of_crossing(gamma, py, px)
         });
     }

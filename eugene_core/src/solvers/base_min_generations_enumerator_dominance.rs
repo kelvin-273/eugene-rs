@@ -273,7 +273,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::prelude::*;
+    use rand::{random, random_range};
 
     #[test]
     fn filter_non_dominating_test() {
@@ -286,7 +286,7 @@ mod tests {
         }
 
         for _ in 0..100 {
-            let n: usize = random::<usize>() % 100 + 1;
+            let n: usize = random_range(1..=100);
             let v: Vec<MyInt> = (0..n).map(|_| MyInt(random())).collect();
             let res = filter_non_dominating::<MyInt, MyInt>(v.clone());
             assert_eq!(res.len(), 1);
@@ -374,7 +374,7 @@ mod tests {
         );
 
         for _ in 0..100 {
-            let n: usize = random::<usize>() % 100 + 1;
+            let n: usize = random_range(1..=100);
             let v: Vec<Pair> = (0..n).map(|_| Pair::random()).collect();
             let res = filter_non_dominating::<Pair, Pair>(v);
             assert!(res.len() > 0);
@@ -432,10 +432,10 @@ mod tests {
 
     #[test]
     fn enumerator_dominance_test() {
-        use rand::prelude::*;
+        use rand::rng;
         let n_loci = 10;
         let n_pop = 5;
-        let mut rng = thread_rng();
+        let mut rng = rng();
         for _ in 0..10 {
             let pop_0 = SingleChromGenotype::init_pop_random(&mut rng, n_loci, n_pop);
             let sol1 = breeding_program(n_loci, &pop_0);

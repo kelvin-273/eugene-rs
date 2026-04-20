@@ -5,6 +5,7 @@ use crate::plants::dist_array::DistArray;
 use crate::solution::{BaseSolution, Objective};
 use bit_vec::BitVec;
 use rand::prelude::*;
+use rand::rng;
 use std::collections::{HashMap, VecDeque};
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash)]
@@ -282,9 +283,9 @@ impl Dominance<SingleChromGamete> for DomGamete {
 ///
 /// # Examples
 /// ```
-/// use rand::thread_rng;
+/// use rand::rng;
 /// use crate::plants::bit_array::{CrosspointBitVec, Chrom};
-/// let mut rng = thread_rng();
+/// let mut rng = rng();
 /// let n_loci = 10;
 /// let crosspoint = CrosspointBitVec::random_crosspoint_uniform(&mut rng, &
 /// n_loci);
@@ -321,9 +322,9 @@ impl CrosspointBitVec {
     ///
     /// # Examples
     /// ```
-    /// use rand::thread_rng;
+    /// use rand::rng;
     /// use crate::plants::bit_array::{CrosspointBitVec, Chrom};
-    /// let mut rng = thread_rng();
+    /// let mut rng = rng();
     /// let n_loci = 10;
     /// let crosspoint = CrosspointBitVec::random_crosspoint_uniform(&mut rng, &n_loci);
     /// println!("Random crosspoint: start = {:?}, head = {}", crosspoint.start, crosspoint.head);
@@ -355,10 +356,10 @@ impl CrosspointBitVec {
     ///
     /// # Examples
     /// ```
-    /// use rand::thread_rng;
+    /// use rand::rng;
     /// use crate::plants::bit_array::{CrosspointBitVec, Chrom};
     /// use crate::extra::resources::RecRate;
-    /// let mut rng = thread_rng();
+    /// let mut rng = rng();
     /// let n_loci = 10;
     /// let recomb_rates = vec![0.1; n_loci - 1];
     /// let crosspoint = CrosspointBitVec::random_crosspoint(&mut rng, &n_loci, &recomb_rates);
@@ -689,7 +690,7 @@ mod tests {
     #[test]
     fn feasibility_random_population_test() {
         let n_loci = 13;
-        let mut rng = thread_rng();
+        let mut rng = rng();
         for _ in 0..100 {
             assert!(SingleChromGenotype::is_feasible(
                 &n_loci,

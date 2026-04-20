@@ -150,6 +150,20 @@ fn eugene_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
         &mr_greedy_dom
     )?)?;
 
+    // MinRes versions of the min_gen and min_cross algorithms
+    mg_segment.add_function(wrap_pyfunction!(
+        solvers::base_min_generations_segment::breeding_program_minres_python,
+        &mg_segment
+    )?)?;
+    mg_segment.add_function(wrap_pyfunction!(
+        solvers::base_min_generations_segment::breeding_program_distribute_minres_python,
+        &mg_segment
+    )?)?;
+    mc_distribute_astar.add_function(wrap_pyfunction!(
+        solvers::base_min_crossings_distribute_astar::breeding_program_distribute_minres_python,
+        &mc_distribute_astar
+    )?)?;
+
     min_res.add_submodule(&mr_sampling)?;
     min_res.add_submodule(&mr_greedy_dom)?;
 

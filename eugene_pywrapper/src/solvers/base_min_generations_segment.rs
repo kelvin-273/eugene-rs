@@ -1,7 +1,7 @@
-use crate::solution::PyBaseSolution;
+use crate::solution::{PyBaseSolution, PyCrossingSchedule};
 use eugene_core::plants::bit_array::SingleChromGenotype;
 use eugene_core::plants::dist_array::DistArray;
-use eugene_core::solution::Objective;
+use eugene_core::solution::{CrossingSchedule, Objective};
 use eugene_core::solvers::base_min_generations_segment;
 use pyo3::PyResult;
 use std::sync::mpsc;
@@ -103,4 +103,58 @@ pub fn breeding_program_distribute_python(xs: Vec<usize>, timeout: Option<u64>) 
             sol.objective,
         ))),
     }
+}
+
+/// Runs a breeding program given `n_loci` and `pop_0` where `pop_0` is a population of single
+/// chromosome diploid genotypes with `n_loci` loci.
+#[pyo3::pyfunction]
+pub fn breeding_program_minres_python(
+    n_loci: usize,
+    pop_0: Vec<Vec<Vec<bool>>>,
+    timeout: Option<u64>,
+) -> PyResult<Option<PyCrossingSchedule>> {
+    let pop_0 = pop_0
+        .iter()
+        .map(|x| {
+            SingleChromGenotype::new(
+                x[0].iter()
+                    .zip(x[1].iter())
+                    .map(|(a, b)| (*a, *b))
+                    .collect(),
+            )
+        })
+        .collect();
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || {
+        let res = base_min_generations_segment::breeding_program(n_loci, &pop_0)
+            .map(|x_star| x_star.into());
+        tx.send(res)
+    });
+    let res = rx
+        .recv_timeout(Duration::new(timeout.unwrap_or(u64::MAX), 0))
+        .ok()
+        .flatten();
+    Ok(res.map(PyCrossingSchedule::new))
+}
+
+/// Runs a breeding program given `n_loci` and `pop_0` where `pop_0` is a population of single
+/// chromosome diploid genotypes with `n_loci` loci.
+#[pyo3::pyfunction]
+pub fn breeding_program_distribute_minres_python(
+    xs: Vec<usize>,
+    timeout: Option<u64>,
+) -> PyResult<Option<PyCrossingSchedule>> {
+    let xs = DistArray::from(xs);
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || {
+        let res: Option<CrossingSchedule> =
+            base_min_generations_segment::breeding_program_distribute(&xs)
+                .map(|x_star| x_star.into());
+        tx.send(res)
+    });
+    let res = rx
+        .recv_timeout(Duration::new(timeout.unwrap_or(u64::MAX), 0))
+        .ok()
+        .flatten();
+    Ok(res.map(PyCrossingSchedule::new))
 }

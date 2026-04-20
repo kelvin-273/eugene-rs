@@ -1,6 +1,7 @@
 use crate::solution::{PyBaseSolution, PyCrossingSchedule};
 use eugene_core::solvers::base_min_crossings_distribute_astar;
 use eugene_core::solvers::base_min_crossings_distribute_astar::Config;
+use pyo3::PyResult;
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
@@ -12,6 +13,30 @@ pub struct Output {
     children_created_by_branching: usize,
     crossing_schedule: Option<PyCrossingSchedule>,
     objective: Option<usize>,
+}
+
+/// Computes an optimal crossing schedule given a distribute array `xs`.
+///
+/// For now, only the objective is computed.
+#[pyo3::pyfunction]
+pub fn breeding_program_distribute_minres_python(
+    xs: Vec<usize>,
+    timeout: Option<u64>,
+) -> PyResult<Option<PyCrossingSchedule>> {
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || {
+        let res = base_min_crossings_distribute_astar::breeding_program_distribute_general(
+            &xs.into(),
+            &Config::new(true, true, false, None),
+        )
+        .map(|res| PyCrossingSchedule::new(res.crossing_schedule().unwrap().clone()));
+        tx.send(res)
+    });
+    let res = rx
+        .recv_timeout(Duration::new(timeout.unwrap_or(u64::MAX), 0))
+        .ok()
+        .flatten();
+    Ok(res)
 }
 
 /// Returns the number of crossings required for distribute array `xs` along with several other

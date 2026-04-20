@@ -2,7 +2,7 @@ use std::ops::{Deref, Index};
 
 use crate::abstract_plants::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RecRate {
     rec_between_loci: Vec<f64>,
 }

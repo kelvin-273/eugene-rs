@@ -233,7 +233,7 @@ impl From<SingleChromGamete> for BitVec {
 }
 
 impl SingleChromGamete {
-    pub fn bool_array(v: &[bool]) -> Self {
+    pub fn new(v: &[bool]) -> Self {
         Self {
             n_loci: v.len(),
             gamete: BitVec::from_iter(v.iter().copied()),

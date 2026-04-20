@@ -1,12 +1,9 @@
-use std::{
-    collections::{HashMap, HashSet, VecDeque},
-    ops::Index,
-};
+use std::collections::HashMap;
 
 use bit_vec::BitVec;
 
 use crate::{
-    abstract_plants::{Allele, Diploid, Genotype, Haploid, IndexAllele, WGen},
+    abstract_plants::{Allele, Diploid, Haploid, IndexAllele, WGen},
     extra::resources::RecRate,
     plants::bit_array::{SingleChromGamete, SingleChromGenotype},
 };

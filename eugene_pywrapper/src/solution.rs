@@ -1,8 +1,18 @@
+use bit_vec::BitVec;
 use eugene_core::extra::resources::RecRate;
-use eugene_core::plants::bit_array::SingleChromGenotype;
-use eugene_core::solution::CrossingSchedule;
+use eugene_core::plants::bit_array::{SingleChromGamete, SingleChromGenotype};
+use eugene_core::solution::{CrossingSchedule, TreeType};
 use num_bigint::BigUint;
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
+
+type PyCrossingScheduleState = (
+    usize,
+    Vec<Vec<Vec<i32>>>,
+    Vec<String>,
+    Vec<usize>,
+    Vec<usize>,
+);
 
 pub type PyBaseSolution = PyResult<
     Option<(
@@ -80,7 +90,7 @@ fn genotype_from_biguint(x: BigUint, n_loci: usize) -> SingleChromGenotype {
     SingleChromGenotype::new(v)
 }
 
-fn gamete_from_biguint(x: BigUint, n_loci: usize) -> SingleChromGenotype {
+fn gamete_from_biguint(x: BigUint, n_loci: usize) -> SingleChromGamete {
     let mask = (BigUint::from(1u64) << n_loci) - 1u64;
     let x = x & mask;
     let mut v: Vec<bool> = x
@@ -89,10 +99,10 @@ fn gamete_from_biguint(x: BigUint, n_loci: usize) -> SingleChromGenotype {
         .take(n_loci)
         .collect();
     v.reverse();
-    SingleChromGenotype::new(v.into_iter().map(|b| (b, b)).collect())
+    SingleChromGamete::new(&v)
 }
 
-#[pyclass]
+#[pyclass(module = "eugene_pywrapper")]
 #[derive(Debug)]
 pub struct PyCrossingSchedule {
     crossing_schedule: CrossingSchedule,
@@ -102,10 +112,80 @@ impl PyCrossingSchedule {
     pub fn new(crossing_schedule: CrossingSchedule) -> Self {
         Self { crossing_schedule }
     }
+
+    fn state(&self) -> PyCrossingScheduleState {
+        let (tree_data, tree_type, tree_left, tree_right) = (&self.crossing_schedule).into();
+        (
+            self.crossing_schedule.n_loci(),
+            tree_data,
+            tree_type.into_iter().map(str::to_owned).collect(),
+            tree_left,
+            tree_right,
+        )
+    }
+
+    fn from_state(state: PyCrossingScheduleState) -> PyResult<Self> {
+        let (n_loci, tree_data, tree_type, tree_left, tree_right) = state;
+        let tree_data = tree_data
+            .into_iter()
+            .enumerate()
+            .map(|(genotype_idx, genotype)| {
+                let genotype = genotype
+                    .into_iter()
+                    .enumerate()
+                    .map(|(chromosome_idx, chromosome)| {
+                        if chromosome.len() != n_loci {
+                            return Err(PyValueError::new_err(format!(
+                                "chromosome {chromosome_idx} in genotype {genotype_idx} has length {}, expected {n_loci}",
+                                chromosome.len()
+                            )));
+                        }
+                        chromosome
+                            .into_iter()
+                            .map(|allele| match allele {
+                                0 => Ok(false),
+                                1 => Ok(true),
+                                _ => Err(PyValueError::new_err(format!(
+                                    "allele values must be 0 or 1, got {allele}"
+                                ))),
+                            })
+                            .collect::<PyResult<BitVec>>()
+                    })
+                    .collect::<PyResult<Vec<_>>>()?;
+                let genotype: [BitVec; 2] = genotype.try_into().map_err(|_| {
+                    PyValueError::new_err(format!(
+                        "genotype {genotype_idx} must contain exactly two chromosomes"
+                    ))
+                })?;
+                Ok(genotype)
+            })
+            .collect::<PyResult<Vec<_>>>()?;
+        let tree_type = tree_type
+            .into_iter()
+            .map(|typ| match typ.as_str() {
+                "Node" => Ok(TreeType::Node),
+                "Leaf" => Ok(TreeType::Leaf),
+                _ => Err(PyValueError::new_err(format!(
+                    "tree type must be 'Node' or 'Leaf', got {typ:?}"
+                ))),
+            })
+            .collect::<PyResult<Vec<_>>>()?;
+
+        Ok(Self {
+            crossing_schedule: CrossingSchedule::new(
+                n_loci, tree_data, tree_type, tree_left, tree_right,
+            ),
+        })
+    }
 }
 
 #[pymethods]
 impl PyCrossingSchedule {
+    #[new]
+    fn py_new(state: PyCrossingScheduleState) -> PyResult<Self> {
+        Self::from_state(state)
+    }
+
     fn to_base_solution_no_obj(&self) -> PyBaseSolutionNoObjective {
         Ok(Some((&self.crossing_schedule).into()))
     }
@@ -118,7 +198,25 @@ impl PyCrossingSchedule {
         self.crossing_schedule.crossings()
     }
 
-    fn resources(&self, rec_rate: &PyRecRate, gamma: f64) -> usize {
-        self.crossing_schedule.resources(&rec_rate.rec_rate, gamma)
+    fn resources(&self, rec_rate: Vec<f64>, gamma: f64) -> usize {
+        self.crossing_schedule
+            .resources(&RecRate::new(rec_rate), gamma)
+    }
+
+    fn __repr__(&self) -> String {
+        format!("{:?}", self.crossing_schedule)
+    }
+
+    fn __getnewargs__(&self) -> (PyCrossingScheduleState,) {
+        (self.state(),)
+    }
+
+    fn __getstate__(&self) -> PyCrossingScheduleState {
+        self.state()
+    }
+
+    fn __setstate__(&mut self, state: PyCrossingScheduleState) -> PyResult<()> {
+        *self = Self::from_state(state)?;
+        Ok(())
     }
 }

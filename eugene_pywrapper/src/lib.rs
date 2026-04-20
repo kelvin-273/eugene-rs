@@ -26,6 +26,8 @@ pub mod solvers;
 #[pymodule]
 #[pyo3(name = "eugene_pywrapper")]
 fn eugene_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_class::<solution::PyCrossingSchedule>()?;
+
     let utils = PyModule::new(m.py(), "utils")?;
     utils.add_class::<solution::PyCrossingSchedule>()?;
     utils.add_class::<solution::PyRecRate>()?;

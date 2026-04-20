@@ -5,7 +5,7 @@ use crate::extra::resources::{cost_of_crossing, RecRate};
 use crate::plants::bit_array::{CrosspointBitVec, SingleChromGamete, SingleChromGenotype};
 use crate::plants::dist_array::DistArray;
 use crate::solution::{BaseSolution, CrossingSchedule};
-use rand::seq::SliceRandom;
+use rand::prelude::IndexedRandom;
 
 type WGe = WGen<SingleChromGenotype, SingleChromGamete>;
 type WGa = WGam<SingleChromGenotype, SingleChromGamete>;

@@ -2,3 +2,4 @@ target/
 Cargo.lock
 posthoc-traces/
 .venv
+**/.DS_Store

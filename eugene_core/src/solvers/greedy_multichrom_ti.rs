@@ -10,13 +10,13 @@ pub struct MultiChromGenotype {
 impl MultiChromGenotype {
     /// Creates a new `MultiChromGenotype` from a vector of `SingleChromGenotype`.
     /// ```
-    /// let genotype = MultiChromGenotype {
-    ///     arr: vec![
-    ///         SingleChromGenotype::from_str("00111000110", "00111000110"),
-    ///         SingleChromGenotype::from_str("10111000", "11011000"),
-    ///     ],
-    /// };
-    /// assert_eq!(2, genotype.arr.len());
+    /// use eugene_core::plants::bit_array::SingleChromGenotype;
+    /// use eugene_core::solvers::greedy_multichrom_ti::MultiChromGenotype;
+    /// let genotype = MultiChromGenotype::new(vec![
+    ///     SingleChromGenotype::from_str("00111000110", "00111000110"),
+    ///     SingleChromGenotype::from_str("10111000", "11011000"),
+    /// ]);
+    /// assert_eq!(2, genotype.n_chrom());
     /// ```
     pub fn new(arr: Vec<SingleChromGenotype>) -> Self {
         Self { arr }
@@ -25,16 +25,16 @@ impl MultiChromGenotype {
     /// Returns the number of chromosomes in this genotype.
     ///
     /// ```
-    /// let genotype = MultiChromGenotype {
-    ///     arr: vec![
-    ///         SingleChromGenotype::from_str("00111000110", "00111000110"),
-    ///         SingleChromGenotype::from_str("11000111000", "11000111000"),
-    ///     ],
-    /// };
+    /// use eugene_core::plants::bit_array::SingleChromGenotype;
+    /// use eugene_core::solvers::greedy_multichrom_ti::MultiChromGenotype;
+    /// let genotype = MultiChromGenotype::new(vec![
+    ///     SingleChromGenotype::from_str("00111000110", "00111000110"),
+    ///     SingleChromGenotype::from_str("11000111000", "11000111000"),
+    /// ]);
     /// assert_eq!(2, genotype.n_chrom());
     /// ```
     #[inline]
-    fn n_chrom(&self) -> usize {
+    pub fn n_chrom(&self) -> usize {
         self.arr.len()
     }
 }
@@ -68,7 +68,9 @@ impl<B> Segment<B> {
     /// Returns the start point of the segment.
     ///
     /// ```
-    /// let seg = Segment { s: 2, e, 4, g: SingleChromGamete::from_str("00111000110") };
+    /// use eugene_core::plants::bit_array::SingleChromGamete;
+    /// use eugene_core::solvers::greedy_multichrom_ti::Segment;
+    /// let seg = Segment::new(2, 4, SingleChromGamete::from_str("00111000110"));
     /// assert_eq!(2, seg.start())
     /// ```
     pub fn start(&self) -> usize {
@@ -78,11 +80,17 @@ impl<B> Segment<B> {
     /// Returns the end point of the segment.
     ///
     /// ```
-    /// let seg = Segment { s: 2, e, 4, g: SingleChromGamete::from_str("00111000110") };
-    /// assert_eq!(4, seg.start())
+    /// use eugene_core::plants::bit_array::SingleChromGamete;
+    /// use eugene_core::solvers::greedy_multichrom_ti::Segment;
+    /// let seg = Segment::new(2, 4, SingleChromGamete::from_str("00111000110"));
+    /// assert_eq!(4, seg.end())
     /// ```
     pub fn end(&self) -> usize {
         self.e
+    }
+
+    pub fn new(s: usize, e: usize, g: B) -> Self {
+        Self { s, e, g }
     }
 
     pub fn gamete(&self) -> &B {

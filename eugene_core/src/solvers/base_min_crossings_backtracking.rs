@@ -7,7 +7,7 @@ pub fn enumerate_covering_subsets<S>(_subsets: Vec<S>) {
 ///
 /// Example:
 /// ```
-/// use eugene::solvers::base_min_crossings_backtracking::subproblems_shallow;
+/// use eugene_core::solvers::base_min_crossings_backtracking::subproblems_shallow;
 ///
 /// assert_eq!(
 ///     subproblems_shallow(&vec![0, 1, 0, 1, 0, 1, 0, 2, 3, 2, 4, 2, 5]),

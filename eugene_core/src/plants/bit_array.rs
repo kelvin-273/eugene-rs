@@ -284,12 +284,11 @@ impl Dominance<SingleChromGamete> for DomGamete {
 /// # Examples
 /// ```
 /// use rand::rng;
-/// use crate::plants::bit_array::{CrosspointBitVec, Chrom};
+/// use eugene_core::plants::bit_array::CrosspointBitVec;
 /// let mut rng = rng();
 /// let n_loci = 10;
-/// let crosspoint = CrosspointBitVec::random_crosspoint_uniform(&mut rng, &
-/// n_loci);
-/// println!("Random crosspoint: start = {:?}, head = {}", crosspoint.start, crosspoint.head);
+/// let crosspoint = CrosspointBitVec::random_crosspoint_uniform(&mut rng, &n_loci);
+/// println!("Random crosspoint: {:?}", crosspoint);
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CrosspointBitVec {
@@ -323,11 +322,11 @@ impl CrosspointBitVec {
     /// # Examples
     /// ```
     /// use rand::rng;
-    /// use crate::plants::bit_array::{CrosspointBitVec, Chrom};
+    /// use eugene_core::plants::bit_array::CrosspointBitVec;
     /// let mut rng = rng();
     /// let n_loci = 10;
     /// let crosspoint = CrosspointBitVec::random_crosspoint_uniform(&mut rng, &n_loci);
-    /// println!("Random crosspoint: start = {:?}, head = {}", crosspoint.start, crosspoint.head);
+    /// println!("Random crosspoint: {:?}", crosspoint);
     /// ```
     ///
     /// # Panics
@@ -357,13 +356,13 @@ impl CrosspointBitVec {
     /// # Examples
     /// ```
     /// use rand::rng;
-    /// use crate::plants::bit_array::{CrosspointBitVec, Chrom};
-    /// use crate::extra::resources::RecRate;
+    /// use eugene_core::extra::resources::RecRate;
+    /// use eugene_core::plants::bit_array::CrosspointBitVec;
     /// let mut rng = rng();
     /// let n_loci = 10;
-    /// let recomb_rates = vec![0.1; n_loci - 1];
-    /// let crosspoint = CrosspointBitVec::random_crosspoint(&mut rng, &n_loci, &recomb_rates);
-    /// println!("Random crosspoint: start = {:?}, head = {}", crosspoint.start, crosspoint.head);
+    /// let recomb_rates = RecRate::from(vec![0.1; n_loci - 1]);
+    /// let crosspoint = CrosspointBitVec::random_crosspoint(&mut rng, n_loci, &recomb_rates);
+    /// println!("Random crosspoint: {:?}", crosspoint);
     /// ```
     /// # Panics
     /// Panics if `n_loci` is zero or if the length of `recomb_rates` is not equal to `n_loci - 1`.

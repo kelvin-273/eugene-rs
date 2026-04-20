@@ -3,17 +3,17 @@
 //! Components of the plant breeding program are separated by module.
 //! Typical use is as follows:
 //! ```
-//! use eugene::plants::bit_array::*;
-//! use eugene::solvers::base_min_generations_segment::*;
+//! use eugene_core::plants::bit_array::*;
+//! use eugene_core::solvers::base_min_generations_segment::*;
 //!
-//! use rand::prelude::*;
+//! use rand::rng;
 //! let mut rng = rng();
 //!
 //! let n_loci = 10;
 //! let n_pop = 6;
 //! let pop_0 = SingleChromGenotype::init_pop_random(&mut rng, n_loci, n_pop);
 //!
-//! let result = breeding_program(n_loci, pop_0);
+//! let result = breeding_program(n_loci, &pop_0);
 //! ```
 
 /// Exports the traits used by the algorithms in `solvers`

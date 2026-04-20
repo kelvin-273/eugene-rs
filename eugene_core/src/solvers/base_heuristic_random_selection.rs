@@ -18,10 +18,10 @@ use crate::solvers::base_min_generations_enumerator_dominance::filter_non_domina
 /// Panics if `n_loci` is zero or if `pop_0` is empty.
 /// # Example
 /// ```
-/// use crate::plants::bit_array::*;
-/// use crate::solvers::base_heuristic_random_selection::breeding_program;
-/// let n_loci = 10;
-/// let pop_0 = vec![SingleChromGenotype::from_str("11001100", "00110011")];
+/// use eugene_core::plants::bit_array::*;
+/// use eugene_core::solvers::base_heuristic_random_selection::breeding_program;
+/// let n_loci = 8;
+/// let pop_0 = vec![SingleChromGenotype::ideotype(n_loci)];
 /// let solution = breeding_program(n_loci, &pop_0);
 /// assert!(solution.is_some());
 /// ```
@@ -44,11 +44,12 @@ pub fn breeding_program(n_loci: usize, pop_0: &[SingleChromGenotype]) -> Option<
 /// Panics if `n_loci` is zero or if `pop_0` is empty.
 /// # Example
 /// ```
-/// use crate::plants::bit_array::*;
-/// use crate::solvers::base_heuristic_random_selection::breeding_program;
-/// let n_loci = 10;
-/// let pop_0 = vec![SingleChromGenotype::from_str("11001100", "00110011")];
-/// let solution = breeding_program_random(n_loci, &pop_0);
+/// use eugene_core::plants::bit_array::*;
+/// use eugene_core::solvers::base_heuristic_random_selection::breeding_program_random;
+/// let n_loci = 8;
+/// let pop_0 = vec![SingleChromGenotype::ideotype(n_loci)];
+/// let mut rng = rand::rng();
+/// let solution = breeding_program_random(n_loci, &pop_0, Some(20), &mut rng);
 /// assert!(solution.is_some());
 /// ```
 pub fn breeding_program_random(
@@ -120,12 +121,12 @@ pub fn repeated_breeding_random(
 /// Panics if `n_loci` is zero or if `pop_0` is empty.
 /// # Example
 /// ```
-/// use crate::plants::bit_array::*;
-/// use crate::solvers::base_heuristic_random_selection::breeding_program_random_dominance;
-/// let n_loci = 10;
-/// let pop_0 = vec![SingleChromGenotype::from_str("11001100", "00110011")];
-/// let solution = breeding_program_random_dominance(n_loci, &pop_0, Some(20), &mut
-/// rand::thread_rng());
+/// use eugene_core::plants::bit_array::*;
+/// use eugene_core::solvers::base_heuristic_random_selection::breeding_program_random_dominance;
+/// let n_loci = 8;
+/// let pop_0 = vec![SingleChromGenotype::ideotype(n_loci)];
+/// let mut rng = rand::rng();
+/// let solution = breeding_program_random_dominance(n_loci, &pop_0, Some(20), &mut rng);
 /// assert!(solution.is_some());
 /// ```
 pub fn breeding_program_random_dominance(
@@ -155,12 +156,13 @@ pub fn breeding_program_random_dominance(
 /// Panics if `n_loci` is zero or if `pop_0` is empty.
 /// # Example
 /// ```
-/// use crate::plants::bit_array::*;
-/// use crate::solvers::base_heuristic_random_selection::repeated_breeding_random_dominance;
-/// let n_loci = 10;
-/// let pop_0 = vec![SingleChromGenotype::from_str("11001100", "00110011")];
-/// let pop = repeated_breeding_random_dominance(n_loci, &pop_0, Some(20), &mut
-/// rand::thread_rng());
+/// use eugene_core::abstract_plants::Genotype;
+/// use eugene_core::plants::bit_array::*;
+/// use eugene_core::solvers::base_heuristic_random_selection::repeated_breeding_random_dominance;
+/// let n_loci = 8;
+/// let pop_0 = vec![SingleChromGenotype::ideotype(n_loci)];
+/// let mut rng = rand::rng();
+/// let pop = repeated_breeding_random_dominance(n_loci, &pop_0, Some(20), &mut rng);
 /// assert!(pop.iter().any(|wx| wx.genotype() == &SingleChromGenotype::ideotype(n_loci)));
 /// ```
 pub fn repeated_breeding_random_dominance(

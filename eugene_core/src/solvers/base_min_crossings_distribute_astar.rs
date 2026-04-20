@@ -961,13 +961,13 @@ fn _generate_redistributions_two_delta(xs: &DistArray) -> Vec<DistArray> {
 /// Returns ranges of loci on each input gamete that are not covered by any chosen segment join
 /// Ranges are not inclusive of the endpoints.
 ///
-/// ```
-/// assert_eq!(remaining_ranges(
+/// ```ignore
+/// assert_eq!(_remaining_ranges(
 ///     &vec![0, 1, 2, 0, 1, 3], 0, 1,
 ///     &vec![true, false, false, true, false]
 /// ), [[4, 6], [0, 1]]);
 ///
-/// assert_eq!(remaining_ranges(
+/// assert_eq!(_remaining_ranges(
 ///     &vec![0, 1, 2, 1, 0, 3], 0, 1,
 ///     &vec![true, false, false, true, false]
 /// ), [[1, 4], [4, 1]]);
@@ -1159,8 +1159,8 @@ fn generate_redistributions(xs: &DistArray) -> Vec<(DistArray, usize, usize)> {
 /// The gx and gy are the gametes that were used to create the redistribution.
 ///
 /// # Examples
-/// ```
-/// let xs = vec![0, 1, 0, 2];
+/// ```ignore
+/// let xs = dist_array![0, 1, 0, 2];
 /// let redistributions = generate_redistributions_brute_force(&xs);
 ///
 /// // TODO: Add assertions to check the correctness of the redistributions

@@ -19,7 +19,9 @@ impl<B> Segment<B> {
     /// Returns the start point of the segment.
     ///
     /// ```
-    /// let seg = Segment { s: 2, e, 4, g: SingleChromGamete::from_str("00111000110") };
+    /// use eugene_core::plants::bit_array::SingleChromGamete;
+    /// use eugene_core::solvers::base_min_generations_segment::Segment;
+    /// let seg = Segment::new(2, 4, SingleChromGamete::from_str("00111000110"));
     /// assert_eq!(2, seg.start())
     /// ```
     pub fn start(&self) -> usize {
@@ -29,11 +31,17 @@ impl<B> Segment<B> {
     /// Returns the end point of the segment.
     ///
     /// ```
-    /// let seg = Segment { s: 2, e, 4, g: SingleChromGamete::from_str("00111000110") };
-    /// assert_eq!(4, seg.start())
+    /// use eugene_core::plants::bit_array::SingleChromGamete;
+    /// use eugene_core::solvers::base_min_generations_segment::Segment;
+    /// let seg = Segment::new(2, 4, SingleChromGamete::from_str("00111000110"));
+    /// assert_eq!(4, seg.end())
     /// ```
     pub fn end(&self) -> usize {
         self.e
+    }
+
+    pub fn new(s: usize, e: usize, g: B) -> Self {
+        Self { s, e, g }
     }
 
     pub fn gamete(&self) -> &B {

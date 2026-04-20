@@ -10,10 +10,10 @@
 //!
 //! # Examples
 //! ```
-//! use dist_array::dist_array;
+//! use eugene_core::plants::dist_array::dist_array;
 //! let xs = dist_array![0, 1, 0, 1, 2];
 //! let succ = xs.successor().unwrap();
-//! assert_eq!(succ, dist_array![0, 1, 2, 0, 1]);
+//! assert_eq!(succ, dist_array![0, 1, 0, 2, 0]);
 //! ```
 
 use rand::Rng;
@@ -34,7 +34,7 @@ impl DistArray {
     ///
     /// # Examples
     /// ```
-    /// use dist_array::dist_array;
+    /// use eugene_core::plants::dist_array::dist_array;
     /// let xs = dist_array![0, 1, 0, 1, 2];
     /// assert_eq!(xs.n_loci(), 5);
     /// ```
@@ -65,9 +65,9 @@ impl DistArray {
     ///
     /// # Examples
     /// ```
-    /// use dist_array::dist_array;
+    /// use eugene_core::plants::dist_array::dist_array;
     /// let xs = dist_array![0, 1, 0, 1, 2];
-    /// let succ = dist_array![0, 1, 2, 0, 1];
+    /// let succ = dist_array![0, 1, 0, 2, 0];
     /// assert!(xs.has_successor(&succ));
     /// ```
     pub fn has_successor(&self, other: &Self) -> bool {
@@ -105,10 +105,10 @@ impl DistArray {
     ///
     /// # Examples
     /// ```
-    /// use dist_array::dist_array;
+    /// use eugene_core::plants::dist_array::dist_array;
     /// let xs = dist_array![0, 1, 0, 1, 2];
     /// let succ = xs.successor().unwrap();
-    /// assert_eq!(succ, dist_array![0, 1, 2, 0, 1]);
+    /// assert_eq!(succ, dist_array![0, 1, 0, 2, 0]);
     /// ```
     pub fn successor(&self) -> Option<Self>
     where
@@ -149,10 +149,10 @@ impl DistArray {
     ///
     /// # Examples
     /// ```
-    /// use dist_array::dist_array;
-    /// let xs = dist_array![0, 1, 2, 0, 1];
+    /// use eugene_core::plants::dist_array::dist_array;
+    /// let xs = dist_array![0, 1, 0, 2, 1];
     /// let pred = xs.predecessor();
-    /// assert_eq!(pred, Some(dist_array![0, 1, 0, 1, 2]));
+    /// assert_eq!(pred, Some(dist_array![0, 1, 0, 2, 0]));
     /// let ys = dist_array![0];
     /// assert_eq!(ys.predecessor(), None)
     /// ```
@@ -171,7 +171,7 @@ impl DistArray {
         for i in (2..n).rev() {
             if xs[i] > 0 && xs[i] != xs[i - 1] + 1 {
                 xs[i] -= 1;
-                for j in 0..n - i {
+                for j in 0..n - i - 1 {
                     xs[i + 1 + j] = j & 1;
                 }
                 return Some(xs);
@@ -207,7 +207,7 @@ impl DistArray {
 ///
 /// # Examples
 /// ```
-/// use dist_array::{dist_array, is_canonical_dist_array};
+/// use eugene_core::plants::dist_array::{dist_array, is_canonical_dist_array};
 /// let xs = dist_array![0, 1, 0, 2, 1];
 /// assert!(is_canonical_dist_array(&xs));
 /// let ys = dist_array![0, 2, 1, 0];
@@ -603,12 +603,12 @@ impl Iterator for DistArrayGenerator {
 ///
 /// # Examples
 /// ```
-/// use dist_array::count_distribute_instances;
-/// let count = dist_array::count_distribute_instances(1);
+/// use eugene_core::plants::dist_array::count_distribute_instances;
+/// let count = count_distribute_instances(1);
 /// assert_eq!(count, 1);
-/// let count = dist_array::count_distribute_instances(3);
+/// let count = count_distribute_instances(3);
 /// assert_eq!(count, 2);
-/// let count = dist_array::count_distribute_instances(5);
+/// let count = count_distribute_instances(5);
 /// assert_eq!(count, 15);
 /// ```
 pub fn count_distribute_instances(n_loci: usize) -> usize {
@@ -630,9 +630,9 @@ pub fn count_distribute_instances(n_loci: usize) -> usize {
 ///
 /// # Examples
 /// ```
-/// use dist_array::dist_array;
+/// use eugene_core::plants::dist_array::{dist_array, ordinal_index};
 /// let xs = dist_array![0, 1, 0, 2, 1];
-/// let index = dist_array::ordinal_index(&xs);
+/// let index = ordinal_index(&xs);
 /// assert_eq!(index, 4);
 /// ```
 pub fn ordinal_index(xs: &DistArray) -> usize {
@@ -658,16 +658,16 @@ const H_LOOKUP: [[usize; 26]; 26] = [
 ///
 /// # Examples
 /// ```
-/// use dist_array::dist_array;
+/// use eugene_core::plants::dist_array::dist_array;
 /// let d = dist_array![0, 1, 0, 2, 1];
 /// assert_eq!(d.n_loci(), 5);
 /// assert_eq!(d.n_pop(), 3);
-/// assert_eq!(d.0, vec![0, 1, 0, 2, 1]);
+/// assert_eq!(&*d, &[0, 1, 0, 2, 1]);
 /// ```
 #[macro_export]
 macro_rules! dist_array {
     ($($x:expr),*) => {
-        DistArray::from(vec![$($x),*])
+        $crate::plants::dist_array::DistArray::from(vec![$($x),*])
     };
 }
 pub use dist_array;

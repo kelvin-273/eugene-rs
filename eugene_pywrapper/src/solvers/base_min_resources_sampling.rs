@@ -1,10 +1,16 @@
+use std::sync::mpsc;
+use std::thread;
+use std::time::Duration;
+
 use eugene_core::extra::resources::RecRate;
 use eugene_core::plants::bit_array::SingleChromGenotype;
-use eugene_core::plants::dist_array::DistArray;
+use eugene_core::solution::CrossingSchedule;
 use eugene_core::solvers::base_min_resources_sampling::{
     breeding_program, breeding_program_distribute,
 };
 use pyo3::prelude::*;
+
+use crate::solution::PyCrossingSchedule;
 
 /// Heuristically computes a crossing schedule that minimises the required number of resources by
 /// repeatedly sampling crossings according to the distribution of offspring from a uniformly
@@ -16,15 +22,8 @@ pub fn breeding_program_python(
     pop_0: Vec<Vec<Vec<bool>>>,
     rec_rate: Vec<f64>,
     gamma: f64,
-) -> PyResult<
-    Option<(
-        Vec<Vec<Vec<i32>>>,
-        Vec<&'static str>,
-        Vec<usize>,
-        Vec<usize>,
-        usize,
-    )>,
-> {
+    timeout: Option<u64>,
+) -> PyResult<Option<PyCrossingSchedule>> {
     let rec_rate = RecRate::new(rec_rate);
     let pop_0: Vec<SingleChromGenotype> = pop_0
         .iter()
@@ -37,18 +36,16 @@ pub fn breeding_program_python(
             )
         })
         .collect();
-    Ok(
-        breeding_program(n_loci, &pop_0, &rec_rate, gamma).map(|res| {
-            let (tree_data, tree_type, tree_left, tree_right) = (&res).into();
-            (
-                tree_data,
-                tree_type,
-                tree_left,
-                tree_right,
-                res.resources(&rec_rate, gamma),
-            )
-        }),
-    )
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || {
+        let res: Option<CrossingSchedule> = breeding_program(n_loci, &pop_0, &rec_rate, gamma);
+        tx.send(res)
+    });
+    let res = rx
+        .recv_timeout(Duration::new(timeout.unwrap_or(u64::MAX), 0))
+        .ok()
+        .flatten();
+    Ok(res.map(PyCrossingSchedule::new))
 }
 
 /// Heuristically computes a crossing schedule that minimises the required number of resources by
@@ -60,26 +57,18 @@ pub fn breeding_program_distribute_python(
     xs: Vec<usize>,
     rec_rate: Vec<f64>,
     gamma: f64,
-) -> PyResult<
-    Option<(
-        Vec<Vec<Vec<i32>>>,
-        Vec<&'static str>,
-        Vec<usize>,
-        Vec<usize>,
-        usize,
-    )>,
-> {
+    timeout: Option<u64>,
+) -> PyResult<Option<PyCrossingSchedule>> {
     let rec_rate = RecRate::new(rec_rate);
-    Ok(
-        breeding_program_distribute(&DistArray::from(xs), &rec_rate, gamma).map(|res| {
-            let (tree_data, tree_type, tree_left, tree_right) = (&res).into();
-            (
-                tree_data,
-                tree_type,
-                tree_left,
-                tree_right,
-                res.resources(&rec_rate, gamma),
-            )
-        }),
-    )
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || {
+        let res: Option<CrossingSchedule> =
+            breeding_program_distribute(&xs.into(), &rec_rate, gamma);
+        tx.send(res)
+    });
+    let res = rx
+        .recv_timeout(Duration::new(timeout.unwrap_or(u64::MAX), 0))
+        .ok()
+        .flatten();
+    Ok(res.map(PyCrossingSchedule::new))
 }

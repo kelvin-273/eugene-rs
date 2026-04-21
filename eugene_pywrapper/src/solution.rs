@@ -1,5 +1,5 @@
 use bit_vec::BitVec;
-use eugene_core::extra::resources::RecRate;
+use eugene_core::extra::resources::{RecRate, SinglePointRecProb};
 use eugene_core::plants::bit_array::{SingleChromGamete, SingleChromGenotype};
 use eugene_core::solution::{CrossingSchedule, TreeType};
 use num_bigint::BigUint;
@@ -38,6 +38,11 @@ pub struct PyRecRate {
     rec_rate: RecRate,
 }
 
+#[pyclass]
+pub struct PySinglePointRecProb {
+    rec_prob: SinglePointRecProb,
+}
+
 #[pymethods]
 impl PyRecRate {
     #[new]
@@ -61,6 +66,32 @@ impl PyRecRate {
         let y = genotype_from_biguint(y, n_loci);
         let z = genotype_from_biguint(z, n_loci);
         self.rec_rate.crossing_resources(gamma, &x, &y, &z)
+    }
+}
+
+#[pymethods]
+impl PySinglePointRecProb {
+    #[new]
+    fn new(rec_prob: Vec<f64>) -> Self {
+        Self {
+            rec_prob: SinglePointRecProb::new(rec_prob),
+        }
+    }
+
+    fn __repr__(&self) -> String {
+        format!("{:?}", self.rec_prob)
+    }
+
+    fn n_loci(&self) -> usize {
+        self.rec_prob.n_loci()
+    }
+
+    fn cost_of_crossing(&self, gamma: f64, x: BigUint, y: BigUint, z: BigUint) -> usize {
+        let n_loci = self.rec_prob.n_loci();
+        let x = genotype_from_biguint(x, n_loci);
+        let y = genotype_from_biguint(y, n_loci);
+        let z = genotype_from_biguint(z, n_loci);
+        self.rec_prob.crossing_resources(gamma, &x, &y, &z)
     }
 }
 
@@ -201,6 +232,11 @@ impl PyCrossingSchedule {
     fn resources(&self, rec_rate: Vec<f64>, gamma: f64) -> usize {
         self.crossing_schedule
             .resources(&RecRate::new(rec_rate), gamma)
+    }
+
+    fn resources_single_point(&self, rec_prob: Vec<f64>, gamma: f64) -> usize {
+        self.crossing_schedule
+            .resources(&SinglePointRecProb::new(rec_prob), gamma)
     }
 
     fn __repr__(&self) -> String {

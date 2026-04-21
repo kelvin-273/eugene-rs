@@ -12,6 +12,13 @@ pub struct SinglePointRecProb {
     rec_between_loci: Vec<f64>,
 }
 
+pub trait ResourceModel {
+    fn crossing_resources<A, B>(&self, gamma: f64, x: &A, y: &A, z: &A) -> usize
+    where
+        A: Diploid<B>,
+        B: Haploid;
+}
+
 fn validate_single_point_rec_probs(rec_between_loci: &[f64]) {
     assert!(rec_between_loci.iter().all(|&r| (0.0..=1.0).contains(&r)));
     assert!(rec_between_loci.iter().sum::<f64>() <= 1.0);
@@ -206,6 +213,36 @@ impl SinglePointRecProb {
 
     pub fn n_loci(&self) -> usize {
         self.rec_between_loci.len() + 1
+    }
+}
+
+impl ResourceModel for RecRate {
+    fn crossing_resources<A, B>(&self, gamma: f64, x: &A, y: &A, z: &A) -> usize
+    where
+        A: Diploid<B>,
+        B: Haploid,
+    {
+        RecRate::crossing_resources(self, gamma, x, y, z)
+    }
+}
+
+impl ResourceModel for SinglePointRecProb {
+    fn crossing_resources<A, B>(&self, gamma: f64, x: &A, y: &A, z: &A) -> usize
+    where
+        A: Diploid<B>,
+        B: Haploid,
+    {
+        SinglePointRecProb::crossing_resources(self, gamma, x, y, z)
+    }
+}
+
+impl<T: ResourceModel + ?Sized> ResourceModel for &T {
+    fn crossing_resources<A, B>(&self, gamma: f64, x: &A, y: &A, z: &A) -> usize
+    where
+        A: Diploid<B>,
+        B: Haploid,
+    {
+        (*self).crossing_resources(gamma, x, y, z)
     }
 }
 

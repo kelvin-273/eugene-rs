@@ -4,7 +4,7 @@ use bit_vec::BitVec;
 
 use crate::{
     abstract_plants::{Allele, Diploid, Haploid, IndexAllele, WGen},
-    extra::resources::RecRate,
+    extra::resources::ResourceModel,
     plants::bit_array::{SingleChromGamete, SingleChromGenotype},
 };
 
@@ -119,7 +119,7 @@ impl CrossingSchedule {
             .count()
     }
 
-    pub fn resources(&self, rec_rate: &RecRate, gamma: f64) -> usize {
+    pub fn resources<R: ResourceModel>(&self, rec_rate: &R, gamma: f64) -> usize {
         let mut out = 0;
         let mut i = 0;
         while self.tree_type[i] == TreeType::Node {
@@ -468,6 +468,8 @@ mod tests {
 
     #[test]
     fn crossing_schedule_resources_test() {
+        use crate::extra::resources::{RecRate, SinglePointRecProb};
+
         let x1 = SingleChromGenotype::from_str("10", "10");
         let x2 = SingleChromGenotype::from_str("01", "01");
 
@@ -488,11 +490,13 @@ mod tests {
         let wx6 = WGen::from_gametes(&wg3, &wg3);
 
         let rec_rate = RecRate::from(vec![0.1]);
+        let rec_prob = SinglePointRecProb::from(vec![0.1]);
         let gamma = 0.99;
         let crossing_schedule0 = CrossingSchedule::from(wx3);
         let crossing_schedule1 = CrossingSchedule::from(wx5);
         let crossing_schedule2 = CrossingSchedule::from(wx6);
         assert_eq!(crossing_schedule0.resources(&rec_rate, gamma), 1);
+        assert_eq!(crossing_schedule0.resources(&rec_prob, gamma), 1);
         assert_eq!(crossing_schedule1.resources(&rec_rate, gamma), 108);
         assert_eq!(crossing_schedule2.resources(&rec_rate, gamma), 1841);
     }

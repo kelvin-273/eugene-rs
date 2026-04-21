@@ -31,6 +31,7 @@ fn eugene_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     let utils = PyModule::new(m.py(), "utils")?;
     utils.add_class::<solution::PyCrossingSchedule>()?;
     utils.add_class::<solution::PyRecRate>()?;
+    utils.add_class::<solution::PySinglePointRecProb>()?;
 
     let min_gen = PyModule::new(m.py(), "min_gen")?;
     let min_cross = PyModule::new(m.py(), "min_cross")?;

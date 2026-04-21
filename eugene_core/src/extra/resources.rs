@@ -1,11 +1,20 @@
-use rand::rng;
-use std::ops::{Deref, Index};
+use std::ops::Deref;
 
 use crate::abstract_plants::*;
 
 #[derive(Debug, Clone)]
 pub struct RecRate {
     rec_between_loci: Vec<f64>,
+}
+
+#[derive(Debug, Clone)]
+pub struct SinglePointRecProb {
+    rec_between_loci: Vec<f64>,
+}
+
+fn validate_single_point_rec_probs(rec_between_loci: &[f64]) {
+    assert!(rec_between_loci.iter().all(|&r| (0.0..=1.0).contains(&r)));
+    assert!(rec_between_loci.iter().sum::<f64>() <= 1.0);
 }
 
 impl RecRate {
@@ -81,6 +90,125 @@ impl RecRate {
     }
 }
 
+impl SinglePointRecProb {
+    pub fn new(rec_between_loci: Vec<f64>) -> Self {
+        validate_single_point_rec_probs(&rec_between_loci);
+        Self { rec_between_loci }
+    }
+
+    pub fn probability_gamete<A, B>(&self, x: &A, gx: &B) -> f64
+    where
+        A: Diploid<B>,
+        B: Haploid,
+    {
+        let v_xu = x.upper().alleles();
+        let v_xl = x.lower().alleles();
+        let v_gx = gx.alleles();
+        assert!(!v_gx.is_empty());
+        assert!(v_xu.len() == v_xl.len() && v_xu.len() == v_gx.len());
+        assert!(self.rec_between_loci.len() + 1 == v_gx.len());
+
+        fn common_prefix_len<T: PartialEq>(a: &[T], b: &[T]) -> usize {
+            a.iter().zip(b.iter()).take_while(|(x, y)| x == y).count()
+        }
+
+        fn common_suffix_len<T: PartialEq>(a: &[T], b: &[T]) -> usize {
+            a.iter()
+                .rev()
+                .zip(b.iter().rev())
+                .take_while(|(x, y)| x == y)
+                .count()
+        }
+
+        let pref_len_u = common_prefix_len(&v_gx, &v_xu);
+        let pref_len_l = common_prefix_len(&v_gx, &v_xl);
+        let suff_len_u = common_suffix_len(&v_gx, &v_xu);
+        let suff_len_l = common_suffix_len(&v_gx, &v_xl);
+
+        fn range_sum(xs: &[f64], start: usize, end: usize) -> f64 {
+            if start > end {
+                0.0
+            } else {
+                xs[start..=end].iter().sum()
+            }
+        }
+
+        fn valid_interval(
+            n_loci: usize,
+            pref_len: usize,
+            suff_len: usize,
+        ) -> Option<(usize, usize)> {
+            let max_j = n_loci - 2;
+            let end = pref_len.checked_sub(1)?.min(max_j);
+            let start = n_loci.saturating_sub(suff_len + 1);
+            (start <= end).then_some((start, end))
+        }
+
+        if self.rec_between_loci.is_empty() {
+            return 0.0;
+        }
+
+        let n_loci = v_gx.len();
+        let upper_first = valid_interval(n_loci, pref_len_u, suff_len_l)
+            .map(|(start, end)| range_sum(&self.rec_between_loci, start, end))
+            .unwrap_or(0.0);
+        let lower_first = valid_interval(n_loci, pref_len_l, suff_len_u)
+            .map(|(start, end)| range_sum(&self.rec_between_loci, start, end))
+            .unwrap_or(0.0);
+        let no_crossover = 1.0 - self.rec_between_loci.iter().sum::<f64>();
+        let upper_whole = if pref_len_u == n_loci {
+            no_crossover / 2.0
+        } else {
+            0.0
+        };
+        let lower_whole = if pref_len_l == n_loci {
+            no_crossover / 2.0
+        } else {
+            0.0
+        };
+
+        (upper_first + lower_first) / 2.0 + upper_whole + lower_whole
+    }
+
+    /// Computes the number of resources (as `f64`) required by a given crossing of `(x, y -> z)`
+    /// with a given threshold probability `gamma`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `gamma` is not in the range [0.0, 1.0].
+    pub fn crossing_resources<A, B>(&self, gamma: f64, x: &A, y: &A, z: &A) -> usize
+    where
+        A: Diploid<B>,
+        B: Haploid,
+    {
+        assert!((0.0..=1.0).contains(&gamma));
+        let px = self.probability_gamete(x, &z.upper());
+        let py = self.probability_gamete(y, &z.lower());
+        cost_of_crossing(gamma, px, py).ceil() as usize
+    }
+
+    /// Computes the number of resources (as `f64`) required by a given crossing of `(x, y -> z)`
+    /// with a given threshold probability `gamma`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `gamma` is not in the range [0.0, 1.0].
+    pub fn crossing_resources_f64<A, B>(&self, gamma: f64, x: &A, y: &A, z: &A) -> f64
+    where
+        A: Diploid<B>,
+        B: Haploid,
+    {
+        assert!((0.0..=1.0).contains(&gamma));
+        let px = self.probability_gamete(x, &z.upper());
+        let py = self.probability_gamete(y, &z.lower());
+        cost_of_crossing(gamma, px, py)
+    }
+
+    pub fn n_loci(&self) -> usize {
+        self.rec_between_loci.len() + 1
+    }
+}
+
 impl From<Vec<f64>> for RecRate {
     fn from(rec_between_loci: Vec<f64>) -> Self {
         assert!(rec_between_loci.iter().all(|&r| (0.0..=0.5).contains(&r)));
@@ -94,6 +222,19 @@ impl From<&[f64]> for RecRate {
     }
 }
 
+impl From<Vec<f64>> for SinglePointRecProb {
+    fn from(rec_between_loci: Vec<f64>) -> Self {
+        validate_single_point_rec_probs(&rec_between_loci);
+        SinglePointRecProb { rec_between_loci }
+    }
+}
+
+impl From<&[f64]> for SinglePointRecProb {
+    fn from(rec_between_loci: &[f64]) -> Self {
+        SinglePointRecProb::from(rec_between_loci.to_vec())
+    }
+}
+
 impl RecRate {
     pub fn n_loci(&self) -> usize {
         self.rec_between_loci.len() + 1
@@ -101,6 +242,14 @@ impl RecRate {
 }
 
 impl Deref for RecRate {
+    type Target = [f64];
+
+    fn deref(&self) -> &Self::Target {
+        &self.rec_between_loci
+    }
+}
+
+impl Deref for SinglePointRecProb {
     type Target = [f64];
 
     fn deref(&self) -> &Self::Target {
@@ -151,7 +300,94 @@ mod tests {
     }
 
     #[test]
+    fn test_single_point_rec_prob_probability_gamete_2_loci() {
+        use crate::plants::bit_array::{SingleChromGamete, SingleChromGenotype};
+        let rec_prob = SinglePointRecProb::from(vec![0.2]);
+
+        let x = SingleChromGenotype::from_str("01", "10");
+        let gx = SingleChromGamete::from_str("01");
+        assert_eq!(rec_prob.probability_gamete(&x, &gx), 0.4);
+        let gx = SingleChromGamete::from_str("10");
+        assert_eq!(rec_prob.probability_gamete(&x, &gx), 0.4);
+        let gx = SingleChromGamete::from_str("00");
+        assert_eq!(rec_prob.probability_gamete(&x, &gx), 0.1);
+        let gx = SingleChromGamete::from_str("11");
+        assert_eq!(rec_prob.probability_gamete(&x, &gx), 0.1);
+
+        let x = SingleChromGenotype::from_str("10", "11");
+        let gx = SingleChromGamete::from_str("01");
+        assert_eq!(rec_prob.probability_gamete(&x, &gx), 0.0);
+        let gx = SingleChromGamete::from_str("10");
+        assert_eq!(rec_prob.probability_gamete(&x, &gx), 0.5);
+        let gx = SingleChromGamete::from_str("00");
+        assert_eq!(rec_prob.probability_gamete(&x, &gx), 0.0);
+        let gx = SingleChromGamete::from_str("11");
+        assert_eq!(rec_prob.probability_gamete(&x, &gx), 0.5);
+    }
+
+    #[test]
+    fn test_single_point_rec_prob_probability_counts_both_orientations() {
+        use crate::plants::bit_array::{SingleChromGamete, SingleChromGenotype};
+        let rec_prob = SinglePointRecProb::from(vec![0.2]);
+        let x = SingleChromGenotype::from_str("00", "00");
+        let gx = SingleChromGamete::from_str("00");
+        assert_eq!(rec_prob.probability_gamete(&x, &gx), 1.0);
+    }
+
+    #[test]
+    fn test_single_point_rec_prob_3_loci() {
+        use crate::plants::bit_array::{SingleChromGamete, SingleChromGenotype};
+        let rec_prob = SinglePointRecProb::from(vec![0.1, 0.2]);
+        let x = SingleChromGenotype::from_str("000", "111");
+        let gx = SingleChromGamete::from_str("000");
+        assert_eq!(rec_prob.probability_gamete(&x, &gx), 0.35);
+        let gx = SingleChromGamete::from_str("001");
+        assert_eq!(rec_prob.probability_gamete(&x, &gx), 0.1);
+        let gx = SingleChromGamete::from_str("010");
+        assert_eq!(rec_prob.probability_gamete(&x, &gx), 0.0);
+        let gx = SingleChromGamete::from_str("011");
+        assert_eq!(rec_prob.probability_gamete(&x, &gx), 0.05);
+        let gx = SingleChromGamete::from_str("100");
+        assert_eq!(rec_prob.probability_gamete(&x, &gx), 0.05);
+        let gx = SingleChromGamete::from_str("101");
+        assert_eq!(rec_prob.probability_gamete(&x, &gx), 0.0);
+        let gx = SingleChromGamete::from_str("110");
+        assert_eq!(rec_prob.probability_gamete(&x, &gx), 0.1);
+        let gx = SingleChromGamete::from_str("111");
+        assert_eq!(rec_prob.probability_gamete(&x, &gx), 0.35);
+    }
+
+    #[test]
+    fn test_single_point_rec_prob_3_loci_overlap() {
+        use crate::plants::bit_array::{SingleChromGamete, SingleChromGenotype};
+        let rec_prob = SinglePointRecProb::from(vec![0.1, 0.2]);
+        let x = SingleChromGenotype::from_str("011", "110");
+        let gx = SingleChromGamete::from_str("111");
+        assert_eq!(rec_prob.probability_gamete(&x, &gx), 0.15000000000000002);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_single_point_rec_prob_rejects_negative_values() {
+        let _ = SinglePointRecProb::new(vec![-0.1]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_single_point_rec_prob_rejects_values_greater_than_one() {
+        let _ = SinglePointRecProb::new(vec![1.2]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_single_point_rec_prob_rejects_sum_greater_than_one() {
+        let _ = SinglePointRecProb::new(vec![0.6, 0.5]);
+    }
+
+    #[test]
     fn test_cost_of_crossing() {
+        use rand::rng;
+
         let gamma = 0.99;
         assert_eq!(cost_of_crossing(gamma, 1.0, 1.0), 1.0);
         assert!({

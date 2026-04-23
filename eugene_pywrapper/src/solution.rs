@@ -133,6 +133,7 @@ fn genotype_from_biguint(x: BigUint, n_loci: usize) -> SingleChromGenotype {
     SingleChromGenotype::new(v)
 }
 
+#[allow(dead_code)]
 fn gamete_from_biguint(x: BigUint, n_loci: usize) -> SingleChromGamete {
     let mask = (BigUint::from(1u64) << n_loci) - 1u64;
     let x = x & mask;

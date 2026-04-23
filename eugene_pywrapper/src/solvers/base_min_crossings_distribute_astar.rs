@@ -30,7 +30,7 @@ pub fn breeding_program_distribute_minres_python(
             &Config::new(true, true, false, None),
         )
         .map(|res| PyCrossingSchedule::new(res.crossing_schedule().unwrap().clone()));
-        tx.send(res)
+        let _ = tx.send(res);
     });
     let res = rx
         .recv_timeout(Duration::new(timeout.unwrap_or(u64::MAX), 0))
@@ -57,7 +57,7 @@ pub fn breeding_program_distribute_general_python(
             &xs.into(),
             &Config::new(full_join, dominance, diving, debug_trace_file),
         );
-        tx.send(res)
+        let _ = tx.send(res);
     });
     let res = rx
         .recv_timeout(Duration::new(timeout.unwrap_or(u64::MAX), 0))
@@ -82,7 +82,7 @@ pub fn breeding_program_distribute_python(xs: Vec<usize>, timeout: Option<u64>) 
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || {
         let res = base_min_crossings_distribute_astar::breeding_program_distribute(&xs.into());
-        tx.send(res)
+        let _ = tx.send(res);
     });
     let res = rx
         .recv_timeout(Duration::new(timeout.unwrap_or(u64::MAX), 0))
@@ -110,7 +110,7 @@ pub fn breeding_program_distribute_no_full_join_python(
         let res = base_min_crossings_distribute_astar::breeding_program_distribute_no_full_join(
             &xs.into(),
         );
-        tx.send(res)
+        let _ = tx.send(res);
     });
     let res = rx
         .recv_timeout(Duration::new(timeout.unwrap_or(u64::MAX), 0))
@@ -137,7 +137,7 @@ pub fn breeding_program_distribute_dominance_python(
     thread::spawn(move || {
         let res =
             base_min_crossings_distribute_astar::breeding_program_distribute_dominance(&xs.into());
-        tx.send(res)
+        let _ = tx.send(res);
     });
     let res = rx
         .recv_timeout(Duration::new(timeout.unwrap_or(u64::MAX), 0))

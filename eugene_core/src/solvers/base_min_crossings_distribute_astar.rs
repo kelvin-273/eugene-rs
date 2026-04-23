@@ -186,11 +186,9 @@ impl AstarNodeBase {
 }
 
 impl PartialOrd for AstarNode {
-    #[allow(clippy::non_canonical_partial_ord_impl)]
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        (self.head.g + self.head.n_pop + self.head.n_segments)
-            .partial_cmp(&(other.head.g + other.head.n_pop + other.head.n_segments))
+        Some(self.cmp(other))
     }
 }
 
@@ -221,7 +219,7 @@ fn compute_objective(path: &AstarNode) -> usize {
 fn unsimplify_dist_array(zs: &[usize], zs_rls: &[usize]) -> Vec<usize> {
     let mut out = Vec::with_capacity(zs_rls.iter().sum());
     for (z, z_rl) in zs.iter().zip(zs_rls.iter()) {
-        out.extend(std::iter::repeat(*z).take(*z_rl));
+        out.extend(std::iter::repeat_n(*z, *z_rl));
     }
     out
 }
@@ -337,7 +335,7 @@ fn compute_crossing_schedule(path: &AstarNode) -> CrossingSchedule {
     let pop_0: Vec<WGe> =
         SingleChromGenotype::init_pop_distribute(&DistArray::from(zss[0].clone()))
             .into_iter()
-            .map(|x| WGen::new(x))
+            .map(WGen::new)
             .collect();
     let mut pop_g: Vec<WGa> = pop_0
         .iter()
@@ -1052,6 +1050,7 @@ fn simplify_dist_array(xs: &DistArray) -> (DistArray, Vec<usize>) {
     (zs, zs_rls)
 }
 
+#[allow(dead_code)]
 fn simplify_dist_array_new(xs: &DistArray) -> DistArray {
     let mut zs = xs.clone();
     let n_loci = xs.n_loci();
@@ -1106,6 +1105,7 @@ fn generate_redistributions(xs: &DistArray) -> Vec<(DistArray, usize, usize)> {
     let mut out = Vec::new();
     // Backtracking for raw redistributions
     // Assumes that gx and gy are already fixed
+    #[allow(clippy::too_many_arguments)]
     fn bt(
         xs: &DistArray,
         out: &mut Vec<(DistArray, usize, usize)>,
@@ -1304,31 +1304,35 @@ fn dominates_as_subsequence(xs: &DistArray, ys: &DistArray) -> bool {
 /// Constructs a `BaseSolution` from a list of `DistArray`s corresponding to a path from the
 /// starting distribute array to the target distribute array. If the list of distribute arrays does
 /// not correspond to a valid path, then `None` is returned.
+#[allow(dead_code)]
 fn distribute_arrays_to_solution_with_parents(
-    xss: &[DistArray],
-    gxys: &[(usize, usize)],
+    _xss: &[DistArray],
+    _gxys: &[(usize, usize)],
 ) -> Option<BaseSolution> {
     todo!("Implement distribute_arrays_to_solution_with_parents");
 }
 
+#[allow(dead_code)]
 fn gametes_from_redistribution_forwards(
-    xs: &DistArray,
-    zs: &DistArray,
-    gxs: &Vec<Vec<i32>>,
+    _xs: &DistArray,
+    _zs: &DistArray,
+    _gxs: &[Vec<i32>],
 ) -> Vec<Vec<i32>> {
     todo!("Implement gametes_from_redistribution_forwards");
 }
 
+#[allow(dead_code)]
 fn gametes_from_redistribution_forwards_with_parents(
-    xs: &DistArray,
-    zs: &DistArray,
-    gzs: &Vec<Vec<i32>>,
-    gx: usize,
-    gy: usize,
+    _xs: &DistArray,
+    _zs: &DistArray,
+    _gzs: &[Vec<i32>],
+    _gx: usize,
+    _gy: usize,
 ) -> Vec<Vec<i32>> {
     todo!("Implement gametes_from_redistribution_backwards");
 }
 
+#[allow(dead_code)]
 fn gmaetes_used_in_redistribution(xs: &DistArray, zs: &DistArray) -> (usize, usize) {
     let mut d_forwards = HashMap::new();
     let mut d_backwards = HashMap::new();
@@ -1359,7 +1363,7 @@ fn gmaetes_used_in_redistribution(xs: &DistArray, zs: &DistArray) -> (usize, usi
         "Less than two gametes are used in the redistribution"
     );
     debug_assert!(
-        d_backwards.values().all(|s| s.len() >= 1),
+        d_backwards.values().all(|s| !s.is_empty()),
         "Gamete with too few parents"
     );
     debug_assert!(
@@ -1390,10 +1394,7 @@ fn gmaetes_used_in_redistribution(xs: &DistArray, zs: &DistArray) -> (usize, usi
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        plants::dist_array::dist_array,
-        solution::{self, TreeType},
-    };
+    use crate::{plants::dist_array::dist_array, solution::TreeType};
     use std::vec;
 
     use super::*;
@@ -1566,20 +1567,20 @@ mod tests {
     fn remaining_ranges_test() {
         assert_eq!(
             _remaining_ranges(
-                &vec![0, 1, 2, 0, 1, 3],
+                &[0, 1, 2, 0, 1, 3],
                 0,
                 1,
-                &vec![true, false, false, true, false]
+                &[true, false, false, true, false]
             ),
             [[4, 6], [0, 1]]
         );
 
         assert_eq!(
             _remaining_ranges(
-                &vec![0, 1, 2, 1, 0, 3],
+                &[0, 1, 2, 1, 0, 3],
                 0,
                 1,
-                &vec![true, false, false, true, false]
+                &[true, false, false, true, false]
             ),
             [[1, 4], [4, 1]]
         );

@@ -1,6 +1,7 @@
 use crate::abstract_plants::*;
 use crate::extra::visualisation;
 use crate::extra::visualisation::Draw;
+use std::str::FromStr;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SingleChromGamete {
@@ -18,17 +19,25 @@ impl SingleChromGamete {
         }
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Self {
-        Self {
-            array: s
-                .chars()
-                .map(|c| match c {
-                    '0' => false,
-                    '1' => true,
-                    _ => panic!("non-01 character entered!"),
-                })
-                .collect(),
-        }
+        <Self as FromStr>::from_str(s).expect("invalid bit string")
+    }
+}
+
+impl FromStr for SingleChromGamete {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let array = s
+            .chars()
+            .map(|c| match c {
+                '0' => Ok(false),
+                '1' => Ok(true),
+                _ => Err("non-01 character entered!"),
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(Self { array })
     }
 }
 

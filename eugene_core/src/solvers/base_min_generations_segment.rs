@@ -108,7 +108,7 @@ impl SegW {
 /// - has to have two genotypes
 pub fn breeding_program(
     n_loci: usize,
-    pop_0: &Vec<SingleChromGenotype>,
+    pop_0: &[SingleChromGenotype],
 ) -> Option<WGen<SingleChromGenotype, SingleChromGamete>> {
     // Return solution if trivial
     let ideotype = SingleChromGenotype::ideotype(n_loci);
@@ -148,12 +148,12 @@ pub fn breeding_program_distribute(
 
 /// Finds the number of generations required to construct the ideotype from pop_0.
 /// Assumes that the ideotype is not in pop_0.
-pub fn min_generations(n_loci: usize, pop_0: &Vec<SingleChromGenotype>) -> usize {
+pub fn min_generations(n_loci: usize, pop_0: &[SingleChromGenotype]) -> usize {
     let n_segments = n_min_covering_segments(n_loci, pop_0);
     (n_segments as f64).log2().ceil() as usize + 1
 }
 
-pub fn n_min_covering_segments(n_loci: usize, pop_0: &Vec<SingleChromGenotype>) -> usize {
+pub fn n_min_covering_segments(n_loci: usize, pop_0: &[SingleChromGenotype]) -> usize {
     let mut segment_pigeonholes: Vec<Option<SegL>> = vec![None; n_loci];
 
     // Fill each hole with the largest segment that starts at s
@@ -205,7 +205,7 @@ pub fn n_min_covering_segments(n_loci: usize, pop_0: &Vec<SingleChromGenotype>) 
 
 /// Given a vector of segments, returns the minimum cardinality subset of segments that covers
 /// {0..n_loci-1}.
-pub fn min_covering_segments(n_loci: usize, pop_0: &Vec<SingleChromGenotype>) -> Vec<SegW> {
+pub fn min_covering_segments(n_loci: usize, pop_0: &[SingleChromGenotype]) -> Vec<SegW> {
     let mut segment_pigeonholes: Vec<Option<SegL>> = vec![None; n_loci];
 
     // Fill each hole with the largest segment that starts at s
@@ -519,7 +519,7 @@ mod tests {
     fn min_segments_test() {
         let segments = min_covering_segments(
             3,
-            &vec![
+            &[
                 SingleChromGenotype::from_str("010", "010"),
                 SingleChromGenotype::from_str("101", "101"),
             ],
@@ -532,8 +532,7 @@ mod tests {
                 .collect::<Vec<(usize, usize)>>()
         );
 
-        let segments =
-            min_covering_segments(4, &vec![SingleChromGenotype::from_str("0101", "1010")]);
+        let segments = min_covering_segments(4, &[SingleChromGenotype::from_str("0101", "1010")]);
         assert_eq!(
             vec![(0, 1), (2, 3)],
             segments
@@ -594,7 +593,7 @@ mod tests {
         use crate::solvers::base_min_generations_enumerator_dominance;
         let n_loci = 17;
         let n_pop = 6;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         for _ in 0..20 {
             let pop_0 = SingleChromGenotype::init_pop_random(&mut rng, n_loci, n_pop);
 

@@ -75,8 +75,8 @@ impl DistArray {
         if other.len() < n || other.len() > n + 1 {
             false
         } else if other.len() == n + 1 {
-            *self == (0..n).collect::<DistArray>().into()
-                && *other == (0..n + 1).map(|x| x % 2).collect::<DistArray>().into()
+            *self == (0..n).collect::<DistArray>()
+                && *other == (0..n + 1).map(|x| x % 2).collect::<DistArray>()
         } else {
             let mut i = 0;
             while i < n && self[i] == other[i] {
@@ -91,7 +91,7 @@ impl DistArray {
                 a = (a + 1) % 2;
                 i += 1;
             }
-            return i == n;
+            i == n
         }
     }
 
@@ -136,7 +136,7 @@ impl DistArray {
                 panic!("Either xs_max[i] < xs_max[i-1] - 1 or xs_max[i] > xs_max[i-1] + 1")
             }
         }
-        Some((0..n + 1).map(|x| x % 2).collect::<DistArray>().into())
+        Some((0..n + 1).map(|x| x % 2).collect::<DistArray>())
     }
 
     /// Returns the successor DistArray in lexicographic order.
@@ -179,7 +179,7 @@ impl DistArray {
                 todo!("other cases")
             }
         }
-        Some((0..n - 1).collect::<DistArray>().into())
+        Some((0..n - 1).collect::<DistArray>())
     }
 
     pub fn resize(&mut self, new_size: usize, fill_value: usize) {
@@ -187,7 +187,7 @@ impl DistArray {
             self.0.truncate(new_size);
         } else if new_size > self.len() {
             self.0
-                .extend(std::iter::repeat(fill_value).take(new_size - self.len()));
+                .extend(std::iter::repeat_n(fill_value, new_size - self.len()));
         }
     }
 }
@@ -248,9 +248,9 @@ impl From<Vec<usize>> for DistArray {
     }
 }
 
-impl Into<Vec<usize>> for DistArray {
-    fn into(self) -> Vec<usize> {
-        self.0
+impl From<DistArray> for Vec<usize> {
+    fn from(val: DistArray) -> Self {
+        val.0
     }
 }
 
@@ -282,6 +282,7 @@ pub fn generate_redistributions(xs: &DistArray) -> Vec<(DistArray, usize, usize)
     let mut out = Vec::new();
     // Backtracking for raw redistributions
     // Assumes that gx and gy are already fixed
+    #[allow(clippy::too_many_arguments)]
     fn bt(
         xs: &DistArray,
         out: &mut Vec<(DistArray, usize, usize)>,
@@ -383,8 +384,8 @@ impl PartialOrd for DistArray {
 impl Ord for DistArray {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         match self.n_loci().cmp(&other.n_loci()) {
-            std::cmp::Ordering::Less => return std::cmp::Ordering::Less,
-            std::cmp::Ordering::Greater => return std::cmp::Ordering::Greater,
+            std::cmp::Ordering::Less => std::cmp::Ordering::Less,
+            std::cmp::Ordering::Greater => std::cmp::Ordering::Greater,
             std::cmp::Ordering::Equal => {
                 for (x, y) in self.iter().zip(other.iter()) {
                     match x.cmp(y) {
@@ -447,8 +448,8 @@ impl PartialOrd for OrderedDistArray {
 impl Ord for OrderedDistArray {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         match self.n_loci().cmp(&other.n_loci()) {
-            std::cmp::Ordering::Less => return std::cmp::Ordering::Less,
-            std::cmp::Ordering::Greater => return std::cmp::Ordering::Greater,
+            std::cmp::Ordering::Less => std::cmp::Ordering::Less,
+            std::cmp::Ordering::Greater => std::cmp::Ordering::Greater,
             std::cmp::Ordering::Equal => {
                 for (x, y) in self.iter().zip(other.iter()) {
                     match x.cmp(y) {
@@ -497,8 +498,8 @@ pub fn random_redistribution(xs: &DistArray, rng: &mut impl Rng) -> (DistArray, 
     let n_pop = xs.n_pop();
     debug_assert!(n_pop >= 2);
     let (gx, gy) = loop {
-        let gx = rng.gen_range(0..n_pop);
-        let gy = rng.gen_range(0..n_pop);
+        let gx = rng.random_range(0..n_pop);
+        let gy = rng.random_range(0..n_pop);
         if gx != gy {
             break (gx.min(gy), gx.max(gy));
         }
@@ -512,10 +513,10 @@ pub fn random_redistribution(xs: &DistArray, rng: &mut impl Rng) -> (DistArray, 
         if xs[i] != gx && xs[i] != gy {
             continue;
         }
-        let mut j = rng.gen_range(0..=j_max);
+        let mut j = rng.random_range(0..=j_max);
         zs[i] = available_gz_values[j];
         while requires_multipoint(&zs, xs, i) {
-            j = rng.gen_range(0..=j_max);
+            j = rng.random_range(0..=j_max);
             zs[i] = available_gz_values[j];
         }
         if j == j_max {

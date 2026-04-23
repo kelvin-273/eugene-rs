@@ -56,7 +56,7 @@ where
                 .set("width", BLOCKSIZE)
                 .set("height", BLOCKSIZE)
                 .set("x", (i as i32) * BLOCKSIZE as i32 + offset.0)
-                .set("y", (i as i32) * 0 + offset.1)
+                .set("y", offset.1)
                 .set("stroke", "black")
                 .set("fill", allele_colour(*a))
         })
@@ -134,7 +134,7 @@ pub fn create_random_selection(
 ) {
     use crate::solvers::base_heuristic_random_selection as ehue;
     let filename = filename.unwrap_or("/tmp/output.svg");
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let output_pop = ehue::repeated_breeding_random(n_loci, &pop_0, k_cross, &mut rng);
     let output_svg = draw_individual_genotypes(&output_pop);
     let _ = svg::save(filename, &output_svg);
@@ -148,7 +148,7 @@ pub fn create_random_selection_dominance(
 ) {
     use crate::solvers::base_heuristic_random_selection as ehue;
     let filename = filename.unwrap_or("/tmp/output.svg");
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let output_pop = ehue::repeated_breeding_random_dominance(n_loci, &pop_0, k_cross, &mut rng);
     let output_svg = draw_individual_genotypes(&output_pop);
     let _ = svg::save(filename, &output_svg);

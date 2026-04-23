@@ -26,7 +26,7 @@ use crate::solvers::base_min_generations_enumerator_dominance::filter_non_domina
 /// assert!(solution.is_some());
 /// ```
 pub fn breeding_program(n_loci: usize, pop_0: &[SingleChromGenotype]) -> Option<BaseSolution> {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     breeding_program_random(n_loci, pop_0, Some(20), &mut rng)
 }
 
@@ -85,21 +85,21 @@ pub fn repeated_breeding_random(
         pop_0.iter().cloned().map(WGen::new).collect();
     let mut n_crossings = 0;
     while !pop.iter().any(|wx| wx.genotype() == &ideotype)
-        && k_cross.map_or(true, |k_cross| n_crossings < k_cross)
+        && k_cross.is_none_or(|k_cross| n_crossings < k_cross)
     {
         let n_pop = pop.len();
-        let i = rng.gen_range(0..n_pop);
-        let j = rng.gen_range(i..n_pop);
+        let i = rng.random_range(0..n_pop);
+        let j = rng.random_range(i..n_pop);
         let wx = &pop[i];
         let wy = &pop[j];
         let wz = WGen::from_gametes(
             &wx.cross(CrosspointBitVec::new(
-                Chrom::from(rng.gen::<bool>()),
-                rng.gen_range(0..n_loci),
+                Chrom::from(rng.random::<bool>()),
+                rng.random_range(0..n_loci),
             )),
             &wy.cross(CrosspointBitVec::new(
-                Chrom::from(rng.gen::<bool>()),
-                rng.gen_range(0..n_loci),
+                Chrom::from(rng.random::<bool>()),
+                rng.random_range(0..n_loci),
             )),
         );
         pop.push(wz);
@@ -176,15 +176,15 @@ pub fn repeated_breeding_random_dominance(
         pop_0.iter().cloned().map(WGen::new).collect();
     let mut n_crossings = 0;
     while !pop.iter().any(|wx| wx.genotype() == &ideotype)
-        && k_cross.map_or(true, |k_cross| n_crossings < k_cross)
+        && k_cross.is_none_or(|k_cross| n_crossings < k_cross)
     {
         let non_dominating_wgametes = filter_non_dominating_key::<_, _, _, DomGamete>(
             pop.iter()
                 .flat_map(|wx| CrosspointBitVec::crosspoints(&n_loci).map(|k| wx.cross(k))),
             |wg| wg.gamete(),
         );
-        let i = rng.gen_range(0..non_dominating_wgametes.len());
-        let j = rng.gen_range(i..non_dominating_wgametes.len());
+        let i = rng.random_range(0..non_dominating_wgametes.len());
+        let j = rng.random_range(i..non_dominating_wgametes.len());
         pop.push(WGen::from_gametes(
             &non_dominating_wgametes[i],
             &non_dominating_wgametes[j],

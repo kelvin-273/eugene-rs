@@ -159,7 +159,7 @@ pub struct WGam<A, B> {
 #[derive(Debug, PartialEq, Eq)]
 struct WGenSCell<A, B> {
     genotype: A,
-    history: Option<(Rc<WGamSCell<A, B>>, Rc<WGamSCell<A, B>>)>,
+    history: Option<WGamPair<A, B>>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -167,6 +167,8 @@ struct WGamSCell<A, B> {
     gamete: B,
     history: Option<Rc<WGenSCell<A, B>>>,
 }
+
+type WGamPair<A, B> = (Rc<WGamSCell<A, B>>, Rc<WGamSCell<A, B>>);
 
 impl<A, B> WGen<A, B> {
     pub fn new(x: A) -> Self {

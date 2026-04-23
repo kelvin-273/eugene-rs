@@ -16,7 +16,7 @@ pub fn breeding_program_python(
     pop_0: Vec<Vec<Vec<bool>>>,
     timeout: Option<u64>,
 ) -> PyBaseSolution {
-    let pop_0 = pop_0
+    let pop_0: Vec<_> = pop_0
         .iter()
         .map(|x| {
             SingleChromGenotype::new(
@@ -57,7 +57,7 @@ pub fn mingen_answer_segment(
     timeout: Option<u64>,
 ) -> PyResult<Option<usize>> {
     //let instant = std::time::Instant::now();
-    let pop_0 = pop_0
+    let pop_0: Vec<_> = pop_0
         .iter()
         .map(|x| {
             SingleChromGenotype::new(
@@ -113,7 +113,7 @@ pub fn breeding_program_minres_python(
     pop_0: Vec<Vec<Vec<bool>>>,
     timeout: Option<u64>,
 ) -> PyResult<Option<PyCrossingSchedule>> {
-    let pop_0 = pop_0
+    let pop_0: Vec<_> = pop_0
         .iter()
         .map(|x| {
             SingleChromGenotype::new(

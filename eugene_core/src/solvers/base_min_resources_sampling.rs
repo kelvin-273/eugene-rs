@@ -1,14 +1,13 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::abstract_plants::{Crosspoint, WGam, WGen};
+use crate::abstract_plants::WGen;
 use crate::extra::resources::{cost_of_crossing, RecRate};
 use crate::plants::bit_array::{CrosspointBitVec, SingleChromGamete, SingleChromGenotype};
 use crate::plants::dist_array::DistArray;
-use crate::solution::{BaseSolution, CrossingSchedule};
+use crate::solution::CrossingSchedule;
 use rand::prelude::IndexedRandom;
 
 type WGe = WGen<SingleChromGenotype, SingleChromGamete>;
-type WGa = WGam<SingleChromGenotype, SingleChromGamete>;
 
 /// Breeding program of a distribute instance of MinRes.
 ///
@@ -28,7 +27,7 @@ pub fn breeding_program_distribute(
     gamma: f64,
 ) -> Option<CrossingSchedule> {
     let n_loci = xs.n_loci();
-    assert!(gamma >= 0.0 && gamma <= 1.0);
+    assert!((0.0..=1.0).contains(&gamma));
     let pop_0 = SingleChromGenotype::init_pop_distribute(xs);
     breeding_program(n_loci, &pop_0, rec_rate, gamma)
 }
@@ -48,14 +47,14 @@ pub fn breeding_program_distribute(
 /// Panics if `gamma` is not in the range [0.0, 1.0]
 pub fn breeding_program(
     n_loci: usize,
-    pop_0: &Vec<SingleChromGenotype>,
+    pop_0: &[SingleChromGenotype],
     rec_rate: &RecRate,
     gamma: f64,
 ) -> Option<CrossingSchedule> {
     let ideotype = SingleChromGenotype::ideotype(n_loci);
 
     let mut pop: Vec<WGe> = pop_0.iter().cloned().map(WGen::new).collect();
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut h: HashMap<_, _> = pop
         .iter()
         .map(|wx| (wx.genotype().clone(), wx.clone()))
@@ -119,14 +118,14 @@ pub fn breeding_program(
 /// Panics if `gamma` is not in the range [0.0, 1.0]
 pub fn breeding_program_2(
     n_loci: usize,
-    pop_0: &Vec<SingleChromGenotype>,
+    pop_0: &[SingleChromGenotype],
     rec_rate: &RecRate,
-    gamma: f64,
+    _gamma: f64,
 ) -> Option<CrossingSchedule> {
     let ideotype = SingleChromGenotype::ideotype(n_loci);
 
     let mut pop: Vec<WGe> = pop_0.iter().cloned().map(WGen::new).collect();
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut h: HashMap<_, _> = pop
         .iter()
         .map(|wx| (wx.genotype().clone(), wx.clone()))
@@ -183,9 +182,8 @@ fn ancestors_contain(wz: &WGe) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use crate::plants::dist_array;
-
     use super::*;
+    use crate::abstract_plants::WGam;
 
     #[test]
     fn ancestors_contain_test() {
@@ -202,22 +200,22 @@ mod tests {
 
     #[test]
     fn trivial_solution() {
-        use crate::plants::dist_array::{dist_array, DistArray};
+        use crate::plants::dist_array::dist_array;
         let r = &RecRate::new(vec![]);
         let gamma = 0.99;
-        let solution = breeding_program_distribute(&dist_array![0], &r, gamma)
+        let solution = breeding_program_distribute(&dist_array![0], r, gamma)
             .expect("breeding_program_distribute returned None");
-        assert_eq!(solution.resources(&r, gamma), 0);
+        assert_eq!(solution.resources(r, gamma), 0);
     }
 
     #[test]
     fn two_loci_distribute_instance() {
-        use crate::plants::dist_array::{dist_array, DistArray};
+        use crate::plants::dist_array::dist_array;
         let r = &RecRate::new(vec![0.1]);
         let gamma = 0.99;
-        let solution = breeding_program_distribute(&dist_array![0, 1], &r, gamma)
+        let solution = breeding_program_distribute(&dist_array![0, 1], r, gamma)
             .expect("breeding_program_distribute returned None");
         let res = solution.resources(r, gamma);
-        assert!(107 <= res && res <= 2500);
+        assert!((107..=2500).contains(&res));
     }
 }

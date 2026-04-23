@@ -377,7 +377,7 @@ mod tests {
             let n: usize = random_range(1..=100);
             let v: Vec<Pair> = (0..n).map(|_| Pair::random()).collect();
             let res = filter_non_dominating::<Pair, Pair>(v);
-            assert!(res.len() > 0);
+            assert!(!res.is_empty());
             for i in 0..res.len() {
                 for j in 0..i {
                     let x = &res[i];

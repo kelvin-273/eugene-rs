@@ -36,10 +36,8 @@ where
 }
 
 fn heuristic(n_loci: usize, state: &State<WGe>) -> usize {
-    let n_segments = base_min_generations_segment::n_min_covering_segments(
-        n_loci,
-        &state.iter().map(|wgx| wgx.genotype()).cloned().collect(),
-    );
+    let pop: Vec<_> = state.iter().map(|wgx| wgx.genotype()).cloned().collect();
+    let n_segments = base_min_generations_segment::n_min_covering_segments(n_loci, &pop);
     (n_segments + 1) >> 1
 }
 
@@ -216,7 +214,7 @@ mod tests {
     #[test]
     fn breeding_program_test() {
         let n_loci = 3;
-        let res = breeding_program(n_loci, &vec![SingleChromGenotype::from_str("010", "101")]);
+        let res = breeding_program(n_loci, &[SingleChromGenotype::from_str("010", "101")]);
         assert_ne!(None, res);
         assert_eq!(
             Some(2),
@@ -268,7 +266,7 @@ mod tests {
     fn breeding_program_zigzag_test() {
         let res = breeding_program(
             4,
-            &vec![
+            &[
                 SingleChromGenotype::from_str("1010", "1010"),
                 SingleChromGenotype::from_str("0101", "0101"),
             ],

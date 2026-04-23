@@ -1,4 +1,4 @@
-use eugene_core::plants::dist_array::{dist_array, DistArray};
+use eugene_core::plants::dist_array::dist_array;
 use eugene_core::solvers::base_min_crossings_distribute_astar;
 
 pub fn main() {

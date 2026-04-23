@@ -28,8 +28,8 @@ pub fn breeding_program(
     rec_rate: &RecRate,
     gamma: f64,
 ) -> Option<CrossingSchedule> {
-    assert!(0.0 <= gamma && gamma <= 1.0);
-    assert!(pop_0.len() >= 1);
+    assert!((0.0..=1.0).contains(&gamma));
+    assert!(!pop_0.is_empty());
     assert!(pop_0.iter().all(|x| x.n_loci() == n_loci));
 
     let target = SingleChromGenotype::ideotype(n_loci);

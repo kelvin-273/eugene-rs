@@ -8,7 +8,7 @@ pub mod base_min_crossings_astar;
 /// Finds the min crossings for base problem distribute instances using A*
 pub mod base_min_crossings_distribute_astar;
 ///// Finds the min crossings for base problem using MIP
-////pub mod base_min_crossings_mip;
+///pub mod base_min_crossings_mip;
 /// Solves by breeding all possible progeny in each generation
 pub mod base_min_generations_enumerator;
 /// Solves by breeding all non-dominating progeny in each generation

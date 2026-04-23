@@ -73,6 +73,10 @@ impl CrossingSchedule {
         self.tree_type.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.tree_type.is_empty()
+    }
+
     #[inline]
     pub fn n_loci(&self) -> usize {
         self.n_loci

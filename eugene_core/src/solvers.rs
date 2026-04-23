@@ -31,6 +31,5 @@ pub mod base_min_resources_greedy_dom;
 pub mod base_min_resources_sampling;
 
 /// ## Heuristic methods
-
 /// Find a crossing schedule by repeated performing random crossings until the ideotype is created
 pub mod base_heuristic_random_selection;

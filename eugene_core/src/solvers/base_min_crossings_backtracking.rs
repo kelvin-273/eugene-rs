@@ -60,11 +60,11 @@ mod tests {
     #[test]
     fn subproblems_shallow_test() {
         assert_eq!(
-            subproblems_shallow(&vec![1, 2, 1, 2, 1, 3, 4, 3, 5, 0]),
+            subproblems_shallow(&[1, 2, 1, 2, 1, 3, 4, 3, 5, 0]),
             vec![(0, 4), (5, 7), (8, 8), (9, 9)]
         );
         assert_eq!(
-            subproblems_shallow(&vec![0, 1, 0, 1, 0, 1, 0, 2, 3, 2, 4, 2]),
+            subproblems_shallow(&[0, 1, 0, 1, 0, 1, 0, 2, 3, 2, 4, 2]),
             vec![(0, 6), (7, 11)]
         );
     }

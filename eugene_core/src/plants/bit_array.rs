@@ -5,8 +5,8 @@ use crate::plants::dist_array::DistArray;
 use crate::solution::{BaseSolution, Objective};
 use bit_vec::BitVec;
 use rand::prelude::*;
-use rand::rng;
 use std::collections::{HashMap, VecDeque};
+use std::str::FromStr;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub struct SingleChromGamete {
@@ -103,8 +103,8 @@ impl SingleChromGenotype {
     {
         Self {
             n_loci,
-            chrom1: BitVec::from_fn(n_loci, |_| rng.gen()),
-            chrom2: BitVec::from_fn(n_loci, |_| rng.gen()),
+            chrom1: BitVec::from_fn(n_loci, |_| rng.random()),
+            chrom2: BitVec::from_fn(n_loci, |_| rng.random()),
         }
     }
 
@@ -241,16 +241,9 @@ impl SingleChromGamete {
         }
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s1: &str) -> Self {
-        let f = |c: char| match c {
-            '0' => false,
-            '1' => true,
-            _ => panic!("invalid character"),
-        };
-        Self {
-            n_loci: s1.len(),
-            gamete: BitVec::from_iter(s1.chars().map(f)),
-        }
+        <Self as FromStr>::from_str(s1).expect("invalid bit string")
     }
 
     pub fn ideotype(n_loci: usize) -> Self {
@@ -258,6 +251,23 @@ impl SingleChromGamete {
             n_loci,
             gamete: BitVec::from_elem(n_loci, true),
         }
+    }
+}
+
+impl FromStr for SingleChromGamete {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let f = |c: char| match c {
+            '0' => Ok(false),
+            '1' => Ok(true),
+            _ => Err("invalid character"),
+        };
+        let gamete = s.chars().map(f).collect::<Result<BitVec, &'static str>>()?;
+        Ok(Self {
+            n_loci: s.len(),
+            gamete,
+        })
     }
 }
 
@@ -336,8 +346,8 @@ impl CrosspointBitVec {
     /// * `CrosspointBitVec::random_crosspoint` - Generates a crosspoint with recombination rates.
     pub fn random_crosspoint_uniform(rng: &mut impl Rng, n_loci: &usize) -> Self {
         Self {
-            start: rng.gen::<bool>().into(),
-            head: rng.gen_range(0..*n_loci),
+            start: rng.random::<bool>().into(),
+            head: rng.random_range(0..*n_loci),
         }
     }
 
@@ -370,12 +380,12 @@ impl CrosspointBitVec {
     /// # See Also
     /// * `CrosspointBitVec::random_crosspoint_uniform` - Generates a crosspoint with uniform head.
     pub fn random_crosspoint(rng: &mut impl Rng, n_loci: usize, recomb_rates: &RecRate) -> Self {
-        let start = rng.gen::<bool>().into();
+        let start = rng.random::<bool>().into();
         if n_loci <= 1 {
             return Self { start, head: 0 };
         }
         let total: f64 = recomb_rates.iter().sum();
-        let pinpoint: f64 = rng.gen();
+        let pinpoint: f64 = rng.random();
         let mut j = 0;
         let mut running_sum = 0.0;
         while j < n_loci - 1 && running_sum / total < pinpoint {
@@ -661,25 +671,25 @@ mod tests {
     fn feasibility_test() {
         assert!(SingleChromGenotype::is_feasible(
             &5,
-            &vec![SingleChromGenotype::from_str("01010", "10101")]
+            &[SingleChromGenotype::from_str("01010", "10101")]
         ));
         assert!(SingleChromGenotype::is_feasible(
             &5,
-            &vec![
+            &[
                 SingleChromGenotype::from_str("01010", "01010"),
                 SingleChromGenotype::from_str("10101", "10101")
             ]
         ));
         assert!(SingleChromGenotype::is_feasible(
             &5,
-            &vec![
+            &[
                 SingleChromGenotype::from_str("01010", "01010"),
                 SingleChromGenotype::from_str("10101", "00101")
             ]
         ));
         assert!(!SingleChromGenotype::is_feasible(
             &5,
-            &vec![
+            &[
                 SingleChromGenotype::from_str("01010", "01010"),
                 SingleChromGenotype::from_str("00101", "00101")
             ]
@@ -689,7 +699,7 @@ mod tests {
     #[test]
     fn feasibility_random_population_test() {
         let n_loci = 13;
-        let mut rng = rng();
+        let mut rng = rand::rng();
         for _ in 0..100 {
             assert!(SingleChromGenotype::is_feasible(
                 &n_loci,

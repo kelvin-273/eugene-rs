@@ -1,3 +1,4 @@
+#![allow(warnings)]
 use std::ops::Range;
 
 use btree_range_map::{Measure, RangeMap};

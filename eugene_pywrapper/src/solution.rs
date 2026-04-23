@@ -43,6 +43,12 @@ pub struct PySinglePointRecProb {
     rec_prob: SinglePointRecProb,
 }
 
+impl From<SinglePointRecProb> for PySinglePointRecProb {
+    fn from(rec_prob: SinglePointRecProb) -> Self {
+        Self { rec_prob }
+    }
+}
+
 #[pymethods]
 impl PyRecRate {
     #[new]
@@ -66,6 +72,12 @@ impl PyRecRate {
         let y = genotype_from_biguint(y, n_loci);
         let z = genotype_from_biguint(z, n_loci);
         self.rec_rate.crossing_resources(gamma, &x, &y, &z)
+    }
+
+    fn to_singlepoint(&self) -> PyResult<PySinglePointRecProb> {
+        let rec_prob = SinglePointRecProb::try_from(&self.rec_rate)
+            .map_err(|err| PyValueError::new_err(err.to_string()))?;
+        Ok(rec_prob.into())
     }
 }
 

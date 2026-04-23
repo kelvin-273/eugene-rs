@@ -1,3 +1,4 @@
+use std::fmt;
 use std::ops::Deref;
 
 use crate::abstract_plants::*;
@@ -11,6 +12,24 @@ pub struct RecRate {
 pub struct SinglePointRecProb {
     rec_between_loci: Vec<f64>,
 }
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum RecRateConversionError {
+    InvalidRate { index: usize, rate: f64 },
+}
+
+impl fmt::Display for RecRateConversionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidRate { index, rate } => write!(
+                f,
+                "rec_rate[{index}] must be in the range [0.0, 0.5], got {rate}"
+            ),
+        }
+    }
+}
+
+impl std::error::Error for RecRateConversionError {}
 
 pub trait ResourceModel {
     fn crossing_resources<A, B>(&self, gamma: f64, x: &A, y: &A, z: &A) -> usize
@@ -272,6 +291,27 @@ impl From<&[f64]> for SinglePointRecProb {
     }
 }
 
+impl TryFrom<&RecRate> for SinglePointRecProb {
+    type Error = RecRateConversionError;
+
+    fn try_from(rec_rate: &RecRate) -> Result<Self, Self::Error> {
+        if let Some((index, &rate)) = rec_rate
+            .iter()
+            .enumerate()
+            .find(|(_, rate)| !(0.0..=0.5).contains(*rate))
+        {
+            return Err(RecRateConversionError::InvalidRate { index, rate });
+        }
+
+        let normalizer = 1.0 + rec_rate.iter().map(|rate| rate / (1.0 - rate)).sum::<f64>();
+        let rec_between_loci = rec_rate
+            .iter()
+            .map(|rate| rate / (1.0 - rate) / normalizer)
+            .collect();
+        Ok(SinglePointRecProb::new(rec_between_loci))
+    }
+}
+
 impl RecRate {
     pub fn n_loci(&self) -> usize {
         self.rec_between_loci.len() + 1
@@ -360,6 +400,38 @@ mod tests {
         assert_eq!(rec_prob.probability_gamete(&x, &gx), 0.0);
         let gx = SingleChromGamete::from_str("11");
         assert_eq!(rec_prob.probability_gamete(&x, &gx), 0.5);
+    }
+
+    #[test]
+    fn test_single_point_rec_prob_try_from_rec_rate() {
+        let rec_rate = RecRate::new(vec![0.1, 0.2]);
+        let rec_prob = SinglePointRecProb::try_from(&rec_rate).unwrap();
+
+        assert_eq!(rec_prob.rec_between_loci.len(), 2);
+        assert!((rec_prob.rec_between_loci[0] - 0.08163265306122448).abs() < 1e-12);
+        assert!((rec_prob.rec_between_loci[1] - 0.18367346938775508).abs() < 1e-12);
+    }
+
+    #[test]
+    fn test_single_point_rec_prob_try_from_empty_rec_rate() {
+        let rec_rate = RecRate::new(vec![]);
+        let rec_prob = SinglePointRecProb::try_from(&rec_rate).unwrap();
+
+        assert_eq!(rec_prob.rec_between_loci, Vec::<f64>::new());
+    }
+
+    #[test]
+    fn test_single_point_rec_prob_try_from_rec_rate_rejects_invalid_values() {
+        let rec_rate = RecRate::new(vec![0.1, 0.8]);
+        let err = SinglePointRecProb::try_from(&rec_rate).unwrap_err();
+
+        assert_eq!(
+            err,
+            RecRateConversionError::InvalidRate {
+                index: 1,
+                rate: 0.8
+            }
+        );
     }
 
     #[test]
